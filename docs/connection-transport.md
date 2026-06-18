@@ -32,7 +32,7 @@ cf_country = raw_headers.get("cf-ipcountry")
 server_data["geo_country"] = country
 ```
 
-The country code rides into the server in the initial PCONN message so `at_post_login()` sees the correct jurisdiction *before* any player action runs. This is the load-bearing piece of our compliance posture: jurisdiction-gated features (and any future jurisdiction-specific blocks) depend on `geo_country` being authoritative for every connection. See `design/compliance.md` § Login Geo-Logging and § Geo-Detection Re-Activation Triggers.
+The country code rides into the server in the initial PCONN message so `at_post_login()` sees the correct jurisdiction *before* any player action runs. This is the load-bearing piece of our compliance posture: jurisdiction-gated features (and any future jurisdiction-specific blocks) depend on `geo_country` being authoritative for every connection. See `compliance.md` § Login Geo-Logging and § Geo-Detection Re-Activation Triggers.
 
 ### 2. L3/L4 DDoS Absorption
 

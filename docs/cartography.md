@@ -1,6 +1,6 @@
 # Cartography & Maps Design
 
-> This is the canonical design document for the cartography skill's **intra-zone mapping system** (`survey`, `map` commands). For interzone travel design — the `explore` command, cartography mastery gates, route map NFTs, sea routes, and the BaseGate architecture — see `design/interzone-travel.md`. For world-building context see `design/world.md`.
+> This is the canonical design document for the cartography skill's **intra-zone mapping system** (`survey`, `map` commands). For interzone travel design — the `explore` command, cartography mastery gates, route map NFTs, sea routes, and the BaseGate architecture — see `interzone-travel.md`. For world-building context see `world.md`.
 
 ---
 
@@ -9,7 +9,7 @@
 **CARTOGRAPHY** is a general skill available to all character classes. Trainable to BASIC in Millholm — enough to leave the starting zone.
 
 Two distinct systems under one skill:
-- **System 1: Inter-Zone Route Discovery** — `explore` command gates zone-to-zone travel. See `design/interzone-travel.md`.
+- **System 1: Inter-Zone Route Discovery** — `explore` command gates zone-to-zone travel. See `interzone-travel.md`.
 - **System 2: Intra-Zone District Mapping** — `survey` command produces tradeable map NFTs *(current implementation — documented below)*
 
 ---
@@ -18,7 +18,7 @@ Two distinct systems under one skill:
 
 | Command | System | Purpose |
 |---|---|---|
-| `explore` | System 1 | Move party to an unknown zone via a gateway. Mastery-gated. Auto-produces a route map NFT on arrival. See `design/interzone-travel.md`. |
+| `explore` | System 1 | Move party to an unknown zone via a gateway. Mastery-gated. Auto-produces a route map NFT on arrival. See `interzone-travel.md`. |
 | `survey` | System 2 | Timed per-room action. District scale: reveals current + adjacent map cells. Region scale: reveals current map cell only. |
 | `map` | System 2 | View a map from inventory, rendered server-side with unexplored cells hidden. `map <name>` does a case-insensitive substring match against the map's display name. |
 | `chart` | — | **REMOVED.** Originally intended for manual map creation. Superseded by auto-map-on-explore (System 1) and `survey` (System 2). |

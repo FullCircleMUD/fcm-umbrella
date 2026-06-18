@@ -1,6 +1,6 @@
 # world.md
 
-> **THIS FILE is for WORLD BUILDING only** — lore, narratives, zone designs, NPC concepts, quest ideas, brainstorms, and creative direction. For technical architecture, code patterns, and implementation details, see **src/game/CLAUDE.md**. For economic design — pricing models, market structures, spawn algorithms, and trade mechanics — see **design/economy.md**. Do not put technical implementation details or economic design content here.
+> **THIS FILE is for WORLD BUILDING only** — lore, narratives, zone designs, NPC concepts, quest ideas, brainstorms, and creative direction. For technical architecture, code patterns, and implementation details, see **src/game/CLAUDE.md**. For economic design — pricing models, market structures, spawn algorithms, and trade mechanics — see **economy.md**. Do not put technical implementation details or economic design content here.
 
 ---
 
@@ -734,7 +734,7 @@ A tropical port city with **Asian/Oriental cultural theming** — a stark contra
 
 ## Maritime Progression & The Island Chain
 
-> For the full interzone travel system — triple skill gate mechanics, ship tiers, `explore`/`sail` commands, route map NFTs, and the BaseGate architecture — see `design/interzone-travel.md`.
+> For the full interzone travel system — triple skill gate mechanics, ship tiers, `explore`/`sail` commands, route map NFTs, and the BaseGate architecture — see `interzone-travel.md`.
 
 ### Island Design (Partial List — Ideas)
 
@@ -816,7 +816,7 @@ The world is explored through discovery, not a minimap. Zone connections exist b
 - **Inter-zone route discovery** — zones are connected by gateway exits invisible until explored. A party needs a cartographer of sufficient mastery to discover a new route; once found, a tradeable route map lets anyone travel it.
 - **Intra-zone district mapping** — within a zone, cartographers survey rooms to fill in pre-drawn ASCII district maps, which are tradeable as NFTs. A 100% sewer map is genuinely valuable to a party heading underground.
 
-See **[design/cartography.md](cartography.md)** for the full mechanics design.
+See **[cartography.md](cartography.md)** for the full mechanics design.
 
 ---
 

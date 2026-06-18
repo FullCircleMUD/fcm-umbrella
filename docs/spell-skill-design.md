@@ -166,14 +166,14 @@ This aligns with FCM's overall compliance position:
 > **No player will ever pay consideration for an outcome that is not
 > fully disclosed to them before payment.**
 
-See `design/compliance.md` and `ops/COMPLIANCE_LEGAL.md` §9.5 for the
+See `compliance.md` and `ops/COMPLIANCE_LEGAL.md` §9.5 for the
 full gambling law analysis. Other game systems that have been (or will
 be) redesigned around the same principle:
 
 - **Loot spawning** — fully deterministic budget-driven push, no per-kill
-  rolls (see `design/economy.md`)
+  rolls (see `economy.md`)
 - **Gem enchanting** — pre-disclosed slot consumption model, redesign in
-  progress (see `design/economy.md` § Weapons — Gem Insets)
+  progress (see `economy.md` § Weapons — Gem Insets)
 
 ### Recipe Sales
 

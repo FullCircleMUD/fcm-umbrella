@@ -300,7 +300,7 @@ Global character command: `climb up [target]` / `climb down [target]`
 
 ## Future Considerations
 
-- ~~**Height-dependent mob AI**~~ — **Done.** See `design/combat-system.md` § Height Combat and `design/npc-mob-architecture.md` for mob height-matching, retargeting, and flee behavior.
+- ~~**Height-dependent mob AI**~~ — **Done.** See `combat-system.md` § Height Combat and `npc-mob-architecture.md` for mob height-matching, retargeting, and flee behavior.
 - ~~**Climbing**~~ — **Done.** ClimbableMixin + CmdClimb. See above.
 - ~~**Height-gated object visibility**~~ — **Done.** Room barrier system (`visibility_up_barrier` / `visibility_down_barrier` on `RoomBase`) + object `size` attribute. Enforced via `p_height_visible_to` / `p_can_see` predicates. See § Height-Gated Visibility above.
 - **`look up` / `look down` commands** — explicit commands to inspect what's above or below the character's current height (would use the same `is_height_visible_to` filter but display other heights, not just the current one)

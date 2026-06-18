@@ -1,6 +1,6 @@
 # database.md
 
-> **THIS FILE covers database architecture** for FullCircleMUD — the four-database design, the SQLite/PostgreSQL toggle, how migrations work, and developer workflow. Deployment pipeline, CI/CD, Railway configuration, and branching strategy live in the private ops repository (`ops/DEPLOYMENT.md`). For technical implementation details and code patterns, see **src/game/CLAUDE.md**. For economic design, see **design/economy.md**. For the three embedding memory systems, see **design/combat-ai-memory.md** (combat), **design/lore-memory.md** (world knowledge), and **design/npc-mob-architecture.md** § Three Memory Systems (overview). For subscription payment system, see **design/subscriptions.md**.
+> **THIS FILE covers database architecture** for FullCircleMUD — the four-database design, the SQLite/PostgreSQL toggle, how migrations work, and developer workflow. Deployment pipeline, CI/CD, Railway configuration, and branching strategy live in the private ops repository (`ops/DEPLOYMENT.md`). For technical implementation details and code patterns, see **src/game/CLAUDE.md**. For economic design, see **economy.md**. For the three embedding memory systems, see **combat-ai-memory.md** (combat), **lore-memory.md** (world knowledge), and **npc-mob-architecture.md** § Three Memory Systems (overview). For subscription payment system, see **subscriptions.md**.
 
 ---
 

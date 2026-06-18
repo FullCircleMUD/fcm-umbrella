@@ -1,6 +1,6 @@
 # Interzone Travel System Design
 
-> This is the canonical design document for all zone-to-zone travel — overland and sea. For the complete route table (which zones connect to which, with discovery gates and food costs) see `design/world.md`. For intra-zone district mapping (the `survey` command and map NFTs) see `design/cartography.md`.
+> This is the canonical design document for all zone-to-zone travel — overland and sea. For the complete route table (which zones connect to which, with discovery gates and food costs) see `world.md`. For intra-zone district mapping (the `survey` command and map NFTs) see `cartography.md`.
 
 ---
 
@@ -147,7 +147,7 @@ Each sea route destination config carries:
 
 Seamanship is **not** in the destination config as a gate. It is consulted at sail time to calculate shipwreck probability — see Seamanship Risk below.
 
-For full route details including specific costs see the Zone Connections table in `design/world.md`.
+For full route details including specific costs see the Zone Connections table in `world.md`.
 
 ### Shipwright Skill — Building Ships
 
@@ -169,7 +169,7 @@ GM ships require collaborative effort across multiple skilled crafters (Carpente
 
 Ships can be deposited and withdrawn at any bank room using the standard `deposit` / `withdraw` commands — the same flow as any other NFT item. This is the asynchronous counterpart to `give` (which requires both characters to be in the same room at the same time): a player can `deposit` a ship from one character, log out, switch to another character on the same account, walk into a bank, and `withdraw` it. Ownership effectively transfers between characters via the shared `AccountBank`.
 
-The ship's berth location (`db.world_location`) is preserved across the bank cycle. The mirror-metadata persistence layer (see `design/inventory-equipment.md` § NFT Metadata Persistence) writes `world_location_dbref` and `world_location_name` into `NFTGameState.metadata` on every dock arrival, and `ShipNFTItem.at_restore_from_metadata` rehydrates it on respawn — so the location also survives an XRPL export → re-import round-trip.
+The ship's berth location (`db.world_location`) is preserved across the bank cycle. The mirror-metadata persistence layer (see `inventory-equipment.md` § NFT Metadata Persistence) writes `world_location_dbref` and `world_location_name` into `NFTGameState.metadata` on every dock arrival, and `ShipNFTItem.at_restore_from_metadata` rehydrates it on respawn — so the location also survives an XRPL export → re-import round-trip.
 
 A new owner who withdraws a ship at a bank does **not** auto-relocate to its dock. They have to travel to that dock themselves before they can `sail` it. This is intentional friction matching the design note in `ship_nft_item.py:9-13` ("New owner must travel to that dock to sail the ship") and applies equally to ships acquired via `give`, via XRPL marketplace purchase, or via the bank.
 

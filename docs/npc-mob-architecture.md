@@ -212,7 +212,7 @@ Mastery defaults from mixins can be overridden per spawn rule:
 
 ## Mob Equipment — MobItem Hierarchy
 
-Humanoid mobs can equip weapons and armour that share identical combat mechanics with player NFT items, without consuming NFT tokens or entering the player economy. This is achieved through extracted composition mixins (see `design/inventory-equipment.md` § Extracted Composition Mixins).
+Humanoid mobs can equip weapons and armour that share identical combat mechanics with player NFT items, without consuming NFT tokens or entering the player economy. This is achieved through extracted composition mixins (see `inventory-equipment.md` § Extracted Composition Mixins).
 
 ### Design Principle
 
@@ -687,7 +687,7 @@ Adds "attacks on sight" behavior. Extracted from the current `AggressiveMob` cla
 
 **On-aggro target preference:** When multiple players are in the room, prefers targets at reachable height. If no reachable targets exist, attempts height-matching before giving up.
 
-**Mid-combat retargeting (in `combat_handler.execute_next_action()`):** When the current target becomes unreachable (player flies up, dives), the combat handler calls `_try_match_height()` first. If the mob can match (flying mob chases upward, swimming mob dives), it broadcasts a room message and attacks. If it can't match (ground mob vs flying target), it scans enemies via `_find_reachable_target()` for an alternative at the same height. If no reachable enemies exist, the mob flees (auto-succeeds when no melee threat at same height). See `design/combat-system.md` § Height Combat for the full per-tick flow.
+**Mid-combat retargeting (in `combat_handler.execute_next_action()`):** When the current target becomes unreachable (player flies up, dives), the combat handler calls `_try_match_height()` first. If the mob can match (flying mob chases upward, swimming mob dives), it broadcasts a room message and attacks. If it can't match (ground mob vs flying target), it scans enemies via `_find_reachable_target()` for an alternative at the same height. If no reachable enemies exist, the mob flees (auto-succeeds when no melee threat at same height). See `combat-system.md` § Height Combat for the full per-tick flow.
 
 ---
 

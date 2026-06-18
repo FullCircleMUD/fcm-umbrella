@@ -70,7 +70,7 @@ Subscription pricing per phase, game economy overview, running costs breakdown. 
 | Template | `terms.html` |
 | Status | Draft — pending legal review |
 
-Covers: nature of in-game assets, no redemption, trading on external protocols, game economy management, alpha/testnet phases. See `design/compliance.md` § Terms of Service.
+Covers: nature of in-game assets, no redemption, trading on external protocols, game economy management, alpha/testnet phases. See `compliance.md` § Terms of Service.
 
 ### Privacy Policy
 

@@ -4,7 +4,7 @@
 
 NPCs and quests form the primary interaction layer between players and the game world. NPCs provide services (training, shopping, quest-giving, dialogue) while the quest system tracks multi-step objectives with rewards.
 
-> **New player experience:** See `design/new-player-experience.md` for onboarding design intent and tutorial structure. **Economy:** See `design/economy.md` for AMM pricing model and trade accounting.
+> **New player experience:** See `new-player-experience.md` for onboarding design intent and tutorial structure. **Economy:** See `economy.md` for AMM pricing model and trade accounting.
 
 ---
 
@@ -71,7 +71,7 @@ ShopkeeperNPC buys and sells resources with prices driven by live XRPL AMM pools
 - `buy <amount> <item>` — instant buy at current market price (no quote step)
 - `sell <amount> <item>` / `sell all <item>` — instant sell at current market price
 
-**Pricing:** Constant product formula (x * y = k) with AMM trading fee. Buy prices ceil-rounded, sell prices floor-rounded — all gold amounts are integers. Favorable slippage goes to the game. See **design/economy.md** for the full AMM trade accounting model.
+**Pricing:** Constant product formula (x * y = k) with AMM trading fee. Buy prices ceil-rounded, sell prices floor-rounded — all gold amounts are integers. Favorable slippage goes to the game. See **economy.md** for the full AMM trade accounting model.
 
 **Moderator commands:**
 - `amm_check` / `amm_check <resource>` — query AMM pool states (reserves, fees). Read-only, no trades

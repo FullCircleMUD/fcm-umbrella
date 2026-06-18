@@ -17,7 +17,7 @@
 
 ## What This System IS NOT
 
-- **Not a peg, backing, or collateralisation of game gold.** Gold has no redemption right, no fixed exchange rate to any external asset, and no guaranteed value. See `design/compliance.md` for the full no-redemption model.
+- **Not a peg, backing, or collateralisation of game gold.** Gold has no redemption right, no fixed exchange rate to any external asset, and no guaranteed value. See `compliance.md` for the full no-redemption model.
 - **Not a promise to players.** No aspect of this system creates any obligation, expectation, or undertaking regarding the value of game gold or any other in-game asset.
 - **Not a reserve system.** The RLUSD held in treasury is business revenue, not a reserve backing game currency. The operator retains full discretion over treasury allocation.
 - **Not a stablecoin mechanism.** Game gold floats freely based on in-game supply and demand. This system governs *issuance discipline*, not price stability.
@@ -185,7 +185,7 @@ Tokenized T-Bills on XRPL are issued currencies from a third-party issuer. The t
 
 ## Gold Sink Integration
 
-The existing economy has a SINK → RESERVE reallocation cycle (see `design/economy.md`):
+The existing economy has a SINK → RESERVE reallocation cycle (see `economy.md`):
 
 - Gold consumed by game activity (crafting fees, repair, training, etc.) flows to SINK
 - `ReallocationServiceScript` drains SINK → RESERVE daily

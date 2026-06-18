@@ -1,6 +1,6 @@
 # economy.md
 
-> **THIS FILE is for ECONOMIC DESIGN only** — pricing models, market structures, spawn algorithms, trade mechanics, gold sinks, revenue models, and economic balance. For technical architecture, code patterns, and implementation details, see **src/game/CLAUDE.md**. For world building, lore, and creative direction, see **design/world.md**. For economic implementation backlog, see **ops/ECONOMY_BACKLOG.md**. Do not put technical implementation details here. Do not put world building content here.
+> **THIS FILE is for ECONOMIC DESIGN only** — pricing models, market structures, spawn algorithms, trade mechanics, gold sinks, revenue models, and economic balance. For technical architecture, code patterns, and implementation details, see **src/game/CLAUDE.md**. For world building, lore, and creative direction, see **world.md**. For economic implementation backlog, see **ops/ECONOMY_BACKLOG.md**. Do not put technical implementation details here. Do not put world building content here.
 
 ---
 

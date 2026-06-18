@@ -4,7 +4,7 @@
 
 The `EffectsManagerMixin` (`typeclasses/mixins/effects_manager.py`) is the unified effect system for all actors. It replaces the old ConditionsMixin and provides three composable layers for applying, tracking, and removing effects. Mixed into `BaseActor` alongside `DamageResistanceMixin`.
 
-> **Combat integration:** See `design/combat-system.md` for named effect specifications (values, durations, stacking rules) and combat-specific effect tables. See `design/spell-skill-design.md` for spell-granted effects.
+> **Combat integration:** See `combat-system.md` for named effect specifications (values, durations, stacking rules) and combat-specific effect tables. See `spell-skill-design.md` for spell-granted effects.
 
 **MANDATORY: The EffectsManagerMixin is the ONLY approved system for applying, tracking, and removing effects on actors. Use convenience methods when one exists; fall back to `apply_named_effect()` only for data-driven effects (e.g. potions). Use `apply_effect()`/`remove_effect()` only for equipment `wear_effects`. Do NOT create ad-hoc solutions (custom scripts, manual HP/stat manipulation, direct condition flag manipulation outside of equipment wear_effects, or any other pattern that bypasses this system). If you believe a deviation is necessary, you MUST discuss it with the developer and get explicit human approval before proceeding.**
 

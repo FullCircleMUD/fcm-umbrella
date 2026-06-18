@@ -104,7 +104,7 @@ Death cause string: `"dehydration"`.
 - `drink_from(character)` — decrements current, steps the character's `thirst_level` up by one (capped at REFRESHED), sets the free-pass tick on REFRESHED, persists state
 - `refill_to_full()` — sets current = max_capacity, persists state
 - `is_empty` / `is_full` properties
-- `_persist_water_state()` — pushes `{current, max_capacity}` to `NFTGameState.metadata` via the standard `persist_metadata()` helper, so a half-full canteen survives bank/withdraw and chain export/import. Silently no-ops on non-NFT consumers. See `design/inventory-equipment.md` § NFT Metadata Persistence for the round-trip story.
+- `_persist_water_state()` — pushes `{current, max_capacity}` to `NFTGameState.metadata` via the standard `persist_metadata()` helper, so a half-full canteen survives bank/withdraw and chain export/import. Silently no-ops on non-NFT consumers. See `inventory-equipment.md` § NFT Metadata Persistence for the round-trip story.
 
 Concrete typeclasses live in `typeclasses/items/water_containers/` (a new folder, distinct from `containers/` which is for backpacks-holding-items, and `consumables/` which is for delete-on-use items):
 - `canteen_nft_item.py` — `CanteenNFTItem`, capacity 5, weight 0.5 kg

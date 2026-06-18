@@ -76,7 +76,7 @@ The geo-detection middleware and infrastructure is retained in `web/middleware/g
 
 Geo-blocking is re-enabled if legal counsel advises that a specific jurisdiction's regulatory framework captures gold tokens and the entity cannot or chooses not to comply with that framework. The most likely trigger is MiCA enforcement determining that non-redeemable game tokens traded near stable values on a public DEX fall within its scope, or a specific country issuing guidance that captures the token under existing financial regulation. The infrastructure is already built — re-enabling is a configuration change (`_RESTRICTED_PATHS` and template branching), not a development task. The decision to geo-block a jurisdiction is made by the operator on counsel's advice, not automatically.
 
-See `design/website.md` for current page inventory and status.
+See `website.md` for current page inventory and status.
 
 ---
 
@@ -91,7 +91,7 @@ The Terms of Service cover the following areas. Specific wording to be finalised
 - **Issuer Clawback Authority** — entity retains clawback for game integrity (exploits, fraud, ToS violations); does not negate ownership; consistent with standard XRPL issuer practice
 - **Alpha and Pre-Export Phases** — closed system during alpha; no export; no entitlement to monetary value
 
-See `design/website.md` § Terms of Service for page status.
+See `website.md` § Terms of Service for page status.
 
 ---
 

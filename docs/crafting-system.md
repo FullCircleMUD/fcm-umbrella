@@ -4,7 +4,7 @@
 
 Crafting and processing are two related but distinct systems for transforming resources into goods. Processing converts raw resources into refined resources at a gold cost. Crafting creates NFT items from resources (and optionally NFT components) using character skill mastery.
 
-> **Recipes & skills:** See `design/spell-skill-design.md` for the full recipe catalog per crafting skill and mastery tier. This document covers the system architecture.
+> **Recipes & skills:** See `spell-skill-design.md` for the full recipe catalog per crafting skill and mastery tier. This document covers the system architecture.
 
 ---
 
@@ -206,4 +206,4 @@ Commands: `craft` (aliases: `forge`, `carve`, `sew`, `brew`, `enchant` + prefix 
 
 One file per item. Prototypes define item stats, wear effects, damage, and crafting metadata. Organized by category: `weapons/`, `wearables/`, `consumables/`, `components/`, `ships/`.
 
-> **Design:** See `design/economy.md` for resource types and pricing. Individual prototype files are the source of truth for item stats.
+> **Design:** See `economy.md` for resource types and pricing. Individual prototype files are the source of truth for item stats.

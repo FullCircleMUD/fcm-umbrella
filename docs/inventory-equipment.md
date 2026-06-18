@@ -445,7 +445,7 @@ NFTPetMirrorMixin(NFTMirrorMixin) (typeclasses/mixins/nft_pet_mirror.py)
   └── BasePet(NFTPetMirrorMixin, FollowableMixin, BaseNPC) — pets, mounts
 ```
 
-Mirror transitions for pets: create → craft_output, stable → bank, retrieve → unbank, die → craft_input, trade → transfer. All via hooks, zero manual service calls from commands. See `design/pets-and-mounts.md` for full details.
+Mirror transitions for pets: create → craft_output, stable → bank, retrieve → unbank, die → craft_input, trade → transfer. All via hooks, zero manual service calls from commands. See `pets-and-mounts.md` for full details.
 
 ### OwnedWorldObjectMixin — World-Anchored Item Patterns
 
@@ -460,7 +460,7 @@ Extracted from `WorldAnchoredNFTItem`, provides patterns for items that live in 
 
 **Ownership transfer surfaces.** World-anchored items can change hands via three flows, all of which preserve `db.world_location`:
 - `give` — synchronous, both characters in the same room
-- `deposit`/`withdraw` at any bank room — asynchronous through the shared `AccountBank`. Cross-character transfer between characters of the same account is the primary use case. The bank `balance` command renders ships in their own `|wShips:|n` subsection by default (no `balance all` gate). For the broader cross-surface display rules, see `design/interzone-travel.md` § Banking & Cross-Character Transfer.
+- `deposit`/`withdraw` at any bank room — asynchronous through the shared `AccountBank`. Cross-character transfer between characters of the same account is the primary use case. The bank `balance` command renders ships in their own `|wShips:|n` subsection by default (no `balance all` gate). For the broader cross-surface display rules, see `interzone-travel.md` § Banking & Cross-Character Transfer.
 - `export`/`import` via XRPL — chain round-trip; `world_location` survives via mirror metadata persistence (see § NFT Metadata Persistence below).
 
 In all three flows, the new owner does NOT auto-relocate to the dock — they have to travel there themselves before using the ship.
