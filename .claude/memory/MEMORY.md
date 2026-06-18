@@ -24,7 +24,8 @@
 - [Upcoming FCM world build in YAML](upcoming_fcm_world_build.md) — starting 2026-05-08, rebuilding FCM world content via the `evennia-world-builder` library; real-world content expected to surface edge cases the synthetic fixtures didn't reach
 
 ## Documentation
-- [Design docs live in the umbrella docs/](design-docs-in-umbrella.md) — FCM system design now lives in `FCM-umbrella/docs/` (kebab-case); the standalone `design` repo is superseded/deprecated (archived, not deleted). Libraries self-document in their own `docs/`. Edit design docs in the umbrella, not the design repo.
+- **Document what IS, not what WAS** — see the always-on rule in [CLAUDE.md](../../CLAUDE.md). When something changes, record the current state only; no "used to be"/"migrated from"/"renamed from" framing unless a human agreed there's a direct need.
+- [Design docs live in the umbrella docs/](design-docs-in-umbrella.md) — FCM system design lives in `FCM-umbrella/docs/` (kebab-case); edit design docs there, not the deprecated `design` repo. Libraries self-document in their own `docs/`.
 
 ## Dropped / Deprecated
 - [evennia-stateful-text dropped](project_evennia_stateful_text_dropped.md) — Evennia provides the functionality natively; GitHub repo deleted (2026-05-14)
