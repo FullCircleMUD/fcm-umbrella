@@ -27,8 +27,8 @@
 - **Document what IS, not what WAS** — see the always-on rule in [CLAUDE.md](../../CLAUDE.md). When something changes, record the current state only; no "used to be"/"migrated from"/"renamed from" framing unless a human agreed there's a direct need.
 - [Design docs live in the umbrella docs/](design-docs-in-umbrella.md) — FCM system design lives in `FCM-umbrella/docs/` (kebab-case); edit design docs there, not the deprecated `design` repo. Libraries self-document in their own `docs/`.
 
-## Dropped / Deprecated
-- [evennia-stateful-text dropped](project_evennia_stateful_text_dropped.md) — Evennia provides the functionality natively; GitHub repo deleted (2026-05-14)
+## Do not use
+- [No evennia-stateful-text library — use Evennia native](evennia-stateful-text.md) — Evennia provides stateful-text natively; don't propose, reference, or try to fetch an `evennia-stateful-text` repo.
 
 ## YAML porting conventions
 - [Mobs are spawn-script driven, not YAML entities](feedback_mobs_vs_npcs_yaml.md) — NPCs go in `npc_*.yaml`; mobs (incl. named bosses) get only a `mob_area` room tag and are spawned dynamically
