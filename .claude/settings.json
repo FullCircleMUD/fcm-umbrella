@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node .claude/hooks/ensure-repo-memory.mjs", "timeout": 15 }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(file:*)",
+      "Bash(stat:*)",
+      "Bash(readlink:*)",
+      "Bash(realpath:*)",
+      "Bash(tree:*)",
+      "Bash(du:*)",
+      "Bash(df:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash(pwd)",
+      "Bash(whoami)",
+      "Bash(which:*)",
+      "Bash(uname:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git remote:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git ls-files:*)",
+      "Bash(git config --get:*)",
+      "Bash(source ../venv/bin/activate)",
+      "Bash(evennia test:*)",
+      "Read(./**)"
+    ],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Read(**/secret_settings.py)",
+      "Read(**/secret_settings.py.bak)",
+      "Read(**/secret_settings.local)",
+      "Read(**/wallets.json)",
+      "Read(**/xrpl-tools/manager/settings.js)",
+      "Read(**/xrpl-tools/manager/shared/settings-common.js)",
+      "Read(**/xrpl-tools/manager/single-sig/settings.js)",
+      "Read(**/xrpl-tools/manager/multisig/settings.js)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Bash(rm -rf:*)"
+    ],
+    "defaultMode": "default"
+  }
+}

@@ -1,0 +1,37 @@
+# Nested working repos — version-controlled independently by their own remotes.
+/cosigner/
+/fcm-mobs/
+/fcm-world/
+/fullcirclemud/
+/llm-test-harness/
+/lore/
+/nft_api/
+/ops/
+/transparency/
+/xrpl-tools/
+/libraries/evennia-mob-spawner/
+/libraries/evennia-mob-spawner-test-world/
+/libraries/evennia-mob-spawner-test-yaml/
+/libraries/evennia-shards/
+/libraries/evennia-targeting/
+/libraries/evennia-world-builder/
+/libraries/evennia-world-builder-test-yaml/
+/libraries/evennia-yaml-reader/
+/src/game/
+
+# Local-only, regenerable — not tracked.
+/src/venv/
+.DS_Store
+
+# Python bytecode (incl. inside the tracked view gamedirs).
+__pycache__/
+*.pyc
+
+# Per-instance runtime logs in the view gamedirs — keep the (empty) dir, not the contents.
+/src/game-router/server/logs/*
+/src/game-shard1/server/logs/*
+!/src/game-router/server/logs/.gitkeep
+!/src/game-shard1/server/logs/.gitkeep
+
+# Personal, machine-local instructions — not synced.
+/CLAUDE.local.md
