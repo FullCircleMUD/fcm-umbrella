@@ -11,6 +11,26 @@ every session and load the relevant doc before related work** (it is not auto-lo
 | [doco-structure.md](doco-structure.md) | The four documentation surfaces (`README` / `CLAUDE.md` / `MEMORY` / `docs/`) — what belongs where, the `CLAUDE.md`⇄`MEMORY` split, and the conventions that keep them coherent. |
 | [new-machine-setup.md](new-machine-setup.md) | How to reconstitute a working FCM environment on a fresh machine: the nested-repo re-clone manifest (incl. which repos are private + the `FullCircleMUD` gh account), portable-memory first-launch, and git-crypt unlock for the game secrets. |
 
+## Self-documenting sub-repos
+
+Some sub-repos — notably the reusable Evennia **libraries** — are meant to be understood **in
+isolation**: a third party reading just that repo should be able to learn how it works. By design
+**these document themselves internally** (their own `docs/` wiki) rather than here. This is a
+**deliberate exception** to the umbrella's "one docs surface" rule. Each follows the same conventions
+as this `docs/` (an `INDEX.md` entry point, one kebab-case topic per file).
+
+| Sub-repo | Internal docs | What it is |
+|---|---|---|
+| [evennia-world-builder](../libraries/evennia-world-builder/docs/INDEX.md) | `docs/` | Declarative YAML world authoring for Evennia. |
+| [evennia-shards](../libraries/evennia-shards/docs/INDEX.md) | `docs/` | Split deployment & horizontal sharding for Evennia. |
+| [evennia-mob-spawner](../libraries/evennia-mob-spawner/docs/INDEX.md) | `docs/` | Declarative YAML mob spawn system for Evennia. |
+| [evennia-targeting](../libraries/evennia-targeting/docs/INDEX.md) | `docs/` | Composable targeting predicates & content filters. |
+| [evennia-yaml-reader](../libraries/evennia-yaml-reader/docs/INDEX.md) | `docs/` | Source-agnostic YAML reader for the Evennia ecosystem. |
+
+> These links point into the cloned sub-repos (gitignored by the umbrella) — they resolve when you work
+> from the umbrella root with the libraries cloned. Each library's own `CLAUDE.md` also points at its
+> `docs/` wiki.
+
 ## Game design
 
 System-level design for FullCircleMUD — the *what* and *why* (migrated from the former `design` repo;
