@@ -9,6 +9,7 @@ every session and load the relevant doc before related work** (it is not auto-lo
 | Document | Summary |
 |---|---|
 | [doco-structure.md](doco-structure.md) | The four documentation surfaces (`README` / `CLAUDE.md` / `MEMORY` / `docs/`) — what belongs where, the `CLAUDE.md`⇄`MEMORY` split, and the conventions that keep them coherent. |
+| [library-standards.md](library-standards.md) | Conventions for the reusable libraries under `libraries/` — naming, src layout, `pyproject.toml`, test framework, the reduced sub-repo documentation set, and the bootstrap checklist. |
 | [new-machine-setup.md](new-machine-setup.md) | How to reconstitute a working FCM environment on a fresh machine: the nested-repo re-clone manifest (incl. which repos are private + the `FullCircleMUD` gh account), portable-memory first-launch, and git-crypt unlock for the game secrets. |
 
 ## Self-documenting sub-repos
