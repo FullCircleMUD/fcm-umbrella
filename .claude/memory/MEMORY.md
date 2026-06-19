@@ -26,6 +26,7 @@
 ## Documentation
 - **Document what IS, not what WAS** — see the always-on rule in [CLAUDE.md](../../CLAUDE.md). When something changes, record the current state only; no "used to be"/"migrated from"/"renamed from" framing unless a human agreed there's a direct need.
 - [Design docs live in the umbrella docs/](design-docs-in-umbrella.md) — FCM system design lives in `FCM-umbrella/docs/` (kebab-case); edit design docs there, not the deprecated `design` repo. Libraries self-document in their own `docs/`.
+- [Doc conventions live in doco-structure.md](doc-conventions-home.md) — record new doc conventions in `docs/doco-structure.md` (the spec); the `doc-convention-auditor` enforces them, the `doc-convention-linter` checks the mechanical subset.
 
 ## Do not use
 - [No evennia-stateful-text library — use Evennia native](evennia-stateful-text.md) — Evennia provides stateful-text natively; don't propose, reference, or try to fetch an `evennia-stateful-text` repo.
@@ -38,3 +39,4 @@
 
 ## Working approach
 - [Cheap tests beat confident theory](feedback_cheap_tests_over_theory.md) — when user experience contradicts my model, propose a `--plan`/dry-run/read-only check before re-asserting. Two wrong calls in one session were both avoidable with a cheap test.
+- [Stop on each problem](feedback_stop_on_each_problem.md) — when auditing, surface one finding, stop, and let the user decide fix/leave/defer before editing or hunting the next one. Don't auto-fix or batch-enumerate.
