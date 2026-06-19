@@ -1,7 +1,5 @@
 # Legal & Regulatory Compliance
 
-## Overview
-
 FullCircleMUD issues gold as an XRPL token. Players earn gold through gameplay. Gold, resources, and items exist as tokens on the XRPL, tradeable on the ledger's protocol-native decentralised exchange (DEX) and automated market maker (AMM) infrastructure.
 
 **FullCircleMUD does not offer gold redemption.** There is no mechanism by which a player can exchange gold for fiat currency, stablecoins, or any other asset through FullCircleMUD. Players who wish to trade gold do so on the XRPL DEX/AMM — public, protocol-native infrastructure that FullCircleMUD did not build, does not operate, and cannot control.

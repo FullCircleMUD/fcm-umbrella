@@ -1,7 +1,5 @@
 # Combat System — Design & Architecture
 
-## Overview
-
 FCM uses a **real-time combat system** with a fixed 4-second tick interval. Each combatant gets their own combat handler script with an independent ticker. Within each tick, initiative determines action order — faster weapons and higher DEX act first. Combat feels like classic MUDs: you type `attack dire wolf` and your character auto-attacks on a timer until you stop, the target dies, or you leave.
 
 ---

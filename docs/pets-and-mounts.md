@@ -1,7 +1,5 @@
 # Pets & Mounts System
 
-## Overview
-
 Pets and mounts are **persistent NFT objects** that follow a character, assist in combat, carry items, provide movement bonuses, and add gameplay depth. Both share a common foundation — a mount is a pet whose special ability is that it can be ridden.
 
 All pets use the same NFT lifecycle as ships and equipment: owned, tradeable, destroyable. Magically created pets (familiars, raised undead) are NFTs that are destroyed on death, freeing the creator's slot.

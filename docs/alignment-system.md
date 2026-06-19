@@ -1,7 +1,5 @@
 # Dynamic Alignment System
 
-## Overview
-
 Alignment is a **continuous score** driven by player actions, not a static character-creation choice. Every significant act — killing mobs, completing quests, using certain abilities — nudges the score toward good or evil. Characters must actively manage their alignment to maintain access to alignment-restricted equipment, classes, and content.
 
 ---

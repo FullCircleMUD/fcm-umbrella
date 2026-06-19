@@ -1,7 +1,5 @@
 # NPC & Quest System — Design & Architecture
 
-## Overview
-
 NPCs and quests form the primary interaction layer between players and the game world. NPCs provide services (training, shopping, quest-giving, dialogue) while the quest system tracks multi-step objectives with rewards.
 
 > **New player experience:** See `new-player-experience.md` for onboarding design intent and tutorial structure. **Economy:** See `economy.md` for AMM pricing model and trade accounting.

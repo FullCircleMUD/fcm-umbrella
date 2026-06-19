@@ -1,7 +1,5 @@
 # Website Technical Reference
 
-## Overview
-
 Evennia custom web frontend for **fcmud.world**. All visitors see the same content worldwide — there are no jurisdictional restrictions or geo-variant page serving under the current compliance model.
 
 ## Geo-Detection Infrastructure (Retained, Inactive)

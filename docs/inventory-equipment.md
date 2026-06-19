@@ -1,7 +1,5 @@
 # Inventory & Equipment System
 
-## Overview
-
 The inventory system is a multi-layered architecture with three distinct storage mechanisms unified under a single carrying capacity model. All weight and stat tracking uses nuclear recalculate patterns — full rebuilds from scratch on every change — to eliminate drift.
 
 ## Storage Model

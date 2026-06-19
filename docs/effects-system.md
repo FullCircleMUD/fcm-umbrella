@@ -1,7 +1,5 @@
 # Effects System — Design & Architecture
 
-## Overview
-
 The `EffectsManagerMixin` (`typeclasses/mixins/effects_manager.py`) is the unified effect system for all actors. It replaces the old ConditionsMixin and provides three composable layers for applying, tracking, and removing effects. Mixed into `BaseActor` alongside `DamageResistanceMixin`.
 
 > **Combat integration:** See `combat-system.md` for named effect specifications (values, durations, stacking rules) and combat-specific effect tables. See `spell-skill-design.md` for spell-granted effects.

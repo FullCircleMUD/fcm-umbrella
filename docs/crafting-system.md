@@ -1,7 +1,5 @@
 # Crafting & Processing System — Design & Architecture
 
-## Overview
-
 Crafting and processing are two related but distinct systems for transforming resources into goods. Processing converts raw resources into refined resources at a gold cost. Crafting creates NFT items from resources (and optionally NFT components) using character skill mastery.
 
 > **Recipes & skills:** See `spell-skill-design.md` for the full recipe catalog per crafting skill and mastery tier. This document covers the system architecture.

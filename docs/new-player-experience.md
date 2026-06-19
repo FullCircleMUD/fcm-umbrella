@@ -1,5 +1,7 @@
 # New Player Experience
 
+How a new player is bootstrapped into FullCircleMUD's economy-first world — the Millholm onboarding tutorial and starter quests that teach resource production and the hunger loop, designed to teach the economic loop rather than a sequence of commands.
+
 ## Design Intent
 
 FullCircleMUD is an economy-first game. The on-chain economy means inflation has real consequences — every item, every coin, every resource is drawn from a finite, managed supply. The new player experience exists to bootstrap players into that economy as quickly as possible, without overwhelming them, and without letting them extract from the system without playing in the spirit of the game.
