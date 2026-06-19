@@ -90,6 +90,23 @@ the umbrella** — a single shared documentation surface for the umbrella *and* 
 hold **no** `docs/` of their own (you always launch from the umbrella, so one surface serves all). In a
 single-repo project, `docs/` is at that repo's root. Either way there is exactly one `docs/`, at the top.
 
+**Exception — stand-alone-reusable sub-repos may self-document.** A sub-repo whose code could
+reasonably be used **outside this project** — for example a library a third party might install into an
+unrelated project — **may** (not must) carry its own internal `docs/` so the repo is understandable in
+isolation by someone who never sees the umbrella. The criterion is **stand-alone reusability**: a
+general-purpose library that stands on its own qualifies; a sub-repo that makes sense *only* within this
+project does not, so its documentation lives at the umbrella. A self-documenting sub-repo follows the
+same conventions as the umbrella `docs/` (an `INDEX.md` entry point, one kebab-case topic per file), and
+the umbrella `INDEX.md` should list it so it stays discoverable.
+
+**A self-documenting sub-repo carries a _reduced_ set, not the full suite.** Its internal docs are only
+what is needed to understand and use the repo in isolation: a `README` (for whoever lands on it),
+repo-specific agent context (`CLAUDE.md`), and content `docs/` (an `INDEX.md` plus kebab-case topic files
+describing how the code works). It does **not** restate the project's documentation conventions — those
+live once, at the umbrella — and it has **no memory surface of its own**; durable agent memory is a
+project-level concern held at the umbrella. The sub-repo *follows* the umbrella's conventions; it never
+carries a copy of them.
+
 **Does NOT belong here.** Agent instructions (`CLAUDE.md`), user-facing framing (`README.md`),
 throwaway scratch notes (if it isn't worth indexing, it isn't worth keeping).
 
@@ -132,10 +149,12 @@ If content seems to belong in two places, prefer the more durable/detailed surfa
 - **Second block:** a one-paragraph summary — what shows in a preview pane and gets quoted in `INDEX.md`.
 - **Cross-references:** relative links to other docs (`[schema design](schema-design.md)`); leading
   slash to root files (`[CLAUDE.md](../CLAUDE.md)`).
-- **Third-party code references:** cite dependency source (e.g. Evennia) as an inline-code path
-  relative to that package's own root — `` `evennia/objects/objects.py` ``, `` `DefaultObject.search()` ``
-  — never as a working link into `src/venv/` or any machine-local install. The dependency's real home
-  is upstream, not this repo; a venv link breaks across machines and operating systems.
+- **Third-party code references:** cite a dependency's source as an inline-code path relative to that
+  package's own root (e.g. `` `package/module/file` ``, `` `ClassName.method()` ``) — never as a working
+  link into a local install directory (a virtualenv, `node_modules`, vendor folder, or other
+  machine-specific path). The dependency's real home is upstream, not this repo; a link into a local
+  install breaks across machines and operating systems. Link upstream (a permalink to the project's
+  repository) only if you can pin a stable revision.
 - **Index it.** Add a one-line entry to `INDEX.md`. An un-indexed document is invisible.
 - **Capture the *why*.** A doc that says *what* without *why* is obsoleted by the first strong
   counter-argument. The *why* is what makes it durable.
