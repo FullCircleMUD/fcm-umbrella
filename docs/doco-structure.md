@@ -132,6 +132,10 @@ If content seems to belong in two places, prefer the more durable/detailed surfa
 - **Second block:** a one-paragraph summary — what shows in a preview pane and gets quoted in `INDEX.md`.
 - **Cross-references:** relative links to other docs (`[schema design](schema-design.md)`); leading
   slash to root files (`[CLAUDE.md](../CLAUDE.md)`).
+- **Third-party code references:** cite dependency source (e.g. Evennia) as an inline-code path
+  relative to that package's own root — `` `evennia/objects/objects.py` ``, `` `DefaultObject.search()` ``
+  — never as a working link into `src/venv/` or any machine-local install. The dependency's real home
+  is upstream, not this repo; a venv link breaks across machines and operating systems.
 - **Index it.** Add a one-line entry to `INDEX.md`. An un-indexed document is invisible.
 - **Capture the *why*.** A doc that says *what* without *why* is obsoleted by the first strong
   counter-argument. The *why* is what makes it durable.

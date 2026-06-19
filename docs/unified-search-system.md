@@ -20,7 +20,7 @@ This is not about building new search machinery. It is about making the machiner
 
 Before building anything new, check what Evennia already provides.
 
-The earliest drafts of this design proposed a multi-layer custom targeting library: a `walk_scope` primitive, `scope_*` functions for every common scope, a custom `name_match` helper, and a full resolver catalog. A careful read of [evennia/objects/objects.py](../src/venv/Lib/site-packages/evennia/objects/objects.py) revealed that most of the supposed gaps don't exist. Evennia already supports scoped searches via `location=`, typeclass and tag filters, nick substitution, numeric disambiguation, lock filtering, dbref lookups, and special-keyword shortcuts (`me`/`self`/`here`). FCM's messy target-resolution code was largely a case of **not reading the signature** before writing custom helpers that reinvented Evennia's existing machinery.
+The earliest drafts of this design proposed a multi-layer custom targeting library: a `walk_scope` primitive, `scope_*` functions for every common scope, a custom `name_match` helper, and a full resolver catalog. A careful read of `evennia/objects/objects.py` revealed that most of the supposed gaps don't exist. Evennia already supports scoped searches via `location=`, typeclass and tag filters, nick substitution, numeric disambiguation, lock filtering, dbref lookups, and special-keyword shortcuts (`me`/`self`/`here`). FCM's messy target-resolution code was largely a case of **not reading the signature** before writing custom helpers that reinvented Evennia's existing machinery.
 
 This shaped the rule that every new library entry must pass: **does Evennia already do this?** If yes, call Evennia directly and don't wrap. If no, build the thinnest possible layer that adds what Evennia cannot know about — FCM-specific semantics (mixins, combat state, game rules) — and delegate everything else.
 
@@ -28,7 +28,7 @@ The rule lives in [CLAUDE.md](../src/game/CLAUDE.md) § Development Approach as 
 
 ## What Evennia Already Provides
 
-Cataloging what [`DefaultObject.search()`](../src/venv/Lib/site-packages/evennia/objects/objects.py#L732) does natively before specifying any custom layer. Everything in these tables is a one-line call to `caller.search()` with the right kwarg — no new code needed.
+Cataloging what `DefaultObject.search()` (in `evennia/objects/objects.py`) does natively before specifying any custom layer. Everything in these tables is a one-line call to `caller.search()` with the right kwarg — no new code needed.
 
 ### `caller.search()` keyword arguments
 

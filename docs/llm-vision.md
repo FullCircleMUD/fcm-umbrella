@@ -183,7 +183,7 @@ As of 2026-04-23, the picture across the three systems is:
 | **Interaction memory** | Built | Built | Live — NPCs recall past conversations with returning players |
 | **Combat memory** | Model built, migrated | **Strategy bot not yet built; post-combat summariser not yet built; early-warning triggers not yet built** | Not yet wired end-to-end |
 
-The infrastructure (tables, embeddings, routers, dual-backend storage) is done. The remaining work is the combat-side agent scaffolding — the strategy bot service, the post-combat hook, the approach-room triggers, and the state-machine plumbing that reads `ndb.tactical_plan`. These are tracked in [ops/PLANNING/2_IN_PROGRESS](../ops/PLANNING/2_IN_PROGRESS) under the "AI Mob System — Memory, Learning, and Emergent Behaviour" epic.
+The infrastructure (tables, embeddings, routers, dual-backend storage) is done. The remaining work is the combat-side agent scaffolding — the strategy bot service, the post-combat hook, the approach-room triggers, and the state-machine plumbing that reads `ndb.tactical_plan`.
 
 For per-component implementation status tables, see:
 - [lore-memory.md § Implementation Status](lore-memory.md#implementation-status)
@@ -213,4 +213,3 @@ This doc is the narrative summary. The authoritative specifications live in:
 | Hybrid combat+dialogue mobs (`LLMCombatMob`) | [npc-mob-architecture.md](npc-mob-architecture.md) | § Hybrid combat+dialogue pattern |
 | World lore source material (the content that gets embedded) | [world.md](world.md) | (entire document) |
 | LLM testing harness | `llm-test-harness/README.md` | (entire document) |
-| In-progress combat agent work | [ops/PLANNING/2_IN_PROGRESS](../ops/PLANNING/2_IN_PROGRESS) | AI Mob System epic |
