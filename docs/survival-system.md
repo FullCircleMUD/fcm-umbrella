@@ -156,7 +156,7 @@ Bleed amounts: `max(1, round(stat_max / cycles_to_death))` per minute on each of
 |---|---|
 | `enums/hunger_level.py` | HungerLevel enum + first/third person message dicts |
 | `enums/thirst_level.py` | ThirstLevel enum + message dicts |
-| `typeclasses/scripts/survival_service.py` | The global tick dispatcher (renamed from HungerService) |
+| `typeclasses/scripts/survival_service.py` | The global tick dispatcher |
 | `typeclasses/scripts/regeneration_service.py` | Regen/degen/bleed pipeline; consumes both meters |
 | `typeclasses/mixins/water_container.py` | `WaterContainerMixin` shared by canteen / cask / future containers |
 | `typeclasses/items/water_containers/canteen_nft_item.py` | Canteen typeclass |

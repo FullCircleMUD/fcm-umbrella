@@ -11,7 +11,7 @@ World content is data, and data changes more often than the systems that interpr
 - **A file is the atomic redeploy unit.** Authors choose granularity by how they chunk YAML — one room per file means one-room redeploys; thirty rooms in one file means thirty-room redeploys. The library does no finer-grained partial clean within a file.
 - **Operator-driven, no orchestrator.** Operators broadcast a warning, wait for players to clear, then manually run the rebuild command. No scheduler, no lock state, no automated rollback.
 
-The pre-YAML era used Python `build_<zone>()` / `build_<district>()` functions, a planned `find_room` resolver, a district manifest, and an `@rebuild_district` command. That whole approach is superseded — `deploy_world.py` and every per-district Python builder have been retired. Git history preserves the prior thinking if a reader ever needs it.
+The pre-YAML era used Python `build_<zone>()` / `build_<district>()` functions, a planned `find_room` resolver, a district manifest, and an `@rebuild_district` command. That whole approach is superseded — `deploy_world.py` and every per-district Python builder have been retired.
 
 ## Three Repositories
 

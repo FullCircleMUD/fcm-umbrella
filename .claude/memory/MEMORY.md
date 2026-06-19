@@ -16,7 +16,7 @@
 - **Discord server already exists** for FullCircleMUD — do not create a new one, assess what's already there
 
 ## Project Structure
-- Work happens in the **FCM umbrella** (`/Users/timbaird/Documents/FCM-umbrella/`) — the dev workspace that gitignores the nested repos. Full repo manifest + layout live in `docs/new-machine-setup.md`; design docs now live in the umbrella `docs/` (migrated from the former `design` repo, which is being retired).
+- Work happens in the **FCM umbrella** (`/Users/timbaird/Documents/FCM-umbrella/`) — the dev workspace that gitignores the nested repos. Full repo manifest + layout live in `docs/new-machine-setup.md`; design docs live in the umbrella `docs/` (edit them there, not in the deprecated standalone `design` repo).
 - `src/game` uses git-crypt — see [git-crypt setup for src/game secrets](gitcrypt_game_secrets.md).
 - `src/game` branches: `main` (default), `dev`, and the active working branch `shards-rework`.
 

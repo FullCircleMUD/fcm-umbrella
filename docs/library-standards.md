@@ -200,12 +200,7 @@ second block; index every document in `INDEX.md` (an un-indexed document is invi
 
 ## Documentation discipline
 
-Captured in full in each library's `CLAUDE.md`. Summary:
-
-1. Only capture what was discussed and agreed.
-2. Flag open questions explicitly with `[TBD — needs discussion: <what is open>]`.
-3. Distinguish archived material from in-conversation decisions.
-4. Smaller is better.
+Follows the umbrella's working-discipline rules (the umbrella `CLAUDE.md` and [doco-structure.md](doco-structure.md)); each library's `CLAUDE.md` carries a discipline section reflecting them.
 
 ## Bootstrap checklist
 

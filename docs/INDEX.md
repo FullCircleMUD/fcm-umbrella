@@ -34,8 +34,7 @@ as this `docs/` (an `INDEX.md` entry point, one kebab-case topic per file).
 
 ## Game design
 
-System-level design for FullCircleMUD — the *what* and *why* (migrated from the former `design` repo;
-the umbrella is now the source of truth). **Start with [design-overview.md](design-overview.md)** — the
+System-level design for FullCircleMUD — the *what* and *why*. **Start with [design-overview.md](design-overview.md)** — the
 cross-system narrative (economic loop, mob/combat flow, NFT item flow, progression, world structure,
 and the cross-cutting invariants) that no single doc holds.
 
