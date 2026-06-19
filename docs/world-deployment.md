@@ -47,7 +47,7 @@ This identity is load-bearing:
 - Cross-references between entities use `{deployment_file, deployment_id}` dicts in YAML — `location:`, `destination:`, `home:`. The Builder resolves these against (a) the in-build map for entities being built right now, and (b) DB tag-search for entities in already-built files.
 - Folder reorganisation changes `deployment_file` for affected entities and will require migration tooling. **Treat the fcm-world folder layout as a stable structural choice.**
 
-For the full identity contract see [DESIGN/deployment-identity.md](../../libraries/evennia-world-builder/DESIGN/deployment-identity.md) in the library.
+For the full identity contract see [deployment-identity.md](../libraries/evennia-world-builder/docs/deployment-identity.md) in the library.
 
 ### Tags Authored on Rooms
 
@@ -97,7 +97,7 @@ The smallest sensible redeploy is a single file. Author files at the granularity
 
 ### What `wb_build` does, step by step
 
-For the canonical version see [DESIGN/library-commands.md](../../libraries/evennia-world-builder/DESIGN/library-commands.md) in the library. Summarised:
+For the canonical version see [library-commands.md](../libraries/evennia-world-builder/docs/library-commands.md) in the library. Summarised:
 
 1. **Read** YAML via the configured `Reader` (GitHub by default; local filesystem in development).
 2. **Walk** the `index.yaml` manifest tree to find entities matching the scope query.
@@ -131,15 +131,15 @@ The YAML side of FCM. For an author landing here, the loop is:
 
 For YAML shape, file structure, and per-entity dimensions (typeclass, contents, exits, attributes, locks, aliases, descriptions), see the library's design docs:
 
-- [discovery-and-loading.md](../../libraries/evennia-world-builder/DESIGN/discovery-and-loading.md) — manifests, `entities:` shape, nested `contents:` / `exits:`.
-- [deployment-identity.md](../../libraries/evennia-world-builder/DESIGN/deployment-identity.md) — `deployment_id`, `home:`, cross-refs.
-- [builder.md](../../libraries/evennia-world-builder/DESIGN/builder.md) — per-entity build pass; what's applied to each object.
-- [validator.md](../../libraries/evennia-world-builder/DESIGN/validator.md) — predicate tiers and what gets caught.
-- [links.md](../../libraries/evennia-world-builder/DESIGN/links.md) — cross-entity attribute references.
+- [discovery-and-loading.md](../libraries/evennia-world-builder/docs/discovery-and-loading.md) — manifests, `entities:` shape, nested `contents:` / `exits:`.
+- [deployment-identity.md](../libraries/evennia-world-builder/docs/deployment-identity.md) — `deployment_id`, `home:`, cross-refs.
+- [builder.md](../libraries/evennia-world-builder/docs/builder.md) — per-entity build pass; what's applied to each object.
+- [validator.md](../libraries/evennia-world-builder/docs/validator.md) — predicate tiers and what gets caught.
+- [links.md](../libraries/evennia-world-builder/docs/links.md) — cross-entity attribute references.
 
 ## Consumer typeclass hooks (`wb_at_post_build`)
 
-The library duck-type-invokes `obj.wb_at_post_build()` on every entity it builds, at the end of each `_build_one` pass — after every `_apply_*` step (aliases, locks, attributes, tags) has run. Consumer typeclasses that need to derive state from YAML-supplied values define the method; absent on a typeclass, nothing happens (opt-in). Library-side contract and rationale: [post-build-hook.md](../../libraries/evennia-world-builder/DESIGN/post-build-hook.md).
+The library duck-type-invokes `obj.wb_at_post_build()` on every entity it builds, at the end of each `_build_one` pass — after every `_apply_*` step (aliases, locks, attributes, tags) has run. Consumer typeclasses that need to derive state from YAML-supplied values define the method; absent on a typeclass, nothing happens (opt-in). Library-side contract and rationale: [post-build-hook.md](../libraries/evennia-world-builder/docs/post-build-hook.md).
 
 Why FCM needs this. Evennia's standard `at_object_post_creation` fires after the `attributes=` kwarg of `create_object` has been processed — but the world-builder library passes only `desc` via that kwarg and applies every other YAML attribute via `obj.attributes.add(...)` afterwards. So for a wb_build deployment, Evennia's hook fires with the typeclass defaults still in place rather than the YAML-supplied values. `wb_at_post_build` fills that gap by firing *after* the library's full apply pipeline has completed.
 
