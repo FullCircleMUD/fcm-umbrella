@@ -27,6 +27,7 @@
 - **Document what IS, not what WAS** — see the always-on rule in [CLAUDE.md](../../CLAUDE.md). When something changes, record the current state only; no "used to be"/"migrated from"/"renamed from" framing unless a human agreed there's a direct need.
 - [Design docs live in the umbrella docs/](design-docs-in-umbrella.md) — FCM system design lives in `FCM-umbrella/docs/` (kebab-case); edit design docs there, not the deprecated `design` repo. Libraries self-document in their own `docs/`.
 - [Doc conventions live in doco-structure.md](doc-conventions-home.md) — record new doc conventions in `docs/doco-structure.md` (the spec); the `doc-convention-auditor` enforces them, the `doc-convention-linter` checks the mechanical subset.
+- [Doc/library audit toolchain + consistency campaign](doc-audit-toolchain-and-campaign.md) — the spec→linter→auditor pairs (all read-only) and the in-flight code-vs-doc consistency sweep (shards + world-builder done; mob-spawner, yaml-reader, src/game next; targeting deferred).
 
 ## Do not use
 - [No evennia-stateful-text library — use Evennia native](evennia-stateful-text.md) — Evennia provides stateful-text natively; don't propose, reference, or try to fetch an `evennia-stateful-text` repo.
