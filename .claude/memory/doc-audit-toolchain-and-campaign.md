@@ -29,11 +29,25 @@ single doc** — validated: docs cross-reference each other, so cluster scope ca
 scope structurally cannot.
 
 **Campaign in progress — consistency sweep across the project, one target at a time (system scope):**
-- ✅ `evennia-shards` (3 drifts fixed) · ✅ `evennia-world-builder` (5 drifts fixed)
-- ⏳ next: `evennia-mob-spawner`, then `evennia-yaml-reader`, then **umbrella `docs/` ↔ `src/game`
-  audited by system** (combat, effects, etc. — too large for one pass)
+- ✅ `evennia-shards` (3 drifts) · ✅ `evennia-world-builder` (5 drifts) · ✅ `evennia-mob-spawner`
+  (7 drifts) · ✅ `evennia-yaml-reader` (CLEAN, 0 drift)
+- ⏳ in progress: **umbrella `docs/` ↔ `src/game`, audited by system** (too large for one pass).
+  ✅ Combat cluster (`combat-system.md` + `weapon-damage-scaling.md`): 12 doc drifts fixed, pushed.
+  Next game systems: effects, spells, npc/mob, items/rooms, economy/spawn, etc.
 - ⏸ `evennia-targeting` deferred — it's a scaffold (no library code yet), so its docs are all
   design-ahead with nothing to drift against until code lands
+
+**`src/game` is a game repo — board approval needed to change game code.** This phase fixes umbrella
+`docs/` only; anything that would edit `src/game` (incl. stale code docstrings/comments) is surfaced
+for the board, not committed. **Board-surface items from the combat-cluster audit (open):**
+- `world/damage_tables.py` comment groups Sai/Nunchaku under "d6 Base" but both are `base_damage="d4"`.
+- `combat/combat_utils.py` `force_drop_weapon` docstring claims mob floor-drop vs PC inventory; code
+  always removes to inventory (no branching).
+- `universal_parry` on `staff_nft_item.py` is documented as gating staff parry vs all attack types but
+  is never read by `execute_attack()`/the handler — may be unimplemented (needs combat-code look).
+- Quarterstaff: `weapon-damage-scaling.md` design (lines 21/28/30) says quarterstaff→bronze tier
+  ("material is flavour, tier is mechanical"); prototype `quarterstaff.py` sets `material="wood"`.
+  Left unresolved per owner — needs someone with the design history.
 
 Fixes so far have been doc/docstring text only (no logic). See [[doc-conventions-home]],
 [[design-docs-in-umbrella]]. Note: pushing `FullCircleMUD/*` repos needs the `FullCircleMUD` gh account.
