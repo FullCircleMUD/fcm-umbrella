@@ -39,7 +39,7 @@ TICKER_HANDLER fires every 4 seconds (COMBAT_TICK_INTERVAL)
     ↓
 handler.execute_next_action()
     ├── obj.at_combat_tick(handler)          → mob AI decision point (dodge? special attack?)
-    ├── Check skip_actions counter           → stun/prone, dodger skip, decrements each tick
+    ├── Check incapacitating effects/dodge   → skip action if stunned/prone/paralysed or dodging
     ├── tick_combat_round() on actor         → decrements all combat_round named effects
     ├── decrement_advantages()               → count-based advantage tracking
     └── execute_attack(attacker, target)     → full attack resolution with all weapon hooks
@@ -61,42 +61,54 @@ This is intentional. Future LLM AI just swaps the decision-maker — the LLM out
 
 ---
 
-## Attack Resolution: 14 Weapon Hooks
+## Attack Resolution Pipeline
 
-`execute_attack()` fires all weapon hooks in a fixed order. Both attacker's weapon and defender's weapon get hook calls.
+`execute_attack()` fires the weapon hooks in a fixed order. Both the attacker's weapon and the defender's weapon get hook calls. The resolution function never changes; weapon subclasses override the hooks to implement mastery-scaled effects.
 
 ```
 1.  weapon.at_pre_attack(attacker, target)               → hit modifier (enchantment, blurred)
 2.  defender_weapon.at_pre_defend(target, attacker)       → AC modifier
-3.  d20 roll (with advantage/disadvantage if applicable)
-4.  Compare total_hit vs total_ac → hit or miss
+3.  d20 roll (with advantage/disadvantage if applicable); compute total_hit + total_ac,
+    flag is_crit (natural ≥ crit_threshold)
 
-BEFORE DAMAGE CALCULATION (new):
-4b. Parry attempt: if defender has parries remaining and attacker uses melee weapon,
-    defender rolls d20+DEX+mastery vs attacker's total hit. Success → block.
-    Both weapons lose 1 durability on parry.
+BEFORE HIT/MISS IS FINALISED:
+4.  Parry attempt: if the defender has parries remaining and the attacker uses a melee weapon
+    (not unarmed/animal/missile, and not itself a riposte), the defender rolls
+    d20+DEX+mastery vs the attacker's total_hit. Success → block; both weapons lose 1 durability.
+    On a successful parry:
+    4a. Disarm-on-parry: sai's _try_disarm() fires.
+    4b. Riposte: if the defender's weapon has_riposte(), fire a free counter-attack
+        (_is_riposte=True — itself unparryable). at_post_attack then fires; the attack returns
+        with no damage.
+
+HIT DETERMINATION:
+5.  hit = (total_hit ≥ total_ac) or is_crit
+6.  defender_weapon.at_wielder_about_to_be_hit(target, attacker, total_hit, total_ac)
+    → reactive defence (e.g. Shield spell) may raise AC and flip a would-be hit to a miss
+    (fires only when the attack would otherwise hit and is not a crit)
 
 ON HIT:
-5.  Roll damage dice (weapon.get_damage_roll() or innate mob damage_dice).
-    Resolve damage_type from weapon or attacker's damage_type attribute.
-6.  weapon.at_hit(attacker, target, damage, dmg_type)    → modify damage, trigger effects
-7.  weapon.at_crit(attacker, target, damage, dmg_type)   → crit bonus (if natural ≥ crit_threshold)
-8.  defender_weapon.at_wielder_receive_crit(...)          → defender crit reaction (CRIT_IMMUNE)
-8b. Protect intercept: if an ally is protecting target, intercept check fires here
-9.  defender_weapon.at_wielder_hit(...)                   → defender hit reaction (reactive spells)
-9b. Riposte: if parry succeeded and weapon has_riposte(), fire free counter-attack
-10. Apply damage resistance → target.take_damage(damage, damage_type)
-11. weapon.at_kill(attacker, target)                      → if target dies (Rampage, Cleave, etc.)
+7.  Roll damage dice (weapon.get_damage_roll(mastery) or innate mob damage_dice) + bonus dice (stab)
+8.  weapon.at_hit(attacker, target, damage, dmg_type)    → modify damage, trigger effects
+9.  CRIT_IMMUNE check → downgrade the crit if the target resists (helmet deflect)
+10. On crit: double the damage dice, then weapon.at_crit(...) and
+    defender_weapon.at_wielder_receive_crit(...)
+11. defender_weapon.at_wielder_hit(...)                   → defender hit reaction (damage modifier)
+12. Protect intercept: if an ally is protecting the target, the ally takes the blow (target swapped)
+13. check_reactive_smite(attacker, target)                → reactive Smite bonus damage (inline, not a hook)
+14. Durability loss, then target.apply_damage(damage_dealt, cause="combat", killer=attacker)
+15. weapon.at_kill(attacker, target) / attacker.at_kill(target)  → if target dies (Rampage, Cleave, …)
+16. Reach counters from the target's allies (spear mastery)
 
 ON MISS:
-12. weapon.at_miss(attacker, target)
-13. defender_weapon.at_wielder_missed(target, attacker)
+17. weapon.at_miss(attacker, target)
+18. defender_weapon.at_wielder_missed(target, attacker)
 
 ALWAYS:
-14. weapon.at_post_attack(attacker, target, hit, damage_dealt)
+19. weapon.at_post_attack(attacker, target, hit, damage_dealt)
 ```
 
-**Why 14 hooks?** Weapon subclasses override these hooks to implement mastery-scaled special effects. A longsword at MASTER mastery parries on `at_pre_defend`; a greatsword's Cleave fires in `at_kill`. The hooks are the extension points — the resolution function never changes.
+**Why so many hooks?** Weapon subclasses override these hooks to implement mastery-scaled special effects — a longsword grants extra parries (consumed in the parry block); a greatsword's Cleave fires in `at_kill`. The hooks are the extension points — the resolution function never changes.
 
 ---
 
@@ -137,14 +149,14 @@ Weapon mechanics are extracted into shared mixins so both player NFT weapons and
 
 **Three layers of composition:**
 
-1. **WeaponMechanicsMixin** (`typeclasses/items/weapons/weapon_mechanics_mixin.py`) — defines all weapon AttributeProperties, `get_damage_roll()`, mastery helpers, 14 combat hooks (default to no-op), and 10 mastery-scaled query methods (default to 0/False). This is the combat interface that `execute_attack()` calls.
+1. **WeaponMechanicsMixin** (`typeclasses/items/weapons/weapon_mechanics_mixin.py`) — defines all weapon AttributeProperties, `get_damage_roll()`, mastery helpers, the weapon combat hooks (default to no-op), and the mastery-scaled query methods (default to 0/False). This is the combat interface that `execute_attack()` calls.
 
 2. **Weapon identity mixins** (e.g. `DaggerMixin` in `dagger_nft_item.py`) — override specific methods from WeaponMechanicsMixin with mastery-tier lookup tables and special mechanics. A `DaggerMixin` defines what makes a dagger a dagger: crit scaling, extra attacks, off-hand attacks. Everything it doesn't override falls through to the base defaults via MRO.
 
 3. **Carrier classes** — `WeaponNFTItem` (player, NFT-tracked, durable) or `MobWeapon` (mob-only, no NFT, no durability, deleted on death). These provide the item lifecycle; the weapon identity mixin provides the combat behaviour.
 
 ```
-WeaponMechanicsMixin       ← base combat interface (14 hooks, 10 mastery queries, damage resolution)
+WeaponMechanicsMixin       ← base combat interface (combat hooks, mastery queries, damage resolution)
 
 Weapon identity mixins (single source of truth for each weapon type):
 ├── LongswordMixin         ← parry + extra attack mastery path
@@ -194,10 +206,13 @@ MobDagger → DaggerMixin → MobWeapon → WeaponMechanicsMixin → MobWearable
 When combat calls `weapon.get_extra_attacks(wielder)`, Python finds it on `DaggerMixin` first (the override). When `DaggerMixin` internally calls `self.get_wielder_mastery(wielder)`, Python doesn't find it on `DaggerMixin`, continues down the MRO, and finds it on `WeaponMechanicsMixin`. Any hook the identity mixin doesn't override (e.g. `at_hit`) falls through to the WeaponMechanicsMixin default. This means a weapon identity mixin only needs to define what makes it different — everything else inherits the base behaviour automatically.
 
 ```python
-class LongswordNFTItem(WeaponNFTItem):
+class LongswordMixin:
     def get_parries_per_round(self, wielder):
         mastery = self.get_wielder_mastery(wielder)
         return _LONGSWORD_PARRIES.get(mastery, 0)
+
+class LongswordNFTItem(LongswordMixin, WeaponNFTItem):
+    pass
 ```
 
 ### Mastery vs Individual Weapon Power
@@ -269,7 +284,7 @@ Pure Python singleton (`typeclasses/items/weapons/unarmed_weapon.py`) — NOT an
 
 **`get_weapon(actor)`** helper in `combat_utils.py` returns: wielded weapon if equipped, `UNARMED` singleton if actor has wearslots but no weapon (PC boxing), or `None` for animal mobs (no wearslots, use `damage_dice` attribute). All combat code uses `get_weapon()` instead of direct `get_slot("WIELD")`.
 
-**`force_drop_weapon(target, weapon=None)`** — shared disarm utility in `combat_utils.py`. Conditional behaviour: mobs/NPCs drop weapon to room floor (`move_to(location)`), player characters unequip to inventory only (no item loss). Guards: UnarmedWeapon immune, must have wielded weapon. Used by both Command spell (Drop word) and Sai weapon disarm. Returns `(bool, weapon_name)`.
+**`force_drop_weapon(target, weapon=None)`** — shared disarm utility in `combat_utils.py`. Unequips the wielded weapon to the target's inventory via `target.remove(weapon)` (no floor drop, no item loss) for all targets. Guards: UnarmedWeapon immune, must have wielded weapon. Used by both Command spell (Drop word) and Sai weapon disarm. Returns `(bool, weapon_name)`.
 
 **Mastery progression:** Damage dice, hit/damage bonuses, and extra attacks scale with mastery tier.
 
@@ -277,7 +292,7 @@ Pure Python singleton (`typeclasses/items/weapons/unarmed_weapon.py`) — NOT an
 
 **Parry immunity:** Unarmed attacks cannot be parried (weapon-on-weapon only, gated by `isinstance(weapon, UnarmedWeapon)` check in `execute_attack()`).
 
-**Multi-round skip:** `skip_actions` counter on combat handler replaces `skip_next_action` for stun/prone. Decrements each tick; condition cleared when counter reaches 0 via `_clear_stun_prone()`.
+**Action skip:** stun/prone/paralysis are incapacitating named effects with `combat_rounds` durations; each tick the combat handler calls `get_incapacitating_effect()` and skips the actor's action while one is active. The separate boolean `skip_next_action` on the handler covers the single-round dodge skip.
 
 **Actor size:** All actors (PCs, mobs, pets) have `base_size` and `size` AttributeProperty on `BaseActor` (stored as `Size.X.value` strings for Evennia serialization). `base_size` is the permanent racial/creature size; `size` is the active value rebuilt from `base_size` by `_recalculate_stats()`. PCs get both set from `race.size` during chargen/remort. Mobs/pets override via their own `AttributeProperty(Size.X.value)`. `get_actor_size(actor)` in `combat/combat_utils.py` converts the string to a `Size` enum for comparison. Size enum: `enums/size.py` — TINY, SMALL, MEDIUM, LARGE, HUGE, GARGANTUAN (numeric values 1–6 via `size_value()`). Enlarge/shrink effects modify `size` during `_accumulate_effect()`; when the effect expires, `_recalculate_stats()` resets `size` back to `base_size`.
 
@@ -286,8 +301,8 @@ Pure Python singleton (`typeclasses/items/weapons/unarmed_weapon.py`) — NOT an
 **Key architectural decision:** the combat reaction system (Shield spell on hit, Counter Spell, etc.) is NOT a separate system. Instead, weapon hooks serve as the universal reaction engine:
 
 - **Unarmed weapon singleton:** every humanoid always has a "weapon" — real or a stateless `UnarmedWeapon` singleton. This means weapon hooks fire for ALL combatants, not just armed ones.
-- **Base hooks handle universal reactions:** `WeaponNFTItem.at_wielder_hit()` checks if the defender has reaction spells configured (e.g. Shield). Weapon subclasses override hooks but **always call `super()`** to ensure universal reactions fire.
-- **The 14 existing weapon hooks ARE the reaction pipeline.** No separate reaction system needed.
+- **Base hooks handle universal reactions:** the reactive Shield check runs in `WeaponMechanicsMixin.at_wielder_about_to_be_hit()` (not `at_wielder_hit()`). Weapon subclasses override hooks but **always call `super()`** to ensure universal reactions fire.
+- **The existing weapon hooks ARE the reaction pipeline.** No separate reaction system needed.
 - **`spellconfig` menu command:** players configure reaction conditions via a template/menu UI. Single condition per rule only (no compound AND/OR). Storage: `db.reaction_rules` on character.
 - **Reactions cost resources** (mana for casters, movement for martial) — not free.
 
@@ -345,11 +360,11 @@ The `EffectsManagerMixin` integrates directly with the combat handler:
 
 | Effect | Impact |
 |---|---|
-| STUNNED | `skip_actions` counter set — actor loses that many actions |
-| PRONE | `skip_actions` set + all enemies get advantage for duration |
+| STUNNED | Incapacitating named effect — actor skips its action while active (`get_incapacitating_effect`) |
+| PRONE | Incapacitating named effect — actor skips its action + all enemies get advantage for duration |
 | SLOWED | Caps `attacks_per_round` to 1, blocks off-hand attacks |
-| PARALYSED | `skip_actions` set + enemies get advantage, save-each-round WIS |
-| ENTANGLED | `skip_actions` set + enemies get advantage, save-each-round STR |
+| PARALYSED | Incapacitating named effect — actor skips its action + enemies get advantage, save-each-round WIS |
+| ENTANGLED | Movement-blocking named effect (does not skip combat actions) + enemies get advantage, save-each-round STR |
 | BLURRED | BlurScript sets 1 disadvantage on all enemies per round |
 | SHIELD | AC bonus for duration |
 | STAGGERED | Hit penalty via `stat_bonus` on `total_hit_bonus` |
@@ -364,16 +379,16 @@ The `EffectsManagerMixin` integrates directly with the combat handler:
 Two reactive spells auto-trigger during combat without any action cost:
 
 **Shield (Abjuration):**
-- Triggers via `at_wielder_about_to_be_hit` weapon hook (step 9 in the 14-hook pipeline)
-- Check in `combat/reactive_spells.py`: `check_reactive_shield(wielder, attacker)`
+- Triggers via the `at_wielder_about_to_be_hit` weapon hook (after the hit/miss compare; can raise AC and flip a would-be hit to a miss)
+- Check in `combat/reactive_spells.py`: `check_reactive_shield(wielder)`
 - Gates: `shield_active` player preference toggle + memorised + mana available
 - Mana cost 3/5/7/9/12 per trigger (scaling with mastery)
 - Effect: +4/+4/+5/+5/+6 AC for 1/2/2/3/3 rounds
 - Anti-stacking: won't trigger if already shielded
 
 **Smite (Divine Judgement — paladin only):**
-- Triggers via `at_post_attack` weapon hook on successful hit
-- Check: `check_reactive_smite(wielder, attacker)`
+- Triggers inline in `execute_attack()` after damage is calculated (not via a weapon hook), on a successful non-riposte hit
+- Check in `combat/reactive_spells.py`: `check_reactive_smite(attacker, target)`
 - Gates: `smite_active` player preference toggle + memorised + mana
 - Mana cost 3/5/7/9/12 per trigger
 - Effect: +1d6/+2d6/+3d6/+4d6/+5d6 bonus radiant damage on the triggering hit
@@ -695,8 +710,7 @@ combat/
 commands/
 ├── all_char_cmds/
 │   ├── cmd_attack.py     ← CmdAttack (attack/kill)
-│   ├── cmd_flee.py        ← CmdFlee (flee)
-│   └── cmd_assist.py      ← CmdAssist (assist)
+│   └── cmd_flee.py        ← CmdFlee (flee)
 ├── general_skill_cmds/
 │   ├── cmdset_general_skills.py  ← CmdDodge
 ├── npc_cmds/
@@ -715,7 +729,8 @@ commands/
         ├── cmd_taunt.py
         ├── cmd_offence.py
         ├── cmd_defence.py
-        └── cmd_retreat.py
+        ├── cmd_retreat.py
+        └── cmd_assist.py      ← CmdAssist (assist)
 
 typeclasses/
 ├── actors/

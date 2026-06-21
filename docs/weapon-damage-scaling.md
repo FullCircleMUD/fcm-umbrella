@@ -402,8 +402,8 @@ Ninja weapons require the Ninja class, which requires remort. They should be not
 
 | Weapon | Base | Attacks | Dmg/Tick | Parries | Unique Mechanic | Speed |
 |---|---|---|---|---|---|---|
-| **Ninjato** | d8 | 2 | 28 (+14 riposte) | 2 block + 1 riposte | Auto-crit opener (assassinate), two-handed | 1 |
-| **Sai** (×2) | d4 | 1 per sai | 14 | 10 block (5 per sai) | Disarm on every parry, no size limit | 2 |
+| **Ninjato** | d8 | 2 | 28 (+14 riposte) | 2 block + 1 riposte | Auto-crit opener (assassinate), two-handed | 2 |
+| **Sai** (×2) | d4 | 1 per sai | 14 | 10 block (5 per sai) | Disarm on every parry, no size limit | 3 |
 | **Nunchaku** | d4 | 3 | 21 | 0 | Every hit = stun check (DEX vs CON), two-handed, GARGANTUAN only immune | 2 |
 | **Shuriken** | d4 | 4 | 28 (~32 eff) | 0 | Consumable + crit 18+, 4 throws/tick | 3 |
 
