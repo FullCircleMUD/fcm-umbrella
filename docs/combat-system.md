@@ -634,9 +634,9 @@ Height validation runs in `Spell.cast()` before mana deduction. Spells that over
 
 ### Tests
 
-- 25 tests in `tests/command_tests/test_combat_height.py` (melee blocking, ranged cross-height, flee height advantage)
-- 5 tests in `tests/typeclass_tests/test_combat_height_retarget.py` (mob chase, retarget, flee, broadcast)
-- 13 tests in `tests/typeclass_tests/test_spells.py` (spell height gating, AoE height helpers)
+- `tests/command_tests/test_combat_height.py` — melee blocking, ranged cross-height, flee height advantage
+- `tests/typeclass_tests/test_combat_height_retarget.py` — mob chase, retarget, flee, broadcast
+- `tests/typeclass_tests/test_spells.py` — spell height gating, AoE height helpers
 
 ---
 

@@ -245,8 +245,8 @@ Intelligence tier affects what the animal actually *says* when you can understan
 - Wire Speak With Animals spell stub (`world/spells/nature_magic/speak_with_animals.py`)
 
 ### Tests
-- `tests/command_tests/test_cmd_say.py` — 11+ tests
-- `tests/command_tests/test_cmd_whisper.py` — 6+ tests
-- `tests/command_tests/test_cmd_shout.py` — 6+ tests
-- `tests/command_tests/test_cmd_languages.py` — 5 tests
+- `tests/command_tests/test_cmd_say.py`
+- `tests/command_tests/test_cmd_whisper.py`
+- `tests/command_tests/test_cmd_shout.py`
+- `tests/command_tests/test_cmd_languages.py`
 - New tests needed for: NPC language switching, animal vocalisation rendering, LanguageMixin

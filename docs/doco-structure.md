@@ -155,6 +155,10 @@ If content seems to belong in two places, prefer the more durable/detailed surfa
   machine-specific path). The dependency's real home is upstream, not this repo; a link into a local
   install breaks across machines and operating systems. Link upstream (a permalink to the project's
   repository) only if you can pin a stable revision.
+- **No stale-prone metrics.** Don't cite counts that drift and are trivially re-derived — test
+  counts, line/file counts, coverage percentages. They go stale the moment the code changes, and anyone
+  who needs the number can run the tool in seconds. State the *capability* ("covered by a test suite"),
+  not the *tally* ("390 tests").
 - **Index it.** Add a one-line entry to `INDEX.md`. An un-indexed document is invisible.
 - **Capture the *why*.** A doc that says *what* without *why* is obsoleted by the first strong
   counter-argument. The *why* is what makes it durable.
