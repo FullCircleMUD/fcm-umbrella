@@ -24,7 +24,6 @@ Survival meters are a deliberate friction tax on play — they exist to (a) give
 - On each tick, walks all puppeted characters via `SESSION_HANDLER.get_sessions()`.
 - For each character: skips superusers, then dispatches to one helper per meter — currently `_tick_hunger(char)` and `_tick_thirst(char)`. New meters drop in as additional helpers in the same loop.
 - Each helper is independent: it reads the meter's current state, applies its own decrement rules, and writes back. No cross-meter coupling at the tick layer.
-- The script was renamed from `HungerService` once the second meter (thirst) shipped. A one-shot cleanup in `at_server_start` (`_cleanup_renamed_scripts` + `_RENAMED_SCRIPT_KEYS`) deletes the stale `"hunger_service"` script row on the first boot post-rename so we don't end up with ghost services.
 
 ---
 
