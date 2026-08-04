@@ -17,9 +17,10 @@ Survival meters are a deliberate friction tax on play — they exist to (a) give
 
 ## SurvivalService
 
-`typeclasses/scripts/survival_service.py` — a single global persistent Evennia script.
+`typeclasses/scripts/survival_service.py` — a global persistent Evennia script.
 
-- Created at boot by `at_server_startstop._ensure_global_scripts`.
+- Started at boot by `server/conf/at_server_startstop.py`, which starts only the scripts declaring the current process's role. Designed for the shard and monolith roles — the router carries no puppets to tick. That file is authoritative for the roles actually declared.
+- **Under sharding it ticks once per process, by design.** The script holds no persistent state and walks only its own process's `SESSION_HANDLER`, so each shard independently ticks the characters puppeted on it and no shard can reach another's. It needs no shard scoping because it issues no query to scope. The general rule, and which scripts it does *not* hold for, is in [evennia-shards: global scripts run one instance per process](../libraries/evennia-shards/docs/shard-settings.md#global-scripts-run-one-instance-per-process).
 - Ticks every `settings.SURVIVAL_TICK_INTERVAL` seconds (20 min default).
 - On each tick, walks all puppeted characters via `SESSION_HANDLER.get_sessions()`.
 - For each character: skips superusers, then dispatches to one helper per meter — currently `_tick_hunger(char)` and `_tick_thirst(char)`. New meters drop in as additional helpers in the same loop.
@@ -115,7 +116,7 @@ Both have `tracking_token` proxy tokens (`PCanteen`, `PCask`) registered in the 
 
 ## Penalty Pipeline — `RegenerationService`
 
-`typeclasses/scripts/regeneration_service.py` — the global script that runs every 20s and combines hunger + thirst into a single regen/degen/bleed decision.
+`typeclasses/scripts/regeneration_service.py` — the global script that runs every 20s and combines hunger + thirst into a single regen/degen/bleed decision. Designed for the same roles as `SurvivalService`, and per-process safe for the same reason: its only script state is a tick counter on `ndb`, and it acts solely on this process's sessions.
 
 - **Both meters must permit regen** for healing to fire. If hunger says PECKISH-or-better AND thirst says AWARE-or-better, regen runs normally (HP/MP/MV recover at base rate × position multiplier). Sleeping in a `sleep_policy: super` room (e.g., an inn) grants 5x regen instead of the standard 3x.
 - **Either meter triggering degen** is enough to bleed. If hunger is FAMISHED-or-worse OR thirst is PARCHED-or-worse, the degen path runs once per minute (every 3rd 20s tick).

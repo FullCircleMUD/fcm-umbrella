@@ -51,9 +51,9 @@ Three services form an hourly pipeline. Each script ticks **every 60 seconds** a
 
 **Resetting the pipeline.** If a script's config is changed in code, or a script becomes wedged, a superuser can run `services reset all force` (or `services reset <name> force`) to stop, delete, and recreate any global service script. Pipeline scripts are reset as a group. See the `services` command help for usage.
 
-**Duplicate cleanup.** `_ensure_global_scripts()` runs `_dedupe_pipeline_scripts()` on every boot, which deletes duplicate `ScriptDB` rows for each pipeline key (keeping the lowest id). This is a no-op when there are no duplicates; it exists to clean up extras left behind by the old `evennia.utils.delay()`-based stagger scheme, which could race reload windows.
+Scripts are created at server start by `server/conf/at_server_startstop.py` and persist across restarts. Each script declares the deployment roles it runs on, and a process starts only those naming its own role — see [scaling.md](scaling.md) § Global scripts. That file is authoritative for which roles these three declare.
 
-All scripts are created once at server start via `_ensure_global_scripts()` and persist across restarts.
+**One row, one ticker per process.** A `ScriptDB` row is shared by every process, but each attaches its own `LoopingCall`, so under a sharded deployment a pipeline script ticks once *per process* rather than once per cluster. For scripts that aggregate or spawn, that is a correctness question rather than a performance one — see [scaling.md](scaling.md) § Global scripts for the classification each needs.
 
 ### Server Boot Recovery
 

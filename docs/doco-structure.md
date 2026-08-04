@@ -159,6 +159,14 @@ If content seems to belong in two places, prefer the more durable/detailed surfa
   counts, line/file counts, coverage percentages. They go stale the moment the code changes, and anyone
   who needs the number can run the tool in seconds. State the *capability* ("covered by a test suite"),
   not the *tally* ("390 tests").
+- **No volatile state.** Don't record what is currently enabled, disabled, running, or switched
+  off — it can flip within hours, and a later reader has no way to tell whether the doc or the
+  code is right. Describe how the thing is *designed* to work; if it isn't built or isn't
+  running, describe what it needs to do. Then name the file that is authoritative for current
+  status, so a reader checks there rather than trusting the doc. "Which scripts run on which
+  role is declared in `server/conf/at_server_startstop.py`" stays true; "the telemetry pipeline
+  is enabled" is stale the next time someone comments a line out. This is the runtime sibling of
+  *no stale-prone metrics* above.
 - **Index it.** Add a one-line entry to `INDEX.md`. An un-indexed document is invisible.
 - **Capture the *why*.** A doc that says *what* without *why* is obsoleted by the first strong
   counter-argument. The *why* is what makes it durable.

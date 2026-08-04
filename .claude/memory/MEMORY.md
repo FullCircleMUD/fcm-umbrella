@@ -41,3 +41,4 @@
 ## Working approach
 - [Cheap tests beat confident theory](feedback_cheap_tests_over_theory.md) — when user experience contradicts my model, propose a `--plan`/dry-run/read-only check before re-asserting. Two wrong calls in one session were both avoidable with a cheap test.
 - [Stop on each problem](feedback_stop_on_each_problem.md) — when auditing, surface one finding, stop, and let the user decide fix/leave/defer before editing or hunting the next one. Don't auto-fix or batch-enumerate.
+- [No legacy-data concerns during shards work](feedback_no_legacy_data_concerns.md) — pre-alpha, fresh DB every deploy, live deploy replaces the current one wholesale. Don't weigh existing-database impact until a sharded deployment is live and working.

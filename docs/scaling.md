@@ -211,6 +211,116 @@ creation site (`Account.at_post_login`) and the defence-in-depth site
 (`ensure_bank` in `cmd_balance.py`). Production characters move
 across shards freely without their bank tripping the chokepoint.
 
+### Global scripts — mechanism settled, classification open
+
+`ScriptDB` is not tenant-scoped, so a persistent global script is one
+row visible to every process, and each process attaches its own
+`LoopingCall` to it. A global script therefore ticks **once per
+process**, not once per cluster. The mechanism, and the test for
+whether a given script is safe under it, is the single source of truth
+in [evennia-shards: global scripts run one instance per
+process](../libraries/evennia-shards/docs/shard-settings.md#global-scripts-run-one-instance-per-process).
+
+**How FCM declares it.** Each global script declares the deployment
+roles it runs on — `shard`, `router`, `monolith` — plus optional tags,
+in `server/conf/at_server_startstop.py`. At boot a process starts only
+the scripts naming its own role. `monolith` is a first-class role
+rather than shorthand for "shard plus router", so a script needed only
+in a sharded deployment can say exactly that.
+
+> **That file is authoritative for which scripts run where, and which
+> are still unclassified.** Read it rather than trusting a list here.
+
+**The classification each script needs.** A script is only safe to run
+once per process if it holds no persistent state (counters on `ndb`,
+never `db`) and acts solely on process-local data — the canonical shape
+being walking `SESSION_HANDLER` and touching only the puppets connected
+to this process. Before declaring roles for a script, answer:
+
+1. Does it hold persistent script state, or only `ndb`?
+2. Does it query the world? On a shard it silently sees that shard's
+   rows only; on the router — which runs **unscoped** — it sees every
+   shard's rows at once.
+3. Must its side effect happen exactly once cluster-wide? Item
+   spawning, telemetry aggregation and gold reallocation are the
+   candidates: N spawn runs or N reallocations per interval would be a
+   real economic fault.
+
+The failure mode is quiet. Since django-multitenant replaced the
+raising chokepoint, an unscoped query returns a subset instead of
+erroring — so a script starting with no errors in the log is *not*
+evidence that it is correct.
+
+[TBD — needs discussion: roles for each unclassified script, and
+whether any of them needs an exactly-once gate. The library provides no
+such mechanism, so a singleton would need a consumer-side one — by
+role, by nominating one shard, or by election.]
+
+### Game time — solved, derived from wall clock
+
+Evennia's `gametime()` has two modes, chosen by `TIME_IGNORE_DOWNTIMES`:
+
+```python
+if IGNORE_DOWNTIMES:
+    gtime = epoch + (time.time() - server_epoch()) * TIMEFACTOR   # wall clock
+else:
+    gtime = epoch + (runtime() - GAME_TIME_OFFSET) * TIMEFACTOR   # accumulated uptime
+```
+
+**The uptime branch is unsafe with more than one process.** `runtime()`
+reads a module global that each Server process keeps in its own memory,
+loads once from `ServerConfig["runtime"]` at its first maintenance tick,
+and writes back every 60 seconds. Evennia assumes a single Server. Run
+four and they overwrite one another every minute, last write wins, and
+none of them re-reads afterwards so none notices. The stored value
+flaps, and a reloading process can read a total *lower* than the one it
+held — moving game time backwards.
+
+Backwards time is the failure that matters. An unexpected nightfall
+reads as another morning; a return to summer reads as impossible.
+Cross-shard travel is narrated as taking days, which absorbs a phase
+mismatch on arrival, but nothing absorbs a season going the wrong way.
+
+**The wall-clock branch bypasses the accumulator entirely.** Every term
+is a settings constant, a database constant written once at creation
+(`server_epoch`, from `initial_setup.py`), or the OS clock. All
+processes therefore agree with no coordination, no writer, no round
+trip, no cold-start case, and nothing to persist per tick.
+
+FCM uses wall clock. Three consumers — `season_service`,
+`day_night_service` and `durability_decay_service` — are correct and
+mutually consistent as a result, untouched: their derivation chains were
+always sound, only their input was broken.
+
+**What it costs.** Game time advances while the server is down. Players
+cannot observe this — game time passes while they are logged off either
+way, and a restart disconnects them, so they are inside the gap
+regardless. The only systems that would notice are any holding a
+game-time deadline, which a forward jump would expire in bulk.
+
+**What reversing it would take.** Turning the setting off is not a
+one-line change under sharding; it reintroduces the multi-writer race.
+The accumulator would first have to be made single-writer:
+
+- Router publishes an anchor, `ServerConfig["shard_clock"] =
+  (runtime(), time.time())`, on its own timer. The timestamp is required
+  because `ServerConfig` has no modified column, so a reader cannot
+  otherwise tell how stale a value is.
+- Shards are barred from writing `runtime`, via a guard on
+  `ServerConfigManager.conf` — the narrowest available seam, since the
+  write itself is one line inside `server_maintenance`, which also
+  flushes the idmapper and recycles connections.
+- Shards override `runtime()` to extrapolate from the anchor, which
+  makes read latency irrelevant: a value read 59 seconds late yields the
+  same answer. A staleness cap makes them stop extrapolating once the
+  router stops writing — the correct definition of downtime, since
+  nobody can log in without the router.
+
+That is roughly a module, two Evennia patches, a tuning constant and an
+entry in the library's integration-risks register to re-diff on every
+Evennia upgrade. Weigh it against what downtime actually costs before
+building it.
+
 ### `FungibleGameState` SINK rows — TODO, refactor required
 
 Today, every gold-spending action (crafting fees, repair, training,
