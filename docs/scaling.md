@@ -211,7 +211,7 @@ creation site (`Account.at_post_login`) and the defence-in-depth site
 (`ensure_bank` in `cmd_balance.py`). Production characters move
 across shards freely without their bank tripping the chokepoint.
 
-### Global scripts — mechanism settled, classification open
+### Global scripts — mechanism and classification settled
 
 `ScriptDB` is not tenant-scoped, so a persistent global script is one
 row visible to every process, and each process attaches its own
@@ -228,8 +228,9 @@ the scripts naming its own role. `monolith` is a first-class role
 rather than shorthand for "shard plus router", so a script needed only
 in a sharded deployment can say exactly that.
 
-> **That file is authoritative for which scripts run where, and which
-> are still unclassified.** Read it rather than trusting a list here.
+> **That file is authoritative for which scripts run where.** Read it
+> rather than trusting a list here. Every script is classified; there is
+> no unclassified backlog.
 
 **The classification each script needs.** A script is only safe to run
 once per process if it holds no persistent state (counters on `ndb`,
@@ -251,10 +252,20 @@ raising chokepoint, an unscoped query returns a subset instead of
 erroring — so a script starting with no errors in the log is *not*
 evidence that it is correct.
 
-[TBD — needs discussion: roles for each unclassified script, and
-whether any of them needs an exactly-once gate. The library provides no
-such mechanism, so a singleton would need a consumer-side one — by
-role, by nominating one shard, or by election.]
+**Exactly-once comes from the role table, not from a gate.** The three
+candidates — item spawning, telemetry aggregation and gold reallocation
+— all run on `router` only, and the library mandates a single router. No
+election, no nominated shard, no consumer-side lock. Where a
+cluster-wide side effect must happen once, the answer is to name one
+role rather than to coordinate between several.
+
+**Not every cross-process concern is a script.** The cross-shard message
+bus is a Twisted `LoopingCall` started from `at_server_start()`, not a
+`ScriptDB` row — deliberately, so it cannot sit wedged in "stopped"
+while the game looks healthy. Work that is a direct response to an
+inbound message therefore needs no script at all: item placement on a
+shard is driven by the bus handler, which is why only the router runs a
+spawn script.
 
 ### Game time — solved, derived from wall clock
 

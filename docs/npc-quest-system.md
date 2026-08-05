@@ -176,7 +176,9 @@ Step-based quest engine with registry pattern (same as spells/races/classes).
 - `QuestTagMixin` on rooms — `quest_tags` AttributeProperty + `fire_quest_event()` for location-triggered progression
 - Quest registry with `@register_quest` decorator, `get_quest()` lookup, auto-imports from `world.quests.guild`
 
-**Quest debt integration:** When `FCMQuest.complete()` awards gold or bread, it calls `_register_quest_debt()` to notify the unified spawn system. This deducts the reward amount from the next spawn cycle's budget, preventing quest rewards from inflating the economy. The call is a graceful no-op if the spawn service isn't running. See **unified-item-spawn-system.md** § Quest Reward Integration.
+**Quest debt integration:** When `FCMQuest.complete()` awards gold or bread, it calls `_register_quest_debt()` to notify the unified spawn system. This deducts the reward amount from the next spawn cycle's budget, preventing quest rewards from inflating the economy.
+
+The budget lives on whichever process runs the spawn service — the router under sharding — while quests complete wherever the player is. So on a shard the debt is posted to the router as a `spawn_quest_debt` bus message; in monolith the service is local and is called directly. See **unified-item-spawn-system.md** § Quest Reward Integration.
 
 **Quest templates** (`world/quests/templates/`): CollectQuest, VisitQuest, MultiStepQuest — reusable bases for common patterns.
 

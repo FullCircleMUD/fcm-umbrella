@@ -442,30 +442,34 @@ No on-chain transaction at spawn time — the blank tokens were pre-minted in bu
 
 **NFT type name resolution:** The distributor resolves a config `type_key` (e.g. `"scroll_magic_missile"`) to the `NFTItemType.name` needed by `assign_to_blank_token()` via `_resolve_nft_item_type_name()`. This looks up the `prototype_key` from the config entry, then finds the matching `NFTItemType` record.
 
-### Headroom Calculation — `get_current_count()`
+### Headroom Calculation
 
-The distributor needs a uniform way to answer "how much of X does this target currently hold?" for headroom calculation (`spawn_<cat>_max[key] - current`). A single method handles all categories with internal branching:
+Headroom for a target is `capacity − current`, and the two halves are separate reads in `spawn/reader.py`:
 
 ```python
-def get_current_count(target, category, key):
-    if category == "resources":
-        if hasattr(target.db, 'resource_count'):
-            # Harvest room — single resource, built-in count
-            return target.db.resource_count or 0
-        # Mob/container — fungible inventory
-        return target.db.resources.get(key, 0)
-
-    elif category == "gold":
-        return target.db.gold or 0
-
-    elif category in ("scrolls", "recipes", "nfts"):
-        # Count matching NFTs in contents + equipped
-        return count_nfts(target, category, key)
+query_targets(tag_name)                       -> {pk: shard_id}
+read_capacity(target_pks, category, type_key) -> {pk: int}
+read_current(target_pks, category, type_key)  -> {pk: int}
 ```
 
-**The harvest room exception.** Resource harvesting rooms store their count in `db.resource_count` (a single int), not in `db.resources` (the `FungibleInventoryMixin` dict). This is intentional — harvest rooms model resources embedded in the environment (ore in the wall, wheat in the field), not items sitting on the ground. Players must use the harvest command (`mine`, `chop`, `harvest`, etc.) to extract them. If harvest rooms used `FungibleInventoryMixin`, players could pick resources up directly, bypassing the harvest mechanic. Keeping the room's own `resource_count` preserves this gameplay while the distributor handles it with a simple branch.
+They are separate because the allocator consumes `[(target_pk, headroom)]`, and because they answer different questions: capacity is what a target may hold, current is what it holds now.
 
-**NFT current count** is derived by inspecting the target's `contents` (Evennia object contents) plus any equipped items. An equipped weapon still consumes the slot — Jupiter wielding his Lightning Bolt means the `spawn_nfts_max` slot is full. Equipment is handled by a hook on the mob or item (`at_object_receive()` or `at_post_move()`), not by the distributor — the distributor's job ends at placement.
+**Nothing here materialises a game object.** Every read is a values projection returning plain numbers against object pks — no typeclass instances, no `.db` access. That is what allows the decision to run on the router, which sees every shard's rows and would otherwise pull the whole cluster's spawnable world into one process's idmapper. See § Multi-Shard Distribution Architecture.
+
+Capacity is read from the target's `spawn_<category>_max` attribute, whose shape differs per category:
+
+| Category | Attribute shape | Capacity for an item |
+|---|---|---|
+| `resources` | `{resource_id: cap}` | that resource's cap (int or string keys both resolve) |
+| `gold` | `int` | the value itself |
+| `scrolls`, `recipes` | `{tier: slots}` | slots at the item's tier **or any higher one** — see § NFT Per-Tier Capacity |
+| `nfts` | `{typeclass.prototype: cap}` | exact match only |
+
+Current holdings come from an attribute for fungibles and from a contents query for NFTs.
+
+**The harvest room exception.** Resource harvesting rooms store their count in `db.resource_count` (a single int), not in `db.resources` (the `FungibleInventoryMixin` dict). This is intentional — harvest rooms model resources embedded in the environment (ore in the wall, wheat in the field), not items sitting on the ground. Players must use the harvest command (`mine`, `chop`, `harvest`, etc.) to extract them. If harvest rooms used `FungibleInventoryMixin`, players could pick resources up directly, bypassing the harvest mechanic. Keeping the room's own `resource_count` preserves this gameplay, and a target with that attribute set is read as a harvest room.
+
+**NFT current count is taken from `contents`, which includes worn items.** An equipped weapon still consumes its slot — Jupiter wielding his Lightning Bolt means the `spawn_nfts_max` slot is full. This is the *programmatic* `contents` rather than the game concept of "inventory": wearing an item does not move it, only adds a `db.wearslots` reference, so counting by location covers worn and unworn alike. See [inventory-equipment.md](inventory-equipment.md) for the distinction.
 
 ### NFT Per-Tier Capacity and At-Or-Below Filtering
 
@@ -540,18 +544,22 @@ The budget state for each spawnable item is accessible to both the drip-feed tic
 
 ```python
 budget_state = {
-    "item_key": "wheat",          # resource_id, "gold", or item_type_name
-    "total": 45,                  # total hourly budget from calculator
-    "remaining": 32,              # what hasn't been scheduled yet
-    "quest_debt": 0,              # deducted from upcoming ticks
-    "surplus_bank": 0,            # carried from previous tick (target unavailable)
-    "tick_direction": True,       # alternates each tick (True = high→low)
-    "spawned_this_hour": 13,      # telemetry: how much actually placed
-    "dropped_this_hour": 0,       # telemetry: surplus that couldn't be placed
+    "item_key": "wheat",           # resource_id, "gold", or item_type_name
+    "total": 45,                   # total hourly budget from calculator
+    "remaining": 32,               # what hasn't been scheduled yet
+    "quest_debt": 0,               # deducted from upcoming ticks
+    "surplus_bank": 0,             # carried from previous tick (target unavailable)
+    "tick_direction": True,        # alternates each tick (True = high→low)
+    "dispatched_this_hour": 13,    # telemetry: how much was handed to an executor
+    "dropped_this_hour": 0,        # telemetry: surplus that couldn't be placed
 }
 ```
 
-This state lives on the spawn service/script instance — not in `delay()` closures — so the quest system can reach it.
+This state lives on the spawn service instance — not in `delay()` closures — so the quest system can reach it.
+
+**`dispatched_this_hour` counts what was handed out, not what landed.** The planner decides placements; an executor carries them out, and under sharding that is a different process which does not report back. A placement the executor declines — because a target has since filled — is therefore counted as dispatched. The discrepancy is not reconciled: the next hourly saturation and telemetry snapshots measure the world as it actually is, so any shortfall reappears as budget in the following cycle.
+
+`reset_for_hour()` deliberately preserves `quest_debt`. Debt outlives the cycle it arrived in, so a reward given late in one hour is still repaid in the next.
 
 ---
 
@@ -595,7 +603,19 @@ allocate_quest_reward(category, key, amount) → bool
 2. Delivers the reward to the player immediately (via `receive_gold_from_reserve()`, `receive_resource_from_reserve()`, or NFT allocation)
 3. Returns True if the debt can be absorbed within a reasonable window (e.g. 2 hours of budget), False if the amount is too large (caller decides whether to proceed)
 
-Quest completions register debt automatically via `FCMQuest.complete()`, which calls `_register_quest_debt()` after awarding gold and bread rewards. This uses `get_spawn_service()` to reach the running `SpawnService` singleton — graceful no-op if the service isn't running yet.
+Quest completions register debt automatically via `FCMQuest.complete()`, which calls `_register_quest_debt()` immediately after awarding each reward.
+
+**The budget is not always on the process that awarded the reward.** It lives wherever the spawn service runs — the router under sharding — while quests complete wherever the player is, which is a shard. So `_register_quest_debt()` branches:
+
+- **monolith, or a quest completed on the router** — calls `allocate_quest_reward()` directly on the local `SpawnService`.
+- **on a shard** — posts a `spawn_quest_debt` message to the router, whose handler applies it through the same method.
+
+The branch comes *before* any check for a local service. A shard has none, so testing for one first would discard the debt silently — rewards would be handed out and never repaid, with no error and no log.
+
+Two consequences of the debt travelling, both accepted:
+
+- **Arriving late is safe.** If the router is down the row waits in Postgres and is applied on recovery. `allocate_quest_reward()` creates a `BudgetState` when none exists, and `reset_for_hour()` preserves `quest_debt`, so debt arriving before or between cycles is banked rather than lost.
+- **Delivery is at-least-once.** A redelivered message would count the debt twice, and unlike placements there is no clamp to bound it. The effect is *less* spawning for one cycle — the harmless direction in a system built around scarcity — and the next saturation reading absorbs it.
 
 ### Processed Good Rewards
 
@@ -815,27 +835,13 @@ The enchanting *process* consumes gems, the gems may have been drops, the finish
 
 ---
 
-## What This Replaces
-
-| Current System | Unified Replacement |
-|----------------|-------------------|
-| `ResourceSpawnService._process_resource()` calculation | `ResourceCalculator.calculate()` |
-| `ResourceSpawnService._process_resource()` room distribution | `FungibleDistributor` — unified target pool |
-| `ResourceSpawnService.schedule_mob_drip_feed()` | `FungibleDistributor` — unified target pool |
-| `ResourceSpawnService._apply_mob_drip()` | `FungibleDistributor._apply_tick()` |
-| `RESOURCE_SPAWN_CONFIG` | Unified `SPAWN_CONFIG` |
-| `MOB_RESOURCE_SPAWN_CONFIG` | Removed — tags on targets control distribution |
-| No gold spawn system | `GoldCalculator` + `FungibleDistributor` |
-| Event-driven knowledge item drops (designed, not built) | `KnowledgeCalculator` + `NFTDistributor` |
-| Future rare NFT drops | `RareNFTCalculator` + `RareNFTDistributor` |
-
----
-
-## What This Does NOT Replace
+## What the spawn system does not cover
 
 - **Commodity NFT supply** — player crafting. Not system-spawned. (Future: Tracker Token AMM for pricing.)
-- **Gold sink/reallocation** — the 90/10 SINK → RESERVE cycle via `ReallocationServiceScript` is unchanged. The gold calculator just reads the resulting RESERVE balance.
-- **Saturation snapshot** — `NFTSaturationScript` runs hourly at HH:05 (5 min after telemetry, 5 min before spawn — see [telemetry.md](telemetry.md) § Scheduled Scripts — Hourly Pipeline) to feed the `KnowledgeCalculator`. The unified system consumes this data, not replaces it.
+- **Gold sink/reallocation** — the 90/10 SINK → RESERVE cycle via `ReallocationServiceScript` is separate. The gold calculator just reads the resulting RESERVE balance.
+- **Saturation snapshot** — `NFTSaturationScript` runs hourly at HH:05 (5 min after telemetry, 5 min before spawn — see [telemetry.md](telemetry.md) § Scheduled Scripts — Hourly Pipeline) to feed the `KnowledgeCalculator`. The spawn system consumes this data rather than producing it.
+
+For the retired `ResourceSpawnService` and the other predecessors this system replaced, see [archive/unified-spawn-predecessors.md](archive/unified-spawn-predecessors.md).
 
 ---
 
@@ -860,36 +866,6 @@ The enchanting *process* consumes gems, the gems may have been drops, the finish
 | **Corpse** | Mob death transfers resources/gold/NFTs to lootable corpse; unclaimed corpses return to RESERVE |
 | **ReallocationServiceScript** | Daily SINK → RESERVE cycle; determines gold RESERVE available to GoldCalculator |
 | **SPELL_REGISTRY / RECIPES** | Source data for `populate_knowledge_config()` — auto-generates knowledge entries in SPAWN_CONFIG |
-
----
-
-## Implementation Status
-
-All 9 phases are complete:
-
-| Phase | Description | Status |
-|---|---|---|
-| 1 | Calculator + Distributor infrastructure (all calculators, distributors, budget state, headroom, service orchestrator) | Complete |
-| 2 | Migrate resource spawning to unified tags + `UnifiedSpawnScript` | Complete |
-| 3 | Disconnect old `ResourceSpawnService`, `RESOURCE_SPAWN_CONFIG`, `MOB_RESOURCE_SPAWN_CONFIG` | Complete |
-| 4 | Knowledge item spawning — scrolls/recipes pre-placed on mobs via `ScrollDistributor` / `RecipeDistributor` | Complete |
-| 5 | Disconnect old knowledge infrastructure — doc update only (no code to remove) | Complete |
-| 6 | Quest debt methods — `allocate_quest_reward()`, `add_quest_debt()`, `get_spawn_service()` | Complete (built in Phase 1) |
-| 7 | Retrofit quest givers — `FCMQuest.complete()` registers quest debt for gold and bread rewards | Complete |
-| 8 | Gold spawning — `spawn_gold` tags on mobs and `WorldChest` | Complete |
-| 9 | Rare NFT spawning POC — `RareNFTCalculator` placeholder + end-to-end test | Complete |
-
-Comprehensive test coverage across `tests/spawn_tests/` and `tests/quest_tests/` covers calculators, distributors, budget state, headroom, service orchestration, scroll/recipe placement, gold spawning, rare NFT placeholder, and quest debt integration.
-
-### Deferred (Not In This Plan)
-
-- **Full RareNFTCalculator** — population-gated rules, designed when rare items are ready
-- **Tracker Token AMM** — common equipment pricing mechanism (separate from spawn system)
-- **NFT quest rewards** — future quests awarding NFTs will need quest debt registration
-- **Telemetry dashboards** — spawn telemetry, surplus tracking
-- **Auction House** — Tier 3 market for Master+ and enchanted items
-
-The single-process architecture above is complete. Splitting it across router and shard processes is described in [Multi-Shard Distribution Architecture](#multi-shard-distribution-architecture) below and is in progress.
 
 ---
 
@@ -918,12 +894,34 @@ The hourly budget is calculated once, at HH:10. Distribution then runs on the ex
 1. **Read** — the router queries every spawn-tagged target's capacity and current count.
 2. **Allocate** — the tick's budget is distributed across the whole global pool, proportional to headroom, with sort direction alternating each tick.
 3. **Group** — the resulting placements are grouped by owning shard.
-4. **Dispatch** — one bus message per shard, carrying that shard's placements as a list of `(type_key, target_pk, amount)`.
+4. **Dispatch** — one `spawn_placements` bus message per shard, carrying that shard's placements.
 5. **Place** — each shard walks its list, validating and placing.
+
+Each placement is self-describing, so one message can carry several items at once:
+
+```python
+{"category": "resources", "type_key": 1, "target_pk": 42, "amount": 3}
+```
+
+`category` is the dispatch key — placing gold, a resource and a scroll are entirely different operations, and the receiving shard picks the distributor from it. The other three fields are exactly the arguments every placement call already takes, with the target given as a pk because only its owner may resolve it. The owning shard is *not* in the payload: it is the message's `to_shard`, and a shard receiving a message does not need each entry to repeat which shard it is.
 
 The per-shard split is **emergent, not computed**. There is no separate "how much goes to shard0" step — global proportional-by-headroom allocation produces target-level decisions, and grouping by owner is routing. A shard whose targets are full receives an empty list without any rule saying so.
 
 Deciding every tick rather than once an hour keeps the global picture current. If one shard's players strip their nodes while another sits idle, the next tick five minutes later sees the changed headroom and shifts the flow.
+
+**Ownership is read with the targets, not looked up afterwards.** `query_targets()` returns `{pk: shard_id}` — one extra column on the query already being made — so grouping by shard is a partition over data in hand rather than a second pass.
+
+**Spawns land only on shard-owned targets.** An object marked global (`shard_id == "*"`) is visible to every shard's tenancy filter, so dispatching one anywhere risks it being placed on by more than one process. Globals are therefore excluded at discovery rather than allocated to and then discarded, which means the budget spreads across targets that can actually receive it. Exclusions are logged, since a spawn-tagged global target is more likely a world-building mistake than an intention.
+
+### Keeping the router's reactor free
+
+The router serves OOC traffic — login, character select, menus — so spawn work must never block it. Reading every tagged target's headroom across the cluster, twelve times an hour, is not something to do in front of someone at character select.
+
+Each tick is therefore moved off the reactor with `deferToThread` on the router. That is safe because everything the router does is ORM-only: no `.db` access, no typeclass instances, and Django is connection-per-thread.
+
+**Monolith deliberately stays on the reactor.** There, dispatch resolves straight to the executor, and placement writes Evennia attributes and creates objects — which must happen on the reactor thread. The two halves are not symmetric, and the deferral follows the half that is safe to move.
+
+One accepted consequence: `BudgetState` is then mutated from a worker thread while quest debt may arrive on the reactor, so a debt increment can be lost. The worst case is one item spawning slightly over budget for one hour, which the feedback loop absorbs.
 
 ### Values-only reads on the router
 
@@ -976,24 +974,68 @@ Budget state lives on the router; quest rewards are earned on shards. A completi
 | Mob spawning | Shard | Spawns into rooms the shard owns |
 | Corpse timers, combat ticks | Shard | Shard-local by nature |
 
-### Scripts
+### One script, on the router only
 
-Two scripts replace the single `UnifiedSpawnScript`:
+`UnifiedSpawnScript` is registered for `router` and `monolith` roles in the `_SCRIPTS` table in `server/conf/at_server_startstop.py`. It calculates the hourly budget at HH:10 and drives the per-tick decide-and-dispatch loop.
 
-- **Router-side** — runs on `router` and `monolith` roles. Calculates the hourly budget at HH:10, then drives the per-tick allocate-and-dispatch loop.
-- **Shard-side** — runs on `shard` and `monolith` roles. Handles inbound placement messages and holds no state between ticks.
+**Shards run no spawn script at all.** Placement is a direct response to an inbound message, so there is nothing to tick: the `spawn_placements` handler is reached by the cross-shard message bus, which is a Twisted `LoopingCall` rather than a `ScriptDB` row. The library chose that shape for the bus deliberately — a script can sit wedged in "stopped, needs admin restart" while the game looks healthy, and a comms primitive cannot tolerate that. A shard-side script would reintroduce exactly the failure mode the bus avoids, and add another thing to check is running.
 
-In monolith both run in one process and dispatch short-circuits locally rather than round-tripping through the bus, consistent with the library principle that it should do nothing in monolith mode.
+The bus is started from `at_server_start()` by `_start_message_bus()`, passing FCM's `FCMMessageHandler`. That is one of only two integration calls the shards library asks a consumer to make. Without it nothing addressed to a process is ever processed — not spawn placements, and not the `flush_from_cache` the library sends after a cross-shard move.
 
-### Open questions
+In monolith the bus is not started at all, and dispatch short-circuits straight to the executor. That is required rather than merely faster: `send_message()` refuses same-shard delivery, so a process cannot message itself.
 
-[TBD — needs discussion: RESERVE draw concurrency. `receive_*_from_reserve()` draws from a single shared balance, and under sharding several shards may draw concurrently within a tick. Behaviour when the reserve cannot cover the dispatched total is not defined.]
+### Drawing from the RESERVE
 
-[TBD — needs discussion: telemetry of actual placements. The router dispatches amounts but shards clamp, so `spawn_placed` recorded on the router is the *dispatched* amount, not what landed. Whether shards report actual placements back, or the discrepancy is left to self-correct through the next saturation snapshot, is undecided.]
+Several shards may draw from the same RESERVE balance within a tick. That is safe without any coordination in the spawn system, because both draw paths already hold a database row lock:
 
-[TBD — needs discussion: undeliverable dispatches. A shard that is down misses that tick's placements and the router receives an `undeliverable_reply`. Whether the router re-banks that budget, redistributes it to live shards, or logs and moves on, is undecided.]
+- `FungibleService.spawn()` wraps `_debit()` in `transaction.atomic()`, and `_debit()` takes `select_for_update()` on the RESERVE row before checking `row.balance < amount` and raising `ValueError` on a shortfall.
+- `NFTService.assign_item_type()` does the same for the blank-token pool, raising when no blank token remains.
 
-[TBD — needs fixing independently of this design: `_persist_spawn_telemetry()` runs immediately after the ticks are *scheduled* rather than after they execute, so `spawn_placed` and `spawn_dropped` are written as zero for every item that receives a budget. Pre-existing and unrelated to sharding, but it means surplus and drop telemetry is not currently usable as a tuning signal.]
+A second shard arriving mid-draw blocks on the lock, then reads post-commit state and either succeeds or raises. Overdrawing is not possible. When the reserve genuinely cannot cover a placement, the raise propagates to the executor's error handling, that placement is skipped, and the amount falls through to surplus — banked, or dropped at the final tick.
+
+The only thing sharding changes is which shard wins the last available units. That is lock-acquisition order rather than target-iteration order, and nothing depends on it.
+
+### The router does not wait
+
+Dispatch is fire-and-forget. Once a tick's messages are sent, the router's work for that tick is complete: there is no reply, no acknowledgement, and no recalculation. A shard that is down misses that tick's placements, and the budget is not re-banked or redistributed. The next tick, five minutes later, decides afresh from the world as it then stands.
+
+This is deliberate. The self-correcting loop already absorbs a missed tick — the following hour's telemetry and saturation snapshots measure the world as it actually is, so anything not placed reappears as budget.
+
+### Clamping is a safety net, not a channel
+
+The shard clamps to available headroom, but under normal operation it never needs to: the router's read is a second old, and everything that plausibly changes in that window increases headroom. Clamping exists for the unpredicted case.
+
+Consequently shards do not report actual placements back. Nothing in the control loop reads placement counts — the calculators run on consumption, market price, and the saturation gap, all measured from world state. The `spawn_placed` and `spawn_dropped` columns exist on the snapshot tables and are surfaced by `cmd_snapshot_history`, but they are written before the ticks execute and therefore record zero. That is a known defect on an admin display, not a gap in the spawn system.
+
+---
+
+## Logging
+
+The spawn system writes its own log file, `spawn.log`, alongside Evennia's own logs in `settings.LOG_DIR`. One helper routes every line:
+
+```python
+from blockchain.xrpl.services.spawn.log import spawn_log
+
+spawn_log(message, level="INFO")   # INFO | WARN | ERROR
+```
+
+It wraps `evennia.utils.logger.log_file()`, the same mechanism `evennia-mob-spawner` and `evennia-world-builder` use for their own files. Three properties matter here:
+
+- **Thread-safe.** A tick runs in a worker thread via `deferToThread` on the router, and Evennia's `log_file` dispatches through its own thread pool.
+- **Outside the stdlib logging hierarchy**, so it cannot be silently rerouted by a logging config.
+- **Never raises into its caller.** Failures degrade to doing nothing.
+
+Every line carries which process wrote it, so a placement can be followed across the router/shard boundary in one file:
+
+```
+2026-08-04T10:15:02+00:00 [INFO] [router] plan: resources/1 4 target(s), 3 eligible, headroom=11, dispatched=6 to 2 target(s)
+2026-08-04T10:15:03+00:00 [INFO] [shard0] place: resources/1 x4 on 3308
+2026-08-04T10:15:03+00:00 [INFO] [shard1] place: resources/1 x2 on 4102
+```
+
+**There is deliberately no level filtering and no verbosity setting.** The system is logged heavily while it is being brought up; noisy call sites are removed once it is stable, rather than being silenced at runtime. Volume is a signal to log less, not to filter.
+
+`SpawnDrop` and `SpawnClamp` lines are the ones worth watching. Persistent drops mean the world needs more targets or higher per-target caps. Clamps should be rare — they indicate headroom closing between the router deciding and a shard placing.
 
 ---
 
@@ -1034,15 +1076,22 @@ In monolith both run in one process and dispatch short-circuits locally rather t
 | Gold calculator | `blockchain/xrpl/services/spawn/calculators/gold.py` — `GoldCalculator` |
 | Knowledge calculator | `blockchain/xrpl/services/spawn/calculators/knowledge.py` — `KnowledgeCalculator` |
 | Rare NFT calculator | `blockchain/xrpl/services/spawn/calculators/rare_nft.py` — `RareNFTCalculator` |
-| Base distributor | `blockchain/xrpl/services/spawn/distributors/base.py` — `BaseDistributor` |
-| Fungible distributor | `blockchain/xrpl/services/spawn/distributors/fungible.py` — `FungibleDistributor` |
-| NFT distributors | `blockchain/xrpl/services/spawn/distributors/nft.py` — `ScrollDistributor`, `RecipeDistributor`, `RareNFTDistributor` |
+| Reader (capacity / current) | `blockchain/xrpl/services/spawn/reader.py` — `query_targets()`, `read_capacity()`, `read_current()` |
+| Allocator | `blockchain/xrpl/services/spawn/allocator.py` — `allocate()` |
+| Planner (decide) | `blockchain/xrpl/services/spawn/planner.py` — `plan_tick()` |
+| Dispatcher (route) | `blockchain/xrpl/services/spawn/dispatcher.py` — `dispatch()`, `group_by_shard()` |
+| Executor (place) | `blockchain/xrpl/services/spawn/executor.py` — `execute()` |
+| Scheduling + placement mechanics | `blockchain/xrpl/services/spawn/distributors/base.py` — `BaseDistributor` |
+| Fungible placement | `blockchain/xrpl/services/spawn/distributors/fungible.py` — `ResourceDistributor`, `GoldDistributor` |
+| NFT placement | `blockchain/xrpl/services/spawn/distributors/nft.py` — `ScrollDistributor`, `RecipeDistributor`, `RareNFTDistributor` |
 | Budget state | `blockchain/xrpl/services/spawn/budget.py` — `BudgetState` |
-| Headroom utils | `blockchain/xrpl/services/spawn/headroom.py` — `get_current_count()`, `count_nfts()` |
+| Quest debt (receiving) | `blockchain/xrpl/services/spawn/quest_debt.py` — `apply_quest_debt()`, `QUEST_DEBT_KIND` |
+| Spawn log | `blockchain/xrpl/services/spawn/log.py` — `spawn_log()` → `spawn.log` |
 | Service orchestrator | `blockchain/xrpl/services/spawn/service.py` — `SpawnService`, `get_spawn_service()` |
-| Hourly script | `typeclasses/scripts/unified_spawn_service.py` — `UnifiedSpawnScript` |
+| Hourly script (router) | `typeclasses/scripts/unified_spawn_service.py` — `UnifiedSpawnScript` |
+| Cross-shard message handler | `server/conf/messaging.py` — `FCMMessageHandler` |
 | Saturation script | `typeclasses/scripts/nft_saturation_service.py` — `NFTSaturationScript` |
-| Saturation service | `blockchain/xrpl/services/nft_saturation.py` — `NFTSaturationService.take_daily_snapshot()` (still so named, but runs hourly) |
+| Saturation service | `blockchain/xrpl/services/nft_saturation.py` — `NFTSaturationService.take_snapshot()` (hourly, at HH:05) |
 | Mob base (tags) | `typeclasses/actors/mob.py` — `CombatMob`, `_build_tier_max()` |
 | Mob spawn (tag sync) | `libraries/evennia-mob-spawner/src/evennia_mob_spawner/script.py` (the legacy `typeclasses/scripts/zone_spawn_script.py` is dormant) |
 | Quest debt hook | `world/quests/base_quest.py` — `FCMQuest._register_quest_debt()` |

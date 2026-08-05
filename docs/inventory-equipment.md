@@ -30,6 +30,21 @@ wearslots = {
 
 **Key design principle:** equipping/unequipping does NOT move items between locations. The item stays in `contents` — only the wearslot reference changes. This means weight does not change on equip/unequip (the character is still carrying the item either way).
 
+### "Inventory" and `contents` are not the same set
+
+Two things share loose language, and code that conflates them is wrong in ways that are hard to see:
+
+| Term | What it means |
+|---|---|
+| **inventory** (game concept) | The subset of `contents` **not** flagged as worn — what a player means by "my inventory" |
+| **`contents`** (programmatic) | Everything the object holds — inventory **plus** everything worn |
+
+Because wearing changes a flag rather than a location, an item is in `contents` whether it is carried or worn. Neither state is visible from the location alone; only `db.wearslots` distinguishes them.
+
+**Any function or test dealing with held items must state which of the two it means.** Some genuinely want inventory — a "what can I wield" listing should not offer what is already worn. Others genuinely want `contents` — carrying capacity counts worn armour, and spawn capacity counts an equipped weapon as occupying its slot (see [unified-item-spawn-system.md](unified-item-spawn-system.md) § Headroom Calculation).
+
+A test that leaves it to be inferred can also describe an impossible world: `contents` empty while `wearslots` holds an item cannot occur, because worn items never leave `contents`.
+
 ### Fungible Inventory (Gold & Resources)
 
 Gold and resources are not objects — they are quantities stored as Evennia attributes:

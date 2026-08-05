@@ -25,7 +25,7 @@ Hourly Aggregation (TelemetryService.take_snapshot)
   └── ResourceSnapshot       (1 row per currency per hour — circulation, velocity, AMM prices)
   │
   ▼
-Hourly Saturation Pass (NFTSaturationService.take_daily_snapshot)
+Hourly Saturation Pass (NFTSaturationService.take_snapshot)
   └── SaturationSnapshot     (1 row per tracked item per day — overwritten hourly with the latest state)
 ```
 
@@ -367,11 +367,11 @@ Transfer types are grouped into velocity categories for snapshot aggregation:
 
 ## Spawn System Telemetry (Future)
 
-The unified spawn system (`SpawnService`) currently tracks per-item metrics in memory via `BudgetState` counters and Python logging:
+The unified spawn system (`SpawnService`) tracks per-item metrics in memory via `BudgetState` counters, with per-event detail written to `spawn.log` (see [unified-item-spawn-system.md](unified-item-spawn-system.md) § Logging):
 
 | Counter | Description |
 |---|---|
-| `spawned_this_hour` | Units actually placed on targets this hour |
+| `dispatched_this_hour` | Units handed to an executor this hour. Not what landed — an executor may clamp to headroom that has since closed, and does not report back |
 | `dropped_this_hour` | Surplus that couldn't be placed (all targets at cap) |
 | `quest_debt` | Pending deduction from quest rewards |
 | `surplus_bank` | Carried from previous tick (targets unavailable) |
