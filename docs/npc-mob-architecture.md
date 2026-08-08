@@ -56,7 +56,7 @@ BaseActor
     │   └── QuestGivingLLMTrainer
     │       └── OakwrightNPC
     │
-    ├── CombatMob(CombatMixin, StateMachineAIMixin, FungibleInventoryMixin, FollowableMixin, BaseNPC)  ← convenience class for common mobs
+    ├── CombatMob(CombatMixin, StateMachineAIMixin, FungibleInventoryMixin, FollowableMixin, LootMobMixin, BaseNPC)  ← convenience class for common mobs
     │   ├── die() override: mob death (corpse, loot, XP, delete/respawn)
     │   └── Composed further with AI, aggression, flight, swimming, body type
     │
@@ -358,8 +358,8 @@ Player attacks any guard → `enter_combat()` pulls in target's group → all gu
 # Player character — gets combat handler accessors from CombatMixin
 FCMCharacter(CombatMixin, CarryingCapacityMixin, ..., BaseActor)
 
-# Common mobs — CombatMixin for combat, StateMachineAIMixin for AI, FollowableMixin for groups, BaseNPC for NPC base
-CombatMob(CombatMixin, StateMachineAIMixin, FungibleInventoryMixin, FollowableMixin, BaseNPC)
+# Common mobs — CombatMixin for combat, StateMachineAIMixin for AI, FollowableMixin for groups, LootMobMixin for spawn-loot capacity, BaseNPC for NPC base
+CombatMob(CombatMixin, StateMachineAIMixin, FungibleInventoryMixin, FollowableMixin, LootMobMixin, BaseNPC)
 
 # Hybrid combat+dialogue — LLMMixin composed into CombatMob
 LLMCombatMob(LLMMixin, CombatMob)
@@ -408,7 +408,7 @@ This is already one unified system — `take_damage()` on BaseActor calls `die()
 ### CombatMob — Convenience Class
 
 ```python
-class CombatMob(CombatMixin, StateMachineAIMixin, FungibleInventoryMixin, FollowableMixin, BaseNPC):
+class CombatMob(CombatMixin, StateMachineAIMixin, FungibleInventoryMixin, FollowableMixin, LootMobMixin, BaseNPC):
     """Convenience class for common fightable mobs — wolves, rats, kobolds, etc."""
 ```
 
@@ -422,6 +422,7 @@ Adds mob-specific attributes on top of CombatMixin's combat capability and State
 - Area-restricted wandering via `area_tag` tags
 - `max_per_room` anti-stacking
 - `die()` override — mob death (corpse, loot, XP, delete/respawn)
+- `spawn_gold_max` / `spawn_resources_max` / `spawn_scrolls_max` / `spawn_recipes_max` / `spawn_nfts_max` — from `LootMobMixin`, persisted `AttributeProperty` slots the router's spawn distributor reads as loot capacity. All default to "no loot"; actual values are set per mob-spawner rule via YAML `attrs:` (see [unified-item-spawn-system.md](unified-item-spawn-system.md)).
 
 This is what most mobs use. All existing mob subclasses inherit from `CombatMob` unchanged — backward compatible.
 

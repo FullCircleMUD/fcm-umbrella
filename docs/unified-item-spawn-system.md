@@ -514,10 +514,15 @@ spawn_nfts_max = {"UniqueWeapon.jupiters_lightning": 1}
 
 #### Mob Knowledge Capacity
 
-Scroll and recipe tier capacity is set explicitly per mob subclass via `spawn_scrolls_max` / `spawn_recipes_max` AttributeProperties. Builders choose exactly which tiers and how many slots each mob gets — there is no auto-derivation from mob level.
+Scroll and recipe tier capacity is declared per mob-spawner YAML rule (`attrs: {spawn_scrolls_max: {...}, spawn_recipes_max: {...}}`), read against the persisted `AttributeProperty` slots every `CombatMob` carries via `LootMobMixin` (see [npc-mob-architecture.md](npc-mob-architecture.md) § CombatMob — Convenience Class). `LootMobMixin` only supplies the slots and their "no loot" defaults; it never sets a real value itself. Builders choose exactly which tiers and how many slots each rule's mob gets, per rule — there is no auto-derivation from mob level, and no per-typeclass Python declaration of the actual numbers.
 
-Example from `Kobold` (L2): `spawn_scrolls_max = {"basic": 1}` — one basic-tier scroll slot.
-Example from `GnollWarlord` (L6): `spawn_scrolls_max = {"basic": 1, "skilled": 1, "expert": 2}` — four total slots across three tiers.
+```yaml
+# Illustrative mob-spawner rule shape, matching spawn-mobs.md's authoring pattern
+attrs:
+  spawn_scrolls_max: {basic: 1, skilled: 1, expert: 2}
+```
+
+Two rules can point at the same typeclass and declare different capacities — the values live entirely in YAML, not in Python subclasses (same "loot is data, not behaviour" principle as gold and resources — see [spawn-mobs.md](spawn-mobs.md) § Loot Model).
 
 ---
 
