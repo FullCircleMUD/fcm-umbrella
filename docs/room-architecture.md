@@ -100,7 +100,9 @@ A room is dark when ALL of these are true:
 - NOT (looker carries a lit light source — torch, lantern)
 - NOT (looker has DARKVISION condition)
 
-Dark rooms show "Unknown" as the room name and "It is pitch black. You can't see a thing." as the description. No exits, objects, or characters are shown.
+Dark rooms show "Unknown" as the room name and "It is pitch black. You can't see a thing." as the description. No exits, objects, or characters are shown — this is what a looker without DARKVISION gets.
+
+A looker WITH DARKVISION sees the room fully (name, description, exits, objects, characters) — DARKVISION does not trigger the "Unknown" shortcut. They instead get a `(Dark)` tag appended to the room name (see Vertical Position Display), so they still experience the darkness — knowing they're relying on DARKVISION rather than genuine light, and can anticipate when non-DARKVISION companions won't be able to see.
 
 See also: `LitFixture`, `TorchNFTItem`, `LanternNFTItem` for light source objects.
 
@@ -135,7 +137,7 @@ The display is assembled by `return_appearance()` from modular hooks. Empty sect
 | Section | Hook | Color | Notes |
 |---|---|---|---|
 | Header | `get_display_header()` | — | Default empty. Subclass hook. |
-| Room name | `get_display_name()` | `\|c` cyan | Plus vertical suffix: (Flying), (Swimming), (Underwater) |
+| Room name | `get_display_name()` | `\|c` cyan | Plus vertical suffix (Flying/Swimming/Underwater) and, for DARKVISION lookers in a dark room, a (Dark) tag |
 | Description | `get_display_desc()` | — | Respects brief mode. Includes weather line. |
 | Auto-exits | `get_display_exits()` | `\|c` cyan | Compact `[ Exits: n s e w ]`. Filtered. |
 | Objects | `get_display_things()` | `\|g` green | Ground descriptions + grouped bare items + fungibles |
@@ -182,6 +184,8 @@ The room name gets a suffix based on `looker.room_vertical_position`:
 - Height < 0 → "(Underwater)"
 - Height > 0 → "(Flying)"
 
+Independently, a DARKVISION looker in a dark room gets a "(Dark)" tag appended after any vertical suffix (see Lighting System above) — not itself vertical-position-based, but appended in the same place.
+
 Description gets a prefix:
 - Underwater: "Swimming underwater you can dimly perceive above you:"
 - Flying: "Flying you can see below you:"
@@ -210,6 +214,25 @@ room.msg_contents_with_invis_alt(
     from_obj=caller,
 )
 ```
+
+### Name Redaction for Blind/Dark-Sighted Lookers
+
+`utils.visibility.looker_is_blind(looker)` is True when either:
+- the looker's current location is dark for them (no light, no DARKVISION), or
+- the looker has the BLINDED condition (independent of room lighting)
+
+`RoomBase.get_display_name()` and `BaseActor.get_display_name()` (the common
+parent of characters, mobs, and NPCs) check this and redact to "Somewhere" /
+"Someone" respectively when true. This does NOT wrap every message — it only
+fires for messages built through Evennia's `mapping` substitution, which calls
+`mapping[key].get_display_name(looker=recipient)` per recipient (e.g. the
+default movement broadcast "`{object}` is leaving `{origin}`, heading for
+`{destination}`."). Without this, a blind character standing in a pitch-black
+room would still learn the real room/character names from broadcasts around
+them, even though `look` correctly shows them "Unknown". Message text built
+directly from `.key`/`.name`/an f-string bypasses `get_display_name()` and
+this redaction entirely — those call sites need their own `is_dark()` /
+`looker_is_blind()` check if they reveal a name to a bystander.
 
 ## Specialised Room Types
 
