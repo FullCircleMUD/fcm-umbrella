@@ -51,6 +51,7 @@ development, which catches packaging bugs early.
 ├── src/
 │   └── <library_name>/       # the package
 │       ├── __init__.py
+│       ├── contrib/          # ONLY if contrib modules exist — see below
 │       └── tests.py          # tests live inside the package (Django convention)
 ├── tests/                    # standalone test infrastructure
 │   ├── __init__.py
@@ -58,6 +59,57 @@ development, which catches packaging bugs early.
 │   └── urls.py
 └── examples/                 # demo gamedirs for integration testing
 ```
+
+## contrib/ — conditional
+
+### The problem it resolves
+
+Every library here holds the same principle: **the library provides infrastructure, the consumer owns
+the game.** Rooms, exits, characters, items, zones and economies belong to the game, not to a library
+that many different games might use.
+
+That principle collides with reality whenever a library exposes a primitive that *almost every
+consumer will use the same way*. Two bad options present themselves:
+
+- **Put it in core.** The library now owns a game concept, breaches its own scope, and forces one
+  shape on every consumer — including the ones whose game doesn't work that way.
+- **Leave it out entirely.** Every consumer reinvents the same wheel from the same primitive, with no
+  reference implementation to work from and no shared vocabulary for discussing it.
+
+**`contrib/` is the third option.** Core stays game-agnostic and ships only the primitive. Contrib
+carries a working implementation of the common case, opt-in and clearly marked as one answer rather
+than the answer. A consumer can import it as-is, copy and adapt it, or simply read it to understand
+how the primitive is meant to be used — and a consumer whose game is shaped differently ignores it
+entirely and loses nothing.
+
+This is Evennia's own convention: community members contribute modules for other community members to
+use and to learn from. Adopting it means an FCM library stays a good citizen of that ecosystem while
+keeping its core honest.
+
+### The rule
+
+**The folder exists only when there are contrib modules in it.** Do not scaffold an empty `contrib/`
+"for later" — its presence is the signal that opt-in modules are available.
+
+Nothing in `contrib/` may be imported by core, and core must remain fully functional with the
+directory absent. If core needs it, it isn't contrib.
+
+### Worked example
+
+> **Future work.** This example describes the finished state. No `contrib/` exists in
+> `evennia-shards` today — the split is agreed, the module is not yet written. Remove this note once
+> it lands.
+
+`evennia-shards` exposes `cross_shard_move()` — a primitive that relocates a player between shards
+and returns what actually happened. A consumer can drive it from anywhere: an exit, a portal, a ship,
+a teleport pad, a login-time placement rule.
+
+Walkable doors between shards are the anticipated common case, so a `CrossShardExit` typeclass ships
+as **contrib**. Core never learns what an exit is; consumers who want doors get a working one;
+consumers whose world crosses shards some other way are unaffected.
+
+[TBD — needs discussion: whether contrib modules carry their own tests and `docs/` entries, or are
+documented inline.]
 
 ## pyproject.toml
 
@@ -192,11 +244,56 @@ Required:
 
 - **`INDEX.md`** — lists every design document with a one-line description, organised by category.
 - **`progress.md`** — reverse-chronological milestone log with links to evidence.
+- **`interoperability.md`** — this library against every sibling library. See below.
 - **`archive/`** — historical context. Material here is preserved per the "don't delete; supersede" rule.
 
 Conventions for new design documents are the umbrella's — see [doco-structure.md](doco-structure.md):
 kebab-case filename; first line an `# H1 Title` matching the filename; a one-paragraph summary as the
 second block; index every document in `INDEX.md` (an un-indexed document is invisible).
+
+## Library interoperability
+
+Every library carries `docs/interoperability.md`, covering **all** the libraries in `libraries/` —
+including itself. A reader deciding whether two of our libraries can be co-installed gets a definite
+statement from either side rather than inferring from silence.
+
+**One template, no permutations.** Every copy carries the same sibling sections in the same order, so
+the files can be read side by side and a missing consideration is visible as a gap. The library's own
+entry says *"This library."* and nothing else.
+
+Sibling order is alphabetical:
+
+```markdown
+# Interoperability
+
+<One paragraph: what this library does that could constrain, or be constrained by, a sibling —
+ORM writes, thread dispatch, persistent scripts, settings it reads.>
+
+## evennia-mob-spawner
+## evennia-shards
+## evennia-targeting
+## evennia-world-builder
+## evennia-yaml-reader
+```
+
+Each sibling section opens by naming the **relationship** — one of:
+
+- **Hard dependency** — imported unconditionally; the sibling must be installed.
+- **Optional integration** — imported behind a `try` with a documented fallback; both co-installed and
+  standalone are supported.
+- **No coupling** — neither imports the other.
+
+Then either the considerations, or an explicit clearance. A clearance states *why* it is clear, in terms
+of what this library actually does:
+
+> **No coupling.** No constraints — this library issues no ORM writes and dispatches nothing off the
+> reactor thread, so nothing it does is visible to the tenancy layer.
+
+"No known issues" on its own is not a clearance; it is the void the document exists to remove.
+
+**Each constraint is documented once, by the library that owns it** — the one whose data model or API
+the rule constrains. The other library's section links to it rather than restating, so the pair cannot
+drift. Owning a constraint does not depend on which library triggers it.
 
 ## Documentation discipline
 
@@ -211,6 +308,8 @@ When creating a new library in this folder:
 - [ ] Add `.gitignore` (Python standard).
 - [ ] Adapt `CLAUDE.md` from a sibling library; rewrite project-specific sections, keep the standard shape.
 - [ ] Create `docs/INDEX.md` and `docs/progress.md` with current state.
+- [ ] Create `docs/interoperability.md` from the template — every sibling section present, each either
+      a stated consideration or an explicit clearance.
 - [ ] Write `README.md` answering: what is it, status, is it for me, install, learn more.
 - [ ] Populate `pyproject.toml` using the standard shape.
 - [ ] Create `src/<library_name>/__init__.py` with `__version__ = "0.0.1"`.

@@ -79,11 +79,15 @@ Two commands cover the whole pipeline:
 
 The library's `definitions.yaml` declares FCM's level scheme as `(shard, zone, district, file)`. `wb_build` accepts scope queries against those levels:
 
-- `wb_build all` — every YAML file in the manifest. Required keyword; bare `wb_build` refuses (safety guard).
-- `wb_build zone=millholm` — every file under `shard0/millholm/`.
-- `wb_build zone=millholm district=town` — every file under `shard0/millholm/town/`.
-- `wb_build zone=millholm district=town file=bakery.yaml` — that one file.
+- `wb_build shard=shard0` — every YAML file under that shard.
+- `wb_build shard=shard0 zone=millholm` — every file under `shard0/millholm/`.
+- `wb_build shard=shard0 zone=millholm district=town` — every file under `shard0/millholm/town/`.
+- `wb_build shard=shard0 zone=millholm district=town file=bakery.yaml` — that one file.
 - Append `--force-validate` to force whole-repo pre-validation regardless of the `repo-ci-pre-validation` flag.
+
+A query must name a contiguous prefix of the levels, so every scope starts at `shard=`. Bare `wb_build` refuses as a safety guard, and `wb_build all` is refused outright on a sharded deployment — it spans every shard's content, and a process can only build its own. Build one shard at a time.
+
+`wb_build` also refuses when the named shard is not the one this process is running as, so content can only be built from the process that owns it — which rules out building from the router, where rows would land with no shard stamp. See [evennia-world-builder/docs/interoperability.md](../libraries/evennia-world-builder/docs/interoperability.md).
 
 The smallest sensible redeploy is a single file. Author files at the granularity you want to redeploy — a single bakery, a single forest path, a 30-room dungeon — whatever maps best to how that content is iterated on.
 
@@ -224,9 +228,9 @@ No human edits zone-build Python anymore. New zones are added by creating a fold
 
 The world deployment model extends naturally to the multi-shard architecture in [scaling.md](scaling.md). At `shard_count == 1` (today) every claim below collapses to a no-op.
 
-- **Each shard runs its own `wb_build`** against its own slice of the YAML repo. The top-level `definitions.yaml` declares `shard` as the outermost manifest level (`levels: [shard, zone, district, file]`), so `wb_build shard=shard0` builds only that shard's content; rows it creates are auto-stamped `shard_id="shard0"` by the [`evennia-shards`](https://github.com/FullCircleMUD/evennia-shards) library's `pre_save` chokepoint.
+- **Each shard runs its own `wb_build`** against its own slice of the YAML repo. The top-level `definitions.yaml` declares `shard` as the outermost manifest level (`levels: [shard, zone, district, file]`), so `wb_build shard=shard0` builds only that shard's content; rows it creates are auto-stamped `shard_id="shard0"` on insert by the [`evennia-shards`](https://github.com/FullCircleMUD/evennia-shards) library's django-multitenant tenancy layer.
 - **System rooms are per-shard.** Each shard owns its own Purgatory and `nft_recycle_bin`, authored under that shard's `scaffold/` folder: `shard0/scaffold/*.yaml`, `shard1/scaffold/*.yaml`, etc. Identification at runtime is by typeclass (`RoomPurgatory`, `RoomRecycleBin`) rather than by name/dbref/tag, so existing isinstance checks (e.g. `_restart_purgatory_timers` in `server/conf/at_server_startstop.py`, `RoomRecycleBin.at_object_receive`) work on each shard without modification once that shard has its own scaffold. The two scaffold files can carry identical content across shards; `deployment_id` is per-file in the world-builder, so `shard0/scaffold/purgatory.yaml#1` and `shard1/scaffold/purgatory.yaml#1` are distinct DB rows.
-- **Gateway rooms are paired across shards.** A gateway between zone A (shard X) and zone B (shard Y) lives as two `RoomGateway` rows — one owned by each side, each authored in the YAML of the shard that owns it. Each side's `destinations:` list stores composite `(target_zone, target_district, target_key)` triples; cross-shard traversal hands off via the library's `cross_shard_character_move` primitive, invoked from a consumer-side `CrossShardExit` typeclass that gates with FCM's safe-state predicate (not yet implemented — see [scaling.md](scaling.md#the-handoff-protocol)).
+- **Gateway rooms are paired across shards.** A gateway between zone A (shard X) and zone B (shard Y) lives as two `RoomGateway` rows — one owned by each side, each authored in the YAML of the shard that owns it. Each side's `destinations:` list stores composite `(target_zone, target_district, target_key)` triples; cross-shard traversal hands off via the library's `cross_shard_move` primitive, invoked from a `CrossShardExit` typeclass that gates with FCM's safe-state predicate. The exit typeclass ships as a library **contrib** module rather than core — traversal is a game concept, so core exposes only the primitive (see [scaling.md](scaling.md#the-handoff-protocol)).
 - **Shard reshuffles are planned downtime events.** Bring the game offline, update the `shard` level assignment, rerun `wb_build` per shard, bring the game online.
 
 ## What's Implemented vs Planned

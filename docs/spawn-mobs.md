@@ -142,9 +142,11 @@ The library counts each rule's population independently via the `(file, rule_id)
 
 All ship from the library, auto-installed into `AccountCmdSet`, locked to `cmd:superuser()`. Same scope syntax across all: `all | <level>=<value> [<level>=<value> ...]`. Bare command (no args) prints usage.
 
+Because FCM's levels are `(shard, zone, file)`, every scope starts at `shard=`. `ms_load` refuses `all` on a sharded deployment — it spans every shard's rule sets, and a process can only deploy its own — and refuses a shard other than the one it is running as, which rules out deploying from the router. Deploy one shard at a time. See [evennia-mob-spawner/docs/interoperability.md](../libraries/evennia-mob-spawner/docs/interoperability.md).
+
 | Command | Effect |
 |---|---|
-| `ms_load all` | Fetch the entire fcm-mobs repo via the configured Reader, validate, and deploy. Per-file scripts get upserted in place; cooldown state preserved for rules that survive the swap. |
+| `ms_load shard=shard0` | Fetch that shard's rule sets via the configured Reader, validate, and deploy. Per-file scripts get upserted in place; cooldown state preserved for rules that survive the swap. |
 | `ms_load shard=shard0 zone=millholm file=town` | Same but scoped to one file. |
 | `ms_status [scope]` | Read-only: lists scripts in scope with state (active/paused/stopped), rule count, tick interval, next-tick estimate. |
 | `ms_spawn_report [scope]` | Live population census: for each script in scope, per-rule current vs target counts, grouped by `area_tag`. Under-target rules marked with `*`. |
