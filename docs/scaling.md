@@ -280,19 +280,37 @@ election, no nominated shard, no consumer-side lock. Where a
 cluster-wide side effect must happen once, the answer is to name one
 role rather than to coordinate between several.
 
-**Scripts owned by one shard are a separate case.** The role table above
-covers *global* scripts — the named singleton services. A script whose
-work belongs to a single shard cannot be declared that way, because
-there is one row per rule-set file and the set grows with content. Those
-declare ownership as data instead: `evennia-mob-spawner`'s Deployer
-stamps an `owning_shard` Attribute at `ms_load` time, and the shards
-library confines the script's ticks to that process. Mechanism in
-[shard-owned-scripts.md](../libraries/evennia-shards/docs/shard-owned-scripts.md).
+**The role table alone does not keep a script off other processes.** It
+gates what each process *creates*. Evennia's
+`update_scripts_after_server_start()` walk then iterates every active
+`ScriptDB` row, knows nothing about roles, and attaches a `LoopingCall`
+to any row still carrying a pause marker — so **the first process to
+boot picks up every marked script in the cluster**, not just its own.
+Processes booting later find the markers consumed and quietly get only
+what they claim for themselves.
 
-Without it the boot walk decides ownership by race — every process sees
-the same pause marker and the first to reach it wins, so a router that
-starts before the shards takes their scripts every time. That is what
-produced mobs stamped `shard_id=NULL` on a live deployment.
+Observed live before the fix: with the router starting first, it ran its
+own five *and* the six `GAME_ROLES` world scripts, unscoped, on every
+boot. Booting a shard first would instead have handed it the router-only
+scripts, `reallocation_service` among them — the one whose own comment
+notes that a second process running it concurrently mints currency that
+was never spent.
+
+**How it is closed.** Both halves declare where they belong, as data,
+and the shards library keeps them there —
+[script-confinement.md](../libraries/evennia-shards/docs/script-confinement.md):
+
+- **Global scripts** — `start_scripts()` stamps `owning_roles` from the
+  roles column as it creates each one. Same table, now enforced past
+  creation.
+- **Per-shard scripts** — one row per rule-set file, a set that grows
+  with content, so no static table can name them. `evennia-mob-spawner`'s
+  Deployer stamps `owning_shard` at `ms_load` time instead. Without it
+  the router's ticks produced mobs stamped `shard_id=NULL`.
+
+The two are mutually exclusive per script, and a script declaring
+neither is left unconfined — which is correct for anything genuinely
+belonging everywhere, such as the cosigner keepalive.
 
 **Not every cross-process concern is a script.** The cross-shard message
 bus is a Twisted `LoopingCall` started from `at_server_start()`, not a
