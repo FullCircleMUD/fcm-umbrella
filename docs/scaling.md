@@ -29,16 +29,19 @@ what is still design work:
 - Role-aware deployment (`monolith` / `router` / `shard`) — config-only
   selection per process via `SHARDS_ROLE` setting.
 - `shard_id` column on `ObjectDB` with auto-stamp on save.
-- Four read/write chokepoints (`from_db`, `pre_save`, `pre_delete`,
-  `QuerySet.update`) that enforce the per-row shard partition.
-- `cross_shard_character_move` primitive — atomic DB writes, recursive
+- Per-row shard partition enforced at the SQL layer via django-multitenant —
+  every `ObjectDB` query carries `WHERE shard_id IN (current, '*')`, inserts
+  are auto-stamped, and the router runs unscoped.
+- `cross_shard_move` primitive — atomic DB writes, recursive
   inventory move, idmapper eviction, per-session ticket redirect.
 - Ticket-based WebSocket auth + connection-level cross-shard redirect.
 - Chargen wrapper that stamps new characters with the start-room's
   `shard_id`.
 - Postgres-polled cross-shard message bus (`obj_msg`, `account_msg`,
   `send_cross_shard_message`).
-- Admin commands: `@shard_check`, `cross_shard_dig`, `cross_shard_move`.
+- Admin commands: `@shard_check`, `cross_shard_dig`. Cross-shard movement
+  rides the overridden `@tel` — the library replaces Evennia's teleport so
+  a cross-shard destination is handled transparently.
 
 **Shipped (in FCM, on top of the library):**
 
@@ -54,8 +57,9 @@ what is still design work:
   plus direct writes to `db_home_id` / the `respawn_location`
   Attribute). The healing fallback chain (inn → Limbo for home,
   cemetery → respawn) is unchanged; the SQL projection avoids
-  instantiating any row, so global tag-join queries no longer trip
-  the `from_db` chokepoint on foreign-shard rows. `at_post_puppet`
+  instantiating any row, so a global tag-join never depends on
+  materialising a foreign-shard row the auto-filter would hide.
+  `at_post_puppet`
   additionally scopes its searches to local shard (plus `"*"`) so
   the written pk is always a row this shard can later dereference.
   Defensive try/except wrappers around the eventual reads
@@ -69,7 +73,8 @@ what is still design work:
   `create_object` falls back to `settings.DEFAULT_HOME` when no
   `home=` kwarg is passed; resolving that dbref instantiates the
   target row, which on a sharded process must be local-shard (or
-  global `"*"`) or the `from_db` chokepoint refuses. Each shard
+  global `"*"`) — the auto-filter hides anything else, so the lookup
+  finds nothing and object creation fails. Each shard
   points `DEFAULT_HOME` at a room it owns: `#2` on shard0 (the
   migrate-created Limbo), and a `cross_shard_dig`-bootstrapped
   `Shard1-Limbo` on shard1. `settings_router.py` doesn't override —
@@ -100,9 +105,10 @@ what is still design work:
 - Cross-zone arrival hook that updates `db_home` and
   `respawn_location` to the new shard's "trackside graveyard" room so
   both FKs reference local-shard rows after any cross-shard move
-  (avoiding latent `from_db` chokepoint trips on later FK reads from
-  recall, rent, death/respawn, or any other non-IC code path that
-  dereferences these fields).
+  (otherwise a later FK read from recall, rent, death/respawn, or any
+  other non-IC code path that dereferences these fields resolves to
+  nothing — the auto-filter hides the foreign-shard row, so the
+  reference reads as missing rather than as an error).
 
 ---
 
@@ -147,15 +153,15 @@ Each shard owns a set of zones. A character is **resident on exactly
 one shard at a time** — the shard whose zones contain her current
 room. There is no point in the design where the same character is
 live on two shards. The library enforces this at the row level via
-the `shard_id` column and the four chokepoints.
+the `shard_id` column and django-multitenant's auto-filter.
 
 ### What lives where
 
 | State | Lives on | Notes |
 |---|---|---|
 | `AccountDB` (login, characters list) | Router | Library: `SHARDS_ROLE=router` process owns account auth and the OOC menu |
-| `AccountBank` (per-account asset row) | Global (`shard_id="*"`) | Any shard can load. Stamped by FCM's `Account.at_post_login` via `shard_writes_allowed_for` |
-| `ObjectDB` for resident objects (characters, items, mobs, rooms in owned zones) | The owning shard | Library auto-stamps on save; chokepoints refuse cross-shard reads |
+| `AccountBank` (per-account asset row) | Global (`shard_id="*"`) | Any shard can load. Stamped `"*"` by FCM's `Account.at_post_login`; the router creates it unscoped, so this is a first stamp, not a re-stamp |
+| `ObjectDB` for resident objects (characters, items, mobs, rooms in owned zones) | The owning shard | Library auto-stamps on insert; the auto-filter hides cross-shard rows from every query |
 | `FungibleGameState` SINK rows | Per-shard rows; aggregated hourly | **TODO** — needs migration to add `shard_id` to unique key. See § Per-shard SINK |
 | `FungibleGameState` RESERVE rows | Postgres; written once an hour by a coordinator | **TODO** — shards read their pre-allocated share, not RESERVE directly. See § RESERVE shares |
 | `ChannelDB` | Postgres; messages bridged via library's message bus | **TODO** — each shard subscribes to all channel topics; cross-shard delivery rides `account_msg`/`obj_msg` |
@@ -176,14 +182,25 @@ caches with no built-in cross-process invalidation. As long as no two
 shards hold a live cached instance of the same row at the same time,
 there is no drift.
 
-**The library enforces this by construction.** Four chokepoints
-(`from_db`, `pre_save`, `pre_delete`, `QuerySet.update`) refuse any
-operation that would read or write a row stamped with a different
-`shard_id`. A consumer (FCM, in our case) cannot accidentally cache
-a foreign shard's row — the underlying `from_db` would raise
-`ShardIsolationError` before the idmapper ever sees the data.
+**The library enforces this by construction.** Tenancy is applied at the
+SQL layer via [django-multitenant](https://github.com/citusdata/django-multitenant):
+every query through `ObjectDB.objects` carries
+`WHERE shard_id IN (<this shard>, '*')` automatically, and inserts are
+auto-stamped with the current shard. A consumer (FCM, in our case) cannot
+accidentally cache a foreign shard's row, because the row never comes back
+across the wire — the boundary is in the database, not in Python, so
+`from_db` is never called on it and the idmapper never sees it.
 
-The `cross_shard_character_move` primitive in the library handles
+**The failure mode is silence, not an error.** A query that would have
+matched a foreign-shard row simply returns fewer rows. Nothing raises.
+That is safe for the cache invariant but unforgiving of a mistaken
+assumption: code that expects a global view and doesn't have one gets a
+plausible-looking subset rather than a loud failure. Anything that
+genuinely needs to see across shards must say so explicitly — the router
+runs unscoped, and `shard_context(None)` opens a scoped escape hatch for
+handoff, chargen and admin tooling.
+
+The `cross_shard_move` primitive in the library handles
 eviction explicitly: source shard updates `shard_id`, evicts the
 character (plus recursive inventory) from its idmapper and
 `AttributeHandler` caches, then redirects the session to the target
@@ -205,11 +222,16 @@ address row-by-row. From an audit of
 `AccountBank` rows are account-attached (1:1 with the router-owned
 account). They may be read/written from whichever shard the account
 is currently puppeting on. FCM stamps newly-created banks with
-`shard_id="*"` (global sentinel) via the library's
-`shard_writes_allowed_for` bypass primitive — both at the canonical
-creation site (`Account.at_post_login`) and the defence-in-depth site
-(`ensure_bank` in `cmd_balance.py`). Production characters move
-across shards freely without their bank tripping the chokepoint.
+`shard_id="*"` (the global sentinel), which the multitenant auto-filter
+admits from every shard's scope — so a character moving between shards
+keeps its bank visible throughout.
+
+No bypass primitive is involved. The bank is created on the router,
+which runs unscoped, so the insert auto-stamp is skipped and the row
+lands `shard_id=NULL`; assigning `"*"` and saving is then a legitimate
+first stamp, since multitenant's immutability check only refuses
+*re*-stamping an already-tagged row. The stamp is skipped entirely in
+monolith, where the column does not exist.
 
 ### Global scripts — mechanism and classification settled
 
@@ -247,9 +269,8 @@ to this process. Before declaring roles for a script, answer:
    candidates: N spawn runs or N reallocations per interval would be a
    real economic fault.
 
-The failure mode is quiet. Since django-multitenant replaced the
-raising chokepoint, an unscoped query returns a subset instead of
-erroring — so a script starting with no errors in the log is *not*
+The failure mode is quiet. A shard-scoped query returns a subset rather
+than erroring, so a script starting with no errors in the log is *not*
 evidence that it is correct.
 
 **Exactly-once comes from the role table, not from a gate.** The three
@@ -258,6 +279,20 @@ candidates — item spawning, telemetry aggregation and gold reallocation
 election, no nominated shard, no consumer-side lock. Where a
 cluster-wide side effect must happen once, the answer is to name one
 role rather than to coordinate between several.
+
+**Scripts owned by one shard are a separate case.** The role table above
+covers *global* scripts — the named singleton services. A script whose
+work belongs to a single shard cannot be declared that way, because
+there is one row per rule-set file and the set grows with content. Those
+declare ownership as data instead: `evennia-mob-spawner`'s Deployer
+stamps an `owning_shard` Attribute at `ms_load` time, and the shards
+library confines the script's ticks to that process. Mechanism in
+[shard-owned-scripts.md](../libraries/evennia-shards/docs/shard-owned-scripts.md).
+
+Without it the boot walk decides ownership by race — every process sees
+the same pause marker and the first to reach it wins, so a router that
+starts before the shards takes their scripts every time. That is what
+produced mobs stamped `shard_id=NULL` on a live deployment.
 
 **Not every cross-process concern is a script.** The cross-shard message
 bus is a Twisted `LoopingCall` started from `at_server_start()`, not a
@@ -401,11 +436,20 @@ top of it.
 ### Tells, who, scry — TODO, RPC by current-shard lookup
 
 Each character row's `shard_id` (library-maintained) is sufficient
-to route. Sender's shard looks up the target's `shard_id` via a
-`.values_list` query (no `from_db`, no chokepoint), then uses
+to route. The sender's shard looks up the target's `shard_id`, then uses
 `send_cross_shard_message` to deliver the message to the target
 character on the target shard. The same pattern handles `who`,
 `where`, scrying, and any other "find another player" command.
+
+**The lookup must escape the auto-filter.** By definition the target is
+on another shard, so a default-scoped query cannot see the row —
+including a `.values_list` projection, which is filtered at the SQL
+`WHERE` level like any other query. The lookup runs inside
+`shard_context(None)`, the same narrow escape the library uses for
+`cross_shard_move`'s destination validation and for
+`shard_aware_global_search`. Keep the escape to the single projection
+query: resolve the `shard_id`, then leave the block before doing
+anything else.
 
 This is a tiny RPC surface — small enough that the library's existing
 message bus is sufficient transport. We do not need a generalised
@@ -422,29 +466,44 @@ the DB at delivery time. This is incidentally already correct.
 ## The Handoff Protocol
 
 The handoff is implemented in the library's
-[`cross_shard_character_move`](https://github.com/FullCircleMUD/evennia-shards/blob/main/src/evennia_shards/handoff.py)
+[`cross_shard_move`](https://github.com/FullCircleMUD/evennia-shards/blob/main/src/evennia_shards/handoff.py)
 primitive — atomic DB writes, recursive inventory move, idmapper
 eviction, per-session ticket-authenticated WebSocket redirect. The
 [`ticket-auth-flow.md`](https://github.com/FullCircleMUD/evennia-shards/blob/main/DESIGN/ticket-auth-flow.md)
 in the library documents the wire protocol.
 
-FCM consumes the primitive in two places today:
+**The primitive is the interface.** The library deliberately ships no
+cross-shard movement *command* of its own — a consumer drives
+`cross_shard_move()` from wherever its game says movement happens: an
+exit, a portal, a ship, a teleport pad, a login-time placement rule. It
+returns what actually happened (`objects_moved`, `sessions_redirected`,
+`failures`), so a caller can report or recover.
 
-1. **Admin command** — `cross_shard_move` (library-shipped admin
-   command, auto-installed into `CharacterCmdSet` when running in a
-   non-monolith role) lets a Developer-locked caller move themselves
-   to any room PK on any configured shard. Used during world
-   bootstrapping and live diagnosis.
-2. **TODO: `CrossShardExit` typeclass** — for normal player movement.
-   An exit on the source shard whose `at_traverse` checks safe state
-   (not in combat, not casting, no in-flight delayed callbacks),
-   updates `db_home` and `respawn_location` to the target shard's
-   "trackside graveyard" room (so both FKs remain dereferenceable on
-   the destination shard — avoiding latent chokepoint trips on later
-   recall / rent / respawn reads), then calls
-   `cross_shard_character_move`. This is the consumer-side gating
-   layer the library leaves for FCM to write per its
-   [`consumer-constraints.md`](https://github.com/FullCircleMUD/evennia-shards/blob/main/DESIGN/consumer-constraints.md).
+In-game today, cross-shard movement rides the overridden **`@tel`**: the
+library replaces Evennia's teleport command so that a destination on
+another shard is handled transparently, and a same-shard destination
+falls through to vanilla behaviour untouched.
+
+> **Future work.** The paragraph below describes the finished state. No
+> `contrib/` exists in `evennia-shards` today. FCM does not need it at
+> `shard_count = 1` — `@tel` covers every case that arises before a second
+> live shard. Remove this note once the module lands.
+
+**Walkable exits between shards ship as a library `contrib` module** — a
+`CrossShardExit` typeclass, opt-in rather than core. Traversal is a game
+concept, so the library must not own it; but doors between shards are the
+anticipated common case, so an implementation is provided to use, adapt or
+read. See [library-standards.md](library-standards.md#contrib--conditional)
+for why that split exists.
+
+Whatever drives the primitive, the consumer-side gating is FCM's to
+write, per the library's
+[`consumer-constraints.md`](https://github.com/FullCircleMUD/evennia-shards/blob/main/docs/consumer-constraints.md):
+check safe state (not in combat, not casting, no in-flight delayed
+callbacks), and update `db_home` and `respawn_location` to a room on the
+destination shard so both FKs stay dereferenceable there — otherwise a
+later recall / rent / respawn read reaches for a row this shard cannot
+see.
 
 Crash recovery: handled by the library. The `shard_id` write is the
 linearisation point; if the source shard dies mid-handoff before
@@ -534,44 +593,3 @@ not the limit anyone realistically hits first in a MUD.
   message bus delivers the data but the player-facing rendering
   hasn't been designed yet.
 
----
-
-## Local-machine PoC milestones
-
-Verified on Windows during the shards-integration work:
-
-- Three Evennia processes (router + shard0 + shard1) running from one
-  `src/game/` folder, distinguished only by `--settings settings_<role>`.
-  No view-gamedirs needed — Windows doesn't write `--pidfile` to twistd
-  so the single-folder model works directly. (Unix needs symlinked
-  view-gamedirs per the library's
-  [`deployment-topology.md`](https://github.com/FullCircleMUD/evennia-shards/blob/main/DESIGN/deployment-topology.md#unix-linux-macos-wsl-view-gamedirs).)
-- World-builder library coexists with shards: `wb_build` on a shard
-  stamps new rooms with that shard's `shard_id` via the library's
-  `pre_save` chokepoint, no special wiring.
-- Mob-spawner library coexists with shards: `ms_load` ingests rules
-  across shards; spawned mobs get auto-stamped to their spawning
-  shard.
-- Library's `cross_shard_dig` + `cross_shard_move` admin commands
-  bootstrap a shard1 with no rooms (dig from shard0 stamping the row
-  shard1, then walk over via the move primitive).
-- `AccountBank` `shard_id="*"` stamping verified — accounts loaded
-  across shards without tripping the chokepoint.
-- Startup restart helpers (`_restart_purgatory_timers` and
-  `_restart_mob_tickers`) scoped per shard — each shard's startup
-  touches only its own characters / mobs.
-- `at_pre_puppet` / `at_post_puppet` pk-only healing verified —
-  the home / respawn / cemetery retrofit fallbacks no longer
-  instantiate global queryset rows, so IC succeeds on cross-shard
-  arrival even when the FCs / Attribute defaults point at foreign-
-  shard rows.
-- End-to-end `cross_shard_move` verified — admin runs
-  `cross_shard_move shard1 <room_pk>`, session redirects via ticket,
-  destination shard auto-puppets and the look output of the
-  destination room arrives on the client.
-
-The PoC validated that the architecture composes correctly with FCM's
-existing libraries and runtime. What it didn't validate (because the
-content isn't there yet) is the per-shard SINK/RESERVE/channel
-mechanisms — those will be lit up when adding a second production
-shard becomes a real requirement, not a spike.

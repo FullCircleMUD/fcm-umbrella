@@ -142,17 +142,21 @@ The library counts each rule's population independently via the `(file, rule_id)
 
 All ship from the library, auto-installed into `AccountCmdSet`, locked to `cmd:superuser()`. Same scope syntax across all: `all | <level>=<value> [<level>=<value> ...]`. Bare command (no args) prints usage.
 
-Because FCM's levels are `(shard, zone, file)`, every scope starts at `shard=`. `ms_load` refuses `all` on a sharded deployment — it spans every shard's rule sets, and a process can only deploy its own — and refuses a shard other than the one it is running as, which rules out deploying from the router. Deploy one shard at a time. See [evennia-mob-spawner/docs/interoperability.md](../libraries/evennia-mob-spawner/docs/interoperability.md).
+Because FCM's levels are `(shard, zone, file)`, every scope starts at `shard=`. Four of the six are gated to the shard they act on: `all` is refused, and so is any shard other than the one this process runs as — which rules out running them from the router. Work one shard at a time. See [evennia-mob-spawner/docs/interoperability.md](../libraries/evennia-mob-spawner/docs/interoperability.md).
 
-| Command | Effect |
-|---|---|
-| `ms_load shard=shard0` | Fetch that shard's rule sets via the configured Reader, validate, and deploy. Per-file scripts get upserted in place; cooldown state preserved for rules that survive the swap. |
-| `ms_load shard=shard0 zone=millholm file=town` | Same but scoped to one file. |
-| `ms_status [scope]` | Read-only: lists scripts in scope with state (active/paused/stopped), rule count, tick interval, next-tick estimate. |
-| `ms_spawn_report [scope]` | Live population census: for each script in scope, per-rule current vs target counts, grouped by `area_tag`. Under-target rules marked with `*`. |
-| `ms_restart [scope]` | Kick the ticker without re-reading YAML. Recovery for stopped/paused scripts; preserves state. |
-| `ms_stop [scope]` | Pause the ticker. State preserved; resumable via `ms_restart`. |
-| `ms_delete [scope]` | Remove scripts entirely (state lost). Use to clean up orphans whose YAML files have been removed from the manifest. |
+| Command | Where it runs | Effect |
+|---|---|---|
+| `ms_load shard=shard0` | owning shard | Fetch that shard's rule sets via the configured Reader, validate, and deploy. Per-file scripts get upserted in place; cooldown state preserved for rules that survive the swap. |
+| `ms_load shard=shard0 zone=millholm file=town` | owning shard | Same but scoped to one file. |
+| `ms_status [scope]` | anywhere | Read-only: lists scripts in scope with state (active/paused/stopped), rule count, tick interval, next-tick estimate. Derived from shared row fields, so the router sees the whole cluster. |
+| `ms_spawn_report [scope]` | router only | Live population census: per-rule current vs target, grouped by `area_tag`. Under-target rules marked with `*`. Counts run under the tenancy auto-filter, so only an unscoped process can answer for the whole world. |
+| `ms_restart [scope]` | owning shard | Kick the ticker without re-reading YAML. Recovery for stopped/paused scripts; preserves state. |
+| `ms_stop [scope]` | owning shard | Pause the ticker. State preserved; resumable via `ms_restart`. |
+| `ms_delete [scope]` | owning shard | Remove scripts entirely (state lost). Use to clean up orphans whose YAML files have been removed from the manifest. |
+
+The three ticker commands are shard-gated because Evennia keeps a script's `LoopingCall` in `ndb._task`, which exists only in the process running it. Run from elsewhere, `ms_stop` writes nothing at all and still reports success, and `ms_delete` removes the shared row while the owning shard keeps ticking a script that no longer exists.
+
+Each spawner script is also stamped with the shard that owns it, so a restart can't hand it to the wrong process — see [scaling.md](scaling.md#global-scripts--mechanism-and-classification-settled).
 
 ---
 
