@@ -139,6 +139,7 @@ Two constraints drive the architectural choices:
 **Latency:** A player waiting 3 seconds for a mob to pick its next attack breaks the game. The design resolves this by moving LLM calls off the critical path:
 
 - **Dialogue** — the player is already waiting for a response, so a 1-2 second LLM call is acceptable.
+- **Arrival / leave greetings** — unlike dialogue, the player didn't ask for a response here; they just moved. The room description and move confirmation must never wait on this. The entire request (prompt assembly, memory/lore search, chat completion) runs in one `deferToThread` call so movement stays instant; the NPC's greeting lands a beat later, same as a "thinking" emote. See [CLAUDE.md § Non-blocking LLM NPC calls](../src/game/CLAUDE.md#non-blocking-llm-npc-calls-defertothread).
 - **Pre-fight strategy** — fires when the player enters an approach room (1-2 rooms from the boss). Traversal time absorbs the LLM latency; by the time combat starts, `ndb.tactical_plan` is already populated.
 - **Post-combat summarisation** — async, non-blocking, after `stop_combat()` fires.
 - **In-combat ticks** — zero LLM calls. State machine reads the pre-computed tactical plan and executes.

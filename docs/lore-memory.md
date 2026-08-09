@@ -122,7 +122,7 @@ Implementation: `_npc_can_access_lore()` in `ai_memory/services.py` performs the
 
 ## How Lore Reaches the NPC
 
-At prompt-build time, when `_get_context_variables()` runs in `LLMMixin`:
+At prompt-build time, when `_get_context_variables()` runs in `LLMMixin`. This (and the interaction-memory search alongside it) runs inside the same `deferToThread` call as the LLM request itself, not on the reactor thread — see [CLAUDE.md § Non-blocking LLM NPC calls](../src/game/CLAUDE.md#non-blocking-llm-npc-calls-defertothread):
 
 ```
 1. Player says something to the NPC
