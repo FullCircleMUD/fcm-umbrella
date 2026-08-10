@@ -49,6 +49,7 @@ and the cross-cutting invariants) that no single doc holds.
 | [cartography.md](cartography.md) | Cartography skill — intra-zone district mapping (`survey`/`map`, district map NFTs). |
 | [procedural-dungeons.md](procedural-dungeons.md) | Dungeon template system, instance lifecycle, passage dungeons, collapse mechanics. |
 | [vertical-movement.md](vertical-movement.md) | Climbing, flying, swimming, underwater mechanics, vertical exit gates. |
+| [movement-messages.md](movement-messages.md) | What a room is told when someone arrives or leaves — the single announce seam, verb resolution by movement mode, direction phrasing. |
 
 ### Progression & survival
 
