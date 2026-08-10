@@ -20,6 +20,9 @@
 - `src/game` uses git-crypt — see [git-crypt setup for src/game secrets](gitcrypt_game_secrets.md).
 - `src/game` branches: `main` (default), `dev`, and the active working branch `shards-rework`.
 
+## World content
+- [fcm-world test-branch strategy](fcm_world_test_branch_strategy.md) — `main` is live content only; the test world lives on the `test` branch, kept current by merging main → test (never the reverse). Dev/staging point at it via `WORLDBUILDER_REF`; a CI guard on main makes it structural.
+
 ## Upcoming Work
 - [Upcoming FCM world build in YAML](upcoming_fcm_world_build.md) — starting 2026-05-08, rebuilding FCM world content via the `evennia-world-builder` library; real-world content expected to surface edge cases the synthetic fixtures didn't reach
 

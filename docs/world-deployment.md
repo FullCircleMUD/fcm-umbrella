@@ -37,6 +37,32 @@ Mob populations are managed by a parallel pipeline — the [`evennia-mob-spawner
 
 The library installs into the game's venv as a normal Python package; the YAML repo is fetched at build time by the library's Reader (GitHub by default, local filesystem for development). FCM points the Reader at `fcm-world` via `WORLDBUILDER_READER_KWARGS` in [server/conf/settings.py](../src/game/server/conf/settings.py).
 
+## Content Branches
+
+`fcm-world` carries two long-lived branches, and which one an environment reads is a settings choice, not a code change.
+
+| Branch | Contents | Read by |
+|---|---|---|
+| `main`  | live game content only | production |
+| `test`  | everything on `main`, plus `shard0/test-world/` | local dev, and staging when it exists |
+
+The test world is the tester's playground — every crafting chain, every trap type, the PVP arena, the depth-routed ocean and the height-adapter wall in one zone. It exists so testers can exercise a system without hunting for a live-world room that happens to have the right shape. It must never reach production: it would be reachable in-game, and its rooms would clutter a real player's world.
+
+**The merge direction is one-way: `main` → `test`, never the reverse.** Merging main into test keeps the test branch current as the live world evolves; merging the other way is what the whole arrangement exists to prevent. Because the test content lives entirely under its own directory, those merges only ever conflict on the one line each branch adds to `shard0/index.yaml` — keep both entries.
+
+Selecting the branch is two environment variables read in [server/conf/settings.py](../src/game/server/conf/settings.py):
+
+```python
+WORLDBUILDER_REPO = os.environ.get("WORLDBUILDER_REPO", "FullCircleMUD/fcm-world")
+WORLDBUILDER_REF  = os.environ.get("WORLDBUILDER_REF", "main")
+```
+
+`ref` accepts a branch, tag, or commit SHA, and `repo` accepts a fork, so an operator can pin a build to an exact commit without touching code. There is no per-invocation override — `wb_build` resolves the Reader from settings, so changing branch needs a server restart.
+
+Local dev sets `WORLDBUILDER_REF = "test"` in `server/conf/secret_settings.local`. Production is unaffected by that file: `settings.py` only loads it when `DATABASE_URL` is unset, so Railway takes its values from platform environment variables and stays on `main`.
+
+A CI workflow on `main` (`.github/workflows/no-test-world-on-main.yml` in fcm-world) fails any push or PR that brings `shard0/test-world/` onto the branch. It is **advisory rather than blocking** — required status checks need branch protection or rulesets, and GitHub gates both behind a paid plan for private repositories. fcm-world stays private permanently, because it is a complete map of what is where in the game and public visibility would hand players a cheat sheet. Revisit the paid plan if more than one person starts committing; until then the operative control is that every commit goes through a human.
+
 ## Deployment Identity
 
 Every Evennia object the library creates is tagged with two values: **`wb_deployment_file`** (the YAML file path, set by the Builder) and **`wb_deployment_id`** (an author-supplied integer, mandatory, unique within its file). The pair is globally unique across the world.
@@ -122,7 +148,7 @@ When a single file is redeployed, cross-file exits pointing at rooms in *other* 
 
 The YAML side of FCM. For an author landing here, the loop is:
 
-1. **Edit YAML** in `fcm-world/shard0/<zone>/<district>/<file>.yaml`.
+1. **Edit YAML** in `fcm-world/shard0/<zone>/<district>/<file>.yaml`, on the branch that owns it — live content on `main`, test-world content on `test`. See [Content Branches](#content-branches).
 2. **Validate locally**: from `FCM/src/game/` with the venv active:
    ```
    wb-validate --reader local --root ../../fcm-world
@@ -243,6 +269,7 @@ The world deployment model extends naturally to the multi-shard architecture in 
 - `RoomGateway` model with declarative `destinations:` lists, authored per zone in YAML.
 - System room protection via `wb_build`'s file-scoped cleanup (system rooms in `shard0/scaffold/` only enter the delete set if explicitly scoped).
 - Parallel mob-spawn pipeline via [`evennia-mob-spawner`](https://github.com/FullCircleMUD/evennia-mob-spawner) reading [`fcm-mobs`](https://github.com/FullCircleMUD/fcm-mobs); operator-driven via `ms_load`.
+- The `main` / `test` content-branch split, with `shard0/test-world/` on `test` and a CI guard keeping it off `main`. See [Content Branches](#content-branches).
 - Legacy infrastructure (`deploy_world.py`, per-zone `soft_deploy.py`, `zone_utils.clean_zone()`, `ZoneSpawnScript`, `world/spawns/*.json`) retired or commented out behind dated DEPRECATION NOTICE blocks pending future deletion.
 
 **Possible future work (not on the immediate roadmap):**
