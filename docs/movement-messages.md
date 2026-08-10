@@ -27,19 +27,31 @@ unconditional by construction — invisible to every caller that has already dec
 be silent. That is the defect behind the doubled door messages, and it is the reason **all** movement
 messaging belongs in the two announce methods and nowhere else.
 
-Putting it there also means one place decides wording. A verb table that lives in `announce_move_*`
-serves walking, flying, swimming, mounted movement and whatever comes later; the same wording
-appears whether the move came from an exit command, a follow cascade, or a flee.
+**The seam centralises emission, not wording.** Those are two jobs, and only the first has to live in
+one place. Emission is what must be shared: excluding the mover, filtering for hidden and invisible
+actors, muffling for sleepers, resolving each recipient's view of who moved, and honouring `quiet`.
+Wording can come from either of two sources, and the split between them follows a clear line:
 
-**Default: every inter-room movement message goes through this seam.** A command with a distinctive
-line — flee, retreat, a dungeon transition — passes its flavour in via `move_type` (and, where the
-wording genuinely can't be expressed as a dispatch rule, a `msg=` override, which `move_to()`
-already forwards to `announce_move_from()`/`announce_move_to()` as a `**kwargs` pass-through) rather
-than writing its own `msg_contents()` call and silencing the seam with `quiet=True`. Bypassing the
-seam is the exception, justified case by case, not the default — a caller that goes quiet is a
-caller the system doesn't yet have a rule for, and that's a gap to close, not a permanent shape.
-Teleport, give/get/drop and similar non-traversal moves are the clear exceptions, since they aren't
-"arriving" or "leaving" in the sense this document describes at all.
+- **Movement modes come from a central rule table**, because they are properties of the *mover* —
+  airborne, in water, mounted — and no caller is in a position to declare them. A plain walk runs
+  command → `at_traverse()` → `move_to()`, and the command never touches `move_to()`, so on the
+  common path there is nothing there to pass wording in with. The seam reads the mover's state
+  instead.
+- **A command's own intent comes from the command**, passed in as text. Fleeing, panicking, being
+  dragged out by a collapse — these belong to the caller, and the callers that have them are exactly
+  the ones already invoking `move_to()` directly. See Caller-supplied wording below.
+
+Those two are the whole system. There is no third mechanism, and in particular no flag that selects
+between stored messages: a caller in a position to set such a flag is equally able to pass the text
+itself, so the flag would be an indirection with nothing on the other end. Where several callers want
+identical wording they share a named constant and pass it — the vocabulary stays defined once, and
+the choice of it stays with the caller.
+
+**Default: every inter-room movement message goes through this seam.** Because a caller can always
+pass its own text, there is no longer a case where distinctive wording justifies writing a private
+`msg_contents()` call and silencing the seam with `quiet=True`. The remaining legitimate exceptions
+are moves that are not really movement — inventory transfers via give/get/drop, and relocations like
+teleport where nobody is "leaving" or "arriving" in the sense this document describes.
 
 This default is scoped to moves between rooms — anything that calls `move_to()` with a destination.
 **Intra-room movement is not part of this seam and is out of scope by construction, not by
@@ -75,9 +87,8 @@ passed. The announce methods pass it.
 
 ## Verb resolution
 
-The verb comes from the mover's state at the time of the move, resolved from an ordered list of
-rules checked highest-priority first, falling through to plain walking. Adding a movement mode means
-appending a rule, not editing a conditional.
+The verb comes from an ordered list of rules describing how the mover is travelling, first match
+wins, falling through to walking. Adding a mode means appending a rule, not editing a conditional.
 
 | Rule | Condition | Departure | Arrival |
 |---|---|---|---|
@@ -90,9 +101,60 @@ a room that has depth, and the ground in a room that does not. The rule therefor
 `max_depth` alongside the character's position, so someone floating on the surface swims away rather
 than walking away.
 
-`move_type` is an input to the same dispatch, so a rule can key off `"flee"` or `"follow"` as
-readily as off height — see Flee and Followers and groups below for the two rules this design adds
-on `move_type` rather than on height.
+A predicate receives `(mover, room)` and nothing else. That is the constraint that keeps the split
+honest: if a mode can't be recognised from the mover and the room they are in, it isn't mover state,
+and it belongs to whichever caller does know about it.
+
+**Every rule here must be state the seam can observe for itself**, because these are the only
+messages the common path can produce. Nothing keyed on how the move was requested belongs in this
+table — that is the caller's to say, and the caller can say it directly.
+
+## Caller-supplied wording
+
+A caller that invokes `move_to()` directly can pass its own lines through the seam rather than around
+it, via `msg_from` and `msg_to`. Both ride `move_to()`'s `**kwargs` to the announce pair, so a single
+call can give each side different text — Evennia's own `msg=` cannot, since it applies to both.
+
+```python
+caller.move_to(
+    destination,
+    exit_obj=chosen,
+    msg_from="{name} panics and flees {direction} for no apparent reason!",
+    msg_to="{name} arrives {direction}, in a panic.",
+)
+```
+
+**An override is a template, not a finished string.** `{name}` is bound to the mover as an *object*,
+so it resolves per recipient through `get_display_name()` — which is what redacts it to "Someone" for
+anyone who cannot see. A caller that formats the name in itself — `f"{caller.key} flees north!"` —
+has defeated that before the seam ever sees it.
+
+`{direction}` is supplied too, carrying the direction logic described below so an override never has
+to work it out. It differs by side, because different wording reads naturally in each: outbound it is
+the bare direction (`north`), inbound it is the whole phrase (`from the south`, `from below`).
+
+**Callers can add placeholders of their own** by passing a `msg_mapping`, which is merged into the
+seam's:
+
+```python
+mob.move_to(
+    destination,
+    exit_obj=chosen,
+    msg_mapping={"pursuer": guard},
+    msg_from="{name} flees {direction}, {pursuer} close behind!",
+)
+```
+
+Entries backed by an object resolve per recipient exactly as `{name}` does, so a pursuer nobody can
+see is redacted for them too. The seam's own keys are applied last and win, so `{name}` cannot be
+rebound to something that skips that resolution.
+
+An override replaces the composed line outright, including the party form: a caller asking for
+specific words gets exactly those words.
+
+Passing text through the seam rather than emitting it directly is what buys the guarantees in Why one
+seam above — exclusion of the mover, visibility filtering, per-recipient names, and `quiet`
+suppression. A private `msg_contents()` call gets none of them.
 
 ## Direction phrasing
 
@@ -130,22 +192,24 @@ dispatch above.
 ## Followers and groups
 
 A follower cascade (`get_followers()`) moves every follower in the chain immediately after the
-leader, each with `move_type="follow"`. Left as-is, this produces one departure/arrival pair per
-follower — a party of five reads as ten room messages for what is, from a bystander's point of
-view, one event.
+leader. Left as-is, each of those moves announces itself, so a party of five reads as ten room
+messages for what is, from a bystander's point of view, one event.
 
 The leader's own move carries the group instead. When the leader has followers in the room, the
-verb-resolution messages are replaced with a single named line, independent of what mode any member
-of the group is moving in (a mixed walking/flying/swimming group still reads as one line, not one
-per mode):
+subject becomes the party rather than the person:
 
 ```
 source room       Fred's party leaves north.
 destination room  Fred's party arrives from the south.
 ```
 
-A leader moving alone (no followers in the room) gets the ordinary verb-resolved line — "party"
-wording only appears when there is a party.
+The verb still comes from the rules, resolved against the leader. That keeps a mixed
+walking/flying/swimming group to one line rather than one per mode, while preserving anything the
+verb genuinely needs to convey — a party fleeing reads as `Fred's party flees north!`, not as an
+ordinary departure.
+
+A leader moving alone (no followers in the room) gets the ordinary line — "party" wording only
+appears when there is a party.
 
 Followers themselves move quietly (`quiet=True` — no announce pair from their own `move_to()`) and
 receive only the existing direct message, now carrying the direction:
@@ -159,26 +223,33 @@ per room, and the follower-facing side to one line per move, with nothing duplic
 
 ## Flee
 
-Flee is the first case of the "everything goes through the seam" default above, rather than an
-exception to it. `move_type="flee"` is already passed on every flee `move_to()` call, so the dispatch
-gains a `"flee"` rule:
+Flee is the worked example of caller-supplied wording, and of the shared-constant pattern.
+
+Every flee calls `move_to()` directly, so every flee can say what it means. Combat flee and the
+out-of-combat panic run pass different text; nothing about the move is inferred:
 
 ```
-source room       Fred flees north!
-destination room  Fred flees in from the south!
+combat    source room       Fred flees north!
+          destination room  Fred flees in from the south!
+
+panic     source room       Fred panics and flees north for no apparent reason!
+          destination room  Fred arrives north, in a panic.
 ```
 
-This is a genuine improvement over what exists: today `cmd_flee.py` writes a departure line to the
-source room but nothing to the destination room, so a fleeing arrival is currently silent. Routing
-through the dispatch gives it the arrival line for free, using the same direction phrasing as every
-other move.
+Combat flee has two callers — `cmd_flee` and `combat_handler` — which must not drift apart. They
+share one named pair of templates defined alongside the rule table and pass it, rather than each
+spelling the wording out. One definition, two callers, nothing in between.
 
-Combat flee and the out-of-combat panic run currently use different room text ("flees north!" vs.
-"panics and flees north for no apparent reason!"). That distinction is worth keeping — it's real
-character, not incidental wording — so `cmd_flee.py` passes it through as a `msg=` override on its
-`move_to()` call rather than collapsing to one generic line. The private message to the fleeing
-character (`"You flee north!"` / `"You panic and flee north!"`) is untouched either way, since
-`announce_move_from`/`announce_move_to` exclude the mover and never touch it.
+Two fixes come along with the migration. The destination room currently hears nothing at all when
+someone flees into it — `cmd_flee` writes a departure line only — so routing through the seam gives
+the arrival side for free. And `cmd_flee` must pass `exit_obj` alongside its text: it currently
+derives direction from `chosen.key`, which is the exit's *name*, so the message reads "You flee Old
+Trade Way West!" instead of naming a direction. Passing the exit lets `{direction}` come from the
+same logic every other move uses.
+
+The private message to the fleeing character (`"You flee north!"` / `"You panic and flee north!"`)
+is untouched by any of this — `announce_move_from`/`announce_move_to` exclude the mover and never
+speak to them.
 
 ## Explicitly out of scope
 
