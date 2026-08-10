@@ -61,6 +61,42 @@ This is intentional. Future LLM AI just swaps the decision-maker — the LLM out
 
 ---
 
+## Fight Initiation Gate
+
+`CombatMixin._can_start_fight_now()` answers one question: may this actor *start* a fight right now. It returns `(True, None)` or `(False, reason)`, where reason is a short key rather than finished prose — call sites turn the key into their own wording, with `combat_utils.fight_refusal_message()` supplying the default.
+
+Every condition that should stop an actor picking a fight belongs in that one method rather than being repeated across the combat commands. Today there is one: `ndb.is_processing`, the lock held while harvesting, crafting or processing.
+
+Six call sites consult it, covering every player-initiated route into combat:
+
+| Command | File |
+|---|---|
+| `attack` / `kill` | `commands/all_char_cmds/cmd_attack.py` |
+| `bash` | `commands/class_skill_cmdsets/class_skill_cmds/cmd_bash.py` |
+| `stab` | `commands/class_skill_cmdsets/class_skill_cmds/cmd_stab.py` |
+| `pummel` | `commands/class_skill_cmdsets/class_skill_cmds/cmd_pummel.py` |
+| `join` | `commands/all_char_cmds/cmd_join.py` |
+| offensive spells | `world/spells/base_spell.py` — `cast()`, `target_type == "actor_hostile"` only |
+
+Spells that never aggro are not gated: a heal cast mid-harvest is not starting a fight.
+
+### Starting a fight, not being in one
+
+The gate is deliberately one-directional. It refuses the *initiation* of combat and says nothing about combat already underway:
+
+- **A player cannot start a fight while a harvest is running.** The action is refused before `enter_combat` is reached, so no handler is created.
+- **A player *can* be dragged into a fight while a harvest is running.** An aggressive mob attacking a busy player is not blocked by anything — the gate only governs the busy actor's own choices.
+
+An in-progress harvest is not cancelled when this happens. Interrupting a `delay()` already in flight is more machinery than the case is worth, so the harvest runs to completion and the player collects the resource.
+
+Being jumped mid-harvest costs the player nothing in the fight itself. The gate lives in the combat commands only; the combat handler's queued action is never subject to it. `enter_combat()` queues `auto_attack_first_enemy()` for every combatant other than the initiator, and the ticker fires it on the defender's initiative whether or not the busy lock is held. For the seconds the harvest has left, the only thing the lock actually prevents is issuing a *deliberate* combat command — `bash`, `stab`, or `attack` to retarget.
+
+### The reverse direction
+
+The matching refusal lives in the gathering commands — see [room-architecture.md](room-architecture.md#specialised-room-types) § RoomHarvesting. Together the two stop a player alternating between gathering and fighting to get both for free, while leaving the mob-initiated case above intact.
+
+---
+
 ## Attack Resolution Pipeline
 
 `execute_attack()` fires the weapon hooks in a fixed order. Both the attacker's weapon and the defender's weapon get hook calls. The resolution function never changes; weapon subclasses override the hooks to implement mastery-scaled effects.
@@ -704,6 +740,7 @@ combat/
 ├── combat_handler.py     ← CombatHandler script (per-combatant), _broadcast_height_change()
 ├── combat_utils.py       ← execute_attack(), enter_combat(), get_sides(), get_weapon()
 │                           force_drop_weapon(), _check_reach_counters()
+│                           fight_refusal_message() ← default refusal wording
 ├── height_utils.py       ← can_reach_target(), get_height_hit_modifier()
 └── reactive_spells.py    ← check_reactive_shield(), check_reactive_smite()
 

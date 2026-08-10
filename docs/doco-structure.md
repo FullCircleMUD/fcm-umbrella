@@ -167,6 +167,27 @@ If content seems to belong in two places, prefer the more durable/detailed surfa
   role is declared in `server/conf/at_server_startstop.py`" stays true; "the telemetry pipeline
   is enabled" is stale the next time someone comments a line out. This is the runtime sibling of
   *no stale-prone metrics* above.
+- **Write the design as finished; carry status in a removable note.** A design doc describes how the
+  game *works*, in present tense, whether or not the code has caught up yet. Where a part isn't built,
+  put a short blockquote note directly above it saying so — never hedge the prose itself into "will
+  be" / "is planned to". Shipping the feature is then a one-line edit: delete the note. The
+  description was already correct.
+
+  This keeps the doc a **target** rather than a status report. Progress notes are cheap to add and
+  remove; a design rewritten every time implementation moves becomes a changelog, drifts, and loses
+  the authority that makes it worth consulting. It also makes remaining work visible — the notes are
+  the to-do list, and an absence of notes means the doc and the code agree.
+
+  The design prose is stable against *implementation progress*, not against *design change*. If a
+  decision is genuinely revisited, the prose changes — deliberately, as its own act, with the *why*
+  captured. What must never happen is the design quietly eroding to match whatever got built.
+
+  **Events go to [progress.md](progress.md), not into the design doc.** "Verified on Windows in May",
+  "validated on macOS under these conditions", "ran the suite and it passed" — these are milestones,
+  not design, and a design doc that accumulates them becomes a status report. Record the design in the
+  topic doc; record what has actually been proven, and what hasn't, in the progress log. Each library
+  keeps its own `docs/progress.md` on the same rule.
+
 - **Index it.** Add a one-line entry to `INDEX.md`. An un-indexed document is invisible.
 - **Capture the *why*.** A doc that says *what* without *why* is obsoleted by the first strong
   counter-argument. The *why* is what makes it durable.

@@ -44,7 +44,7 @@ The foundation for all game rooms. Provides environment systems (lighting, weath
 |---|---|---|
 | `allow_combat` | True | Combat enabled in this room |
 | `allow_pvp` | False | PvP enabled |
-| `allow_death` | True | True death or defeat mode |
+| `allow_death` | True | `False` routes 0 HP to the defeat flow instead of death — see [Key Implementation Rules](#key-implementation-rules) #8 |
 | `max_height` | 1 | Maximum flying level (0 = no flying, indoor) |
 | `max_depth` | 0 | Maximum swimming depth (0 = no water) |
 | `details` | {} | Dict of keyword → description for `look <keyword>` |
@@ -258,7 +258,15 @@ Resource refinement (wheat → flour, ore → ingots). No skill required. Suppor
 
 **File:** `typeclasses/terrain/rooms/room_harvesting.py`
 
-Wilderness resource gathering. Each room hosts **one** resource, authored in YAML as scalar `resource_id` + `resource_count_max` (the cap); the runtime `resource_count` (current) is tracked on the room and decremented by harvest commands. The `UnifiedSpawnScript` fires the unified spawn pipeline hourly; `FungibleDistributor` reads each room's derived `spawn_resources_max` dict (`{resource_id: resource_count_max}`) to know per-room capacity. The dict is derived from the scalars by `at_object_post_creation` (Python-direct creation) and by `wb_at_post_build` (YAML deploys via world-builder); see [unified-item-spawn-system.md](unified-item-spawn-system.md) § Tag Registration for the canonical-scalar / derived-dict pattern. Description changes dynamically based on abundance (`desc_abundant` / `desc_scarce` / `desc_depleted`, switched on `resource_count` vs `abundance_threshold`). Injects `CmdSetHarvesting`.
+Wilderness resource gathering — these are open-world rooms that aggressive mobs roam and kill in, so they carry `allow_combat=True`, `allow_pvp=False`, `allow_death=True` (a death here is a real death, with corpse, XP penalty and Purgatory). Each room hosts **one** resource, authored in YAML as scalar `resource_id` + `resource_count_max` (the cap); the runtime `resource_count` (current) is tracked on the room and decremented by harvest commands. The `UnifiedSpawnScript` fires the unified spawn pipeline hourly; `FungibleDistributor` reads each room's derived `spawn_resources_max` dict (`{resource_id: resource_count_max}`) to know per-room capacity. The dict is derived from the scalars by `at_object_post_creation` (Python-direct creation) and by `wb_at_post_build` (YAML deploys via world-builder); see [unified-item-spawn-system.md](unified-item-spawn-system.md) § Tag Registration for the canonical-scalar / derived-dict pattern. Description changes dynamically based on abundance (`desc_abundant` / `desc_scarce` / `desc_depleted`, switched on `resource_count` vs `abundance_threshold`). Injects `CmdSetHarvesting`.
+
+#### Combat lockout
+
+Harvesting is refused outright while the character is in combat — *"How about you finish the fight first, oh patient one."* The check sits ahead of the busy-lock check in `CmdHarvest.func()`, so a character who is both fighting and mid-harvest gets the combat message rather than the generic busy one.
+
+This is one half of a pair. The other half, `CombatMixin._can_start_fight_now()`, stops a character starting a fight while the `ndb.is_processing` lock is held — see [combat-system.md](combat-system.md#fight-initiation-gate) § Fight Initiation Gate for the mechanism and for what happens when an aggressive mob attacks a character mid-harvest.
+
+**`craft` and `process` are not gated on combat.** They share the `is_processing` lock, so the fight-initiation half already covers them — a character cannot attack while crafting. The gathering-side half is deliberately absent: the working assumption is that crafting and processing rooms are not locations aggressive mobs can enter, so there is no fight to be in. If that assumption changes — a raidable workshop, a mob path into a smithy — `RoomCrafting` and `RoomProcessing` need the same combat check `RoomHarvesting` has, and its absence becomes a bug rather than a decision.
 
 ### RoomInn
 
@@ -374,7 +382,9 @@ Rooms are classified as `"WORLD"` for blockchain service dispatch — fungible o
 5. **Terrain drives defaults** — set terrain once, lighting and weather exposure derive automatically. Only override `natural_light`, `always_lit`, `sheltered`, or `subterranean` when the default derivation is wrong (or when the room has no terrain tag and shouldn't fall through to the "no terrain = exposed, lit by sun" defaults).
 6. **Quest tags are lists** — a room can trigger multiple quests on entry.
 7. **Safe zones** set `allow_combat=False, allow_pvp=False, allow_death=False` — this is the standard pattern for banks, inns, temples, etc.
-8. **Room/object lookup: always filter by district tag.** Evennia's `db_key` is NOT globally unique — it's also the player-visible room name. Multiple zones will have rooms with the same key (e.g. "The Vault"). Always scope `ObjectDB.objects.filter()` with a district or zone tag, or search within a known room's `.contents`. See CLAUDE.md § "Room/Object Lookup Convention" for full patterns.
+8. **`allow_death=False` means "defeat", not "safe".** It does not stop combat and it does not stop a mob reducing a character to 0 HP — it only changes what happens when that occurs. A character who hits 0 HP in an `allow_death=False` room goes through `Character._defeat()` instead of `_real_death()`: an empty flavour corpse, all gear, gold and resources kept, no XP penalty, HP reset to 1, and a teleport to the room's `defeat_destination` — or, when that is unset, to `self.home`. Death there is free, and the player is silently sent home rather than to Purgatory. Set it `False` only on a room that is genuinely safe (rule 7, `allow_combat=False`) or one that deliberately runs the defeat flow — dungeon instances, arenas. **Any room where mobs can fight and kill must have `allow_death=True`.**
+9. **Set `allow_death` on the typeclass, not per room.** When a room type's deaths should lead to Purgatory, change the `AttributeProperty` default on that typeclass rather than overriding `allow_death` on each instance in YAML. The default is the room type's own statement about what it is; per-room overrides scatter one decision across the world data, and the next room built from that type still inherits the wrong behaviour. Because these are `autocreate=False`, changing the default takes effect on rooms already built — no world rebuild — provided nothing wrote an explicit value.
+10. **Room/object lookup: always filter by district tag.** Evennia's `db_key` is NOT globally unique — it's also the player-visible room name. Multiple zones will have rooms with the same key (e.g. "The Vault"). Always scope `ObjectDB.objects.filter()` with a district or zone tag, or search within a known room's `.contents`. See CLAUDE.md § "Room/Object Lookup Convention" for full patterns.
 
 ## Test Coverage
 
