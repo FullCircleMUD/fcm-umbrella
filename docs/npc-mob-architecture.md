@@ -48,7 +48,13 @@ BaseActor
     ├── Service NPCs (no CombatMixin — effectively immortal)
     │   ├── TrainerNPC(BaseNPC)
     │   ├── GuildmasterNPC(QuestGiverMixin, BaseNPC)
-    │   ├── ShopkeeperNPC(BaseNPC)
+    │   ├── ShopkeeperNPC(BaseNPC)        ← ABSTRACT: shop_name, inventory, 6 abstract methods
+    │   │   ├── ResourceShopkeeperNPC     ← inventory = list[int] resource IDs; AMMService
+    │   │   │   ├── LLMResourceShopkeeperNPC(LLMRoleplayNPC, ResourceShopkeeperNPC)
+    │   │   │   └── TestResourceDispenser ← TEST ONLY: free
+    │   │   └── NFTShopkeeperNPC          ← inventory = list[str] NFTItemType names; NFTAMMService
+    │   │       ├── LLMNFTShopkeeperNPC(LLMRoleplayNPC, NFTShopkeeperNPC)
+    │   │       └── TestNFTDispenser      ← TEST ONLY: free, and no tracking_token filter
     │   ├── LLMRoleplayNPC(LLMMixin, BaseNPC)
     │   │   ├── BartenderNPC
     │   │   └── QuestGivingShopkeeper
@@ -492,6 +498,27 @@ All NPC intelligence draws from three independent embedding-backed memory system
 | **Combat Memory** | `CombatMemory` | "What do I know about *fighting* you?" | [combat-ai-memory.md](combat-ai-memory.md) |
 
 All three live in the `ai_memory` database (same router, same pgvector/SQLite dual-backend, same HNSW indexing on PostgreSQL). They are queried independently and composed into a unified context at prompt-build time.
+
+---
+
+## Dialogue Delivery — the Absent Speaker
+
+An LLM call takes seconds to return. In that window the player who triggered it can walk out, rent a room, or quit. Whether the NPC should still speak is decided at *delivery* time, not at prompt time — the call is always made, because there is no way to know on arrival whether someone intends to stay.
+
+`LLMMixin._speaker_still_here()` is the single check, consulted by both `_deliver_response()` and `_deliver_fallback()`. It asks one question: is the speaker in the same room as the NPC? Walking out and logging out both fail it, because Evennia's `DefaultCharacter.at_post_unpuppet` stores `prelogout_location` and clears the character's location — a rented or disconnected player leaves no sleeping body behind for the NPC to talk to. Only players are ever absent in this sense; an NPC or mob speaker is by definition wherever it is.
+
+**A departed speaker gets a snub, not silence.** The generated response is discarded and the NPC reacts to the rudeness instead — a room social followed by a spoken line, drawn independently from `_SNUB_SOCIALS` and `_SNUB_COMMENTS` so the two lists combine rather than pair up:
+
+```
+Rowan frowns.
+Rowan says: "Well. Not even a hello."
+```
+
+Both lists are overridable per NPC via the `llm_snub_socials` and `llm_snub_comments` attributes, following the same pattern as `llm_thinking_emote` over `_THINKING_PHRASES`. The socials are drawn from the standard registry in `commands/all_char_cmds/socials_data.py` using their `no_target_room` variants — the departed player is no longer present to target.
+
+**An unspoken response is not a memory.** Both memory writes are gated on the same check: the rolling-list store in `_on_response()` and the vector store inside the `deferToThread` closure. A response the speaker never heard is not part of the NPC's history, and recording one would feed a line that was never said back into the next prompt as context.
+
+**`leave` reactions are exempt.** The `llm_hook_leave` hook exists precisely to call after someone on their way out, so the presence check does not apply to `interaction_type="leave"`.
 
 ---
 
