@@ -55,21 +55,89 @@ TrainerNPC teaches skills and weapons to characters. Configuration per instance:
 
 ## ShopkeeperNPC + AMM Trading
 
-ShopkeeperNPC buys and sells resources with prices driven by live XRPL AMM pools. Configuration per instance:
+`ShopkeeperNPC` is an **abstract base**, not a shop in its own right. It owns the shopkeeper contract — `shop_name`, `inventory`, and six methods subclasses must implement — and nothing else. Two concrete subclasses implement that contract against different backends:
+
+```
+ShopkeeperNPC(BaseNPC)                    abstract: shop_name, inventory, 6 abstract methods
+├── ResourceShopkeeperNPC                 fungible resources, priced by AMMService
+│   ├── LLMResourceShopkeeperNPC          + LLM dialogue (LLMRoleplayNPC first in MRO)
+│   └── TestResourceDispenser             TEST ONLY — free
+└── NFTShopkeeperNPC                      unique NFT items, priced by NFTAMMService
+    ├── LLMNFTShopkeeperNPC               + LLM dialogue
+    └── TestNFTDispenser                  TEST ONLY — free, unfiltered stock
+```
+
+The cmdsets call `self.obj.get_buy_price(...)` / `execute_buy(...)` and never reach into service classes, so they stay ignorant of which backend serves prices. That polymorphism is the reason the split exists.
+
+### Configuration
+
+Both concrete shops take the same two attributes, declared on the base. The element type of `inventory` is what differs:
 
 | Attribute | Type | Purpose |
 |---|---|---|
-| `tradeable_resources` | `list[int]` | Resource IDs this shop trades (e.g. `[1, 2, 3]` for wheat, flour, bread) |
 | `shop_name` | `str` | Display name shown in list/quote output |
+| `inventory` | `list[int]` (resource) | Resource IDs this shop trades, e.g. `[1, 2, 3]` for wheat, flour, bread |
+| `inventory` | `list[str]` (NFT) | `NFTItemType.name` strings, e.g. `["Training Dagger", "Club"]` |
 
-**Commands (injected via ShopkeeperCmdSet):**
-- `list` / `browse` — batch-queries AMM pools for all tradeable resources, shows buy/sell prices per unit
-- `quote buy/sell <amount> <item>` — gets live AMM price, stores pending quote on `caller.ndb.pending_quote`
-- `accept` — executes the pending quote (validates player still in room, still has funds)
-- `buy <amount> <item>` — instant buy at current market price (no quote step)
-- `sell <amount> <item>` / `sell all <item>` — instant sell at current market price
+### Commands
 
-**Pricing:** Constant product formula (x * y = k) with AMM trading fee. Buy prices ceil-rounded, sell prices floor-rounded — all gold amounts are integers. Favorable slippage goes to the game. See **economy.md** for the full AMM trade accounting model.
+Injected by cmdset, one per shop type, both extending a shared base:
+
+| Cmdset | Commands |
+|---|---|
+| `ShopCmdSet` (base) | `list`, `accept` |
+| `ResourceShopCmdSet` | the above, plus `quote`, `buy`, `sell` |
+| `NFTShopCmdSet` | the above, plus `quote`, `buy`, `sell` |
+
+- `list` — names only, **no prices**. Deliberate: pricing every row would fire an AMM query per item on every `list`, so rates are fetched per-quote instead.
+- `quote buy/sell ...` — live AMM price, stored as a pending quote on the caller.
+- `accept` — executes the pending quote, re-validating room and funds first.
+- `buy` / `sell` — direct trade at the current market price, skipping the quote step. Resource grammar takes a quantity (`buy 10 wheat`); NFT grammar does not, because NFTs are singletons and `qty == 1` is asserted at the typeclass boundary.
+
+**Pricing:** constant product (x * y = k) with the AMM trading fee. Buy prices ceil-rounded, sell floor-rounded — all gold is integer, and favourable slippage goes to the game. See **economy.md** for the full accounting model.
+
+### The `tracking_token` requirement (NFT shops)
+
+An `NFTItemType` carries an optional `tracking_token` — the proxy currency code for its AMM pool. `NULL` means not tradeable, and `NFTShopkeeperNPC.list_inventory()` filters those rows out, because an item with no pool cannot be priced.
+
+This is correct for a real shop but has a sharp edge worth knowing before stocking one: **most of the catalogue has no tracking token, and the exclusion is categorical.** Every recipe scroll and every spell scroll is untradeable, as is the majority of crafted gear; what remains priceable is a minority of the catalogue, weighted toward the *Training* weapons. Putting an untradeable name in `inventory` is silent — the item simply never appears in `list`, with no error. If a stocked item doesn't show up, this is why.
+
+To count the current split rather than trust a number written here (the catalogue is seeded partly by migration and partly at runtime, so it moves):
+
+```python
+NFTItemType.objects.count()                                  # whole catalogue
+NFTItemType.objects.exclude(tracking_token__isnull=True).count()   # priceable subset
+```
+
+### Settlement threading
+
+Both concrete shops run the AMM swap in a worker thread via `deferToThread`, then update Evennia state in the reactor callback. That split is required because the swap makes a real XRPL call, while `self.db` writes must stay on the reactor thread. Mirror bookkeeping for NFT ownership is **not** done by the shopkeeper — it rides on `NFTMirrorMixin.at_post_move`, the single point of entry for NFT mirror updates, which fires when `spawn_into` moves the item to its new owner.
+
+### Test dispensers (`test_dispenser.py`) — TEST ONLY
+
+`TestNFTDispenser` and `TestResourceDispenser` are vending machines that hand out stock for free, so a tester can obtain any item or resource without grinding for it. **Never place one in a live zone.**
+
+They are separate typeclasses rather than a `free = True` flag on the ordinary shopkeepers, and that is the whole point of the design: a flag lives on the production class, so one wrong line in a live YAML file would turn a real shop into an open tap into the game economy. A separate typeclass has no such line to get wrong.
+
+Three behavioural changes, everything else inherited:
+
+| Change | Applies to | Detail |
+|---|---|---|
+| Free | both | `get_buy_price` returns 0; settlement skips the AMM swap entirely |
+| Unfiltered stock | NFT only | drops the `tracking_token` filter, so all 391 item types are stockable rather than 87 |
+| No selling back | both | `execute_sell` refuses — at price 0 a sell would destroy the item and pay nothing |
+
+The second matters more than the first. Free pricing alone would still hide every recipe and spell scroll, because they are excluded by tradeability rather than by cost.
+
+**Mirror integrity is unaffected.** The dispensers call the same `assign_to_blank_token` + `spawn_into` pair (or `receive_resource_from_reserve`) that the real shopkeepers call, and ownership mirroring rides on `at_post_move` rather than on the shop. What they skip is `NFTAMMService.buy_item` — the gold swap, which is payment and not possession.
+
+Dispensing runs synchronously on the reactor rather than in a worker thread, unlike the parents. That is safe here because `assign_item_type` and `craft_output` are plain Django transactions against the mirror DB — there is no XRPL round trip to keep off the reactor.
+
+**Containment** is four independent layers: the classes are referenced only from test-world YAML; that YAML exists only on the fcm-world `test` branch; CI on `main` rejects any YAML naming the module; and production builds from `main`. See [world-deployment.md](world-deployment.md) for the branch model.
+
+The CI guard matches the dotted module path `typeclasses.actors.npcs.test_dispenser` rather than the class names, so it keeps working as dispensers are added — which makes the module path load-bearing. **Renaming or moving the module silently disables that guard.**
+
+One operational note: each NFT dispense consumes a blank token from a finite reserve pool. A token returns to the pool — location back to `RESERVE`, item type cleared — when its Evennia object is deleted, via whichever branch of `NFTMirrorMixin.at_object_delete` matches where the item was: `NFTService.craft_input` for an item held by a character, `NFTService.despawn` for one lying in a room. Bulk dispensing without deleting what you dispensed will exhaust the pool, and `assign_to_blank_token` then raises rather than silently failing.
 
 **Moderator commands:**
 - `amm_check` / `amm_check <resource>` — query AMM pool states (reserves, fees). Read-only, no trades
@@ -77,7 +145,7 @@ ShopkeeperNPC buys and sells resources with prices driven by live XRPL AMM pools
 - `sync_reserves` — recalculate RESERVE from on-chain vault state: `RESERVE = on_chain - (SPAWNED + ACCOUNT + CHARACTER + SINK)`. Always run `reconcile` first
 - `sync_nfts` — sync on-chain NFTs with game DB (placeholder → real NFToken IDs)
 
-**Key files:** `typeclasses/actors/npcs/shopkeeper.py`, `commands/npc_cmds/cmdset_shopkeeper.py`, `blockchain/xrpl/services/amm.py`, `blockchain/xrpl/xrpl_amm.py`, `commands/account_cmds/cmd_amm_check.py`, `commands/account_cmds/cmd_reconcile.py`, `blockchain/xrpl/management/commands/test_amm_trades.py`, `tests/xrpl_tests/test_amm_service.py`, `tests/command_tests/test_cmd_shopkeeper.py`
+**Key files:** `typeclasses/actors/npcs/shopkeeper.py` (abstract base), `resource_shopkeeper.py`, `nft_shopkeeper.py`, `test_dispenser.py`, `commands/npc_cmds/cmdset_shop_base.py`, `cmdset_resource_shop.py`, `cmdset_nft_shop.py`, `blockchain/xrpl/services/amm.py`, `blockchain/xrpl/services/nft_amm.py`, `blockchain/xrpl/xrpl_amm.py`, `commands/account_cmds/cmd_amm_check.py`, `commands/account_cmds/cmd_reconcile.py`, `blockchain/xrpl/management/commands/test_amm_trades.py`, `tests/xrpl_tests/test_amm_service.py`, `tests/command_tests/test_cmd_shopkeeper.py`
 
 ---
 
@@ -157,8 +225,11 @@ Additional NPC variants used elsewhere in the world:
 |---|---|
 | `quest_giving_llm_trainer.py` | Trainer + LLM dialogue + quest-giving combo (used by Oakwright-style NPCs) |
 | `llm_guildmaster_npc.py` | LLM-driven variant of GuildmasterNPC for guildmasters that hold real conversations |
-| `llm_shopkeeper_npc.py` | LLM-driven variant of ShopkeeperNPC for shopkeepers that hold real conversations |
+| `llm_resource_shopkeeper.py` | LLM-driven variant of ResourceShopkeeperNPC for shopkeepers that hold real conversations |
+| `llm_nft_shopkeeper.py` | LLM-driven variant of NFTShopkeeperNPC |
+| `resource_shopkeeper.py` | Fungible-resource shopkeeper — the `inventory` atom is an int resource ID |
 | `nft_shopkeeper.py` | NFT-trading shopkeeper (sells/buys NFT items rather than fungible resources) |
+| `test_dispenser.py` | **Test-only** free vending machines — see the test dispenser section above |
 | `llm_roleplay_npc.py` | Base class for non-combat LLM dialogue NPCs |
 
 All quest-giving NPCs share the `QuestGiverMixin` machinery (quest command, completion hook, account cap check) so adding a new quest-NPC is a matter of subclassing the closest existing variant and pointing `quest_key` at the new quest.
