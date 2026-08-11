@@ -11,7 +11,7 @@ Each combatant gets their own `CombatHandler` (Evennia Script) rather than a sin
 **Why per-combatant?**
 - "In combat" = has a `combat_handler` script. No script = bystander. Simple boolean check.
 - Each combatant has their own action queue, their own ticker, their own advantage/disadvantage state.
-- Combat ends naturally: when `get_sides()` finds no enemies, each ally's handler cleans itself up.
+- Combat ends naturally: when no attackable enemy remains, each ally's handler cleans itself up.
 - Evennia persists scripts automatically — handlers survive `evennia restart`.
 - Scales trivially from 1v1 to group combat — just more handlers.
 
@@ -534,6 +534,15 @@ Sides are assigned **dynamically at combat entry time** based on who attacked wh
 
 **Key functions** (`combat/combat_utils.py`):
 - `get_sides(combatant)` → `(allies, enemies)` — reads `combat_side` from each handler in the room.
+
+> **Callers must validate location before acting on a result.** `get_sides()` walks
+> `room.contents`, which Evennia serves from an in-memory cache keyed by primary key
+> (`ContentsHandler`). The cache can list an object whose `.location` has since moved
+> elsewhere, so a returned "enemy" is not guaranteed to be in the room. Anything that
+> selects a target from `get_sides()` re-checks `enemy.location == self.obj.location`
+> and `hp > 0` before committing to it.
+> `[TBD — needs discussion: what corrupts the contents cache. Observed in play; cause
+> not yet established. Containment is per-caller validation.]`
 - `_get_combat_side(obj)` → int — reads side from an object's handler (0 if none).
 - `_determine_side_from_group(actor, room)` → int — checks if any group member is already in combat, returns their side.
 - `_opposite_side(side)` → int — returns the other side (1↔2).
@@ -646,6 +655,21 @@ Every combat tick in `execute_next_action()`, before attack resolution:
 ### Non-Repeating Retarget
 
 After a non-repeating action completes, the auto-retarget code also prefers height-reachable targets (uses `can_reach_target()` filter before falling back to first available enemy).
+
+### Repeating-Attack Retarget
+
+When a repeating attack's target is no longer attackable — gone, dead, or in another
+room — the handler picks the first enemy from `get_sides()` that is alive and in the
+same room, and announces "You turn to attack X!". If no candidate satisfies both, combat
+stops immediately.
+
+Filtering the candidate on the same conditions as the attack itself is what guarantees
+the tick makes progress: the next tick either attacks the new target or ends combat.
+Selecting an unattackable candidate would fail the same check again on every subsequent
+tick, with no exit from the branch. See the `get_sides()` caveat above for why an
+unattackable candidate can be returned at all.
+
+Covered by `tests/command_tests/test_combat_retarget_guard.py`.
 
 ### Flee Height Advantage
 

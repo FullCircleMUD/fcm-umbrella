@@ -178,6 +178,22 @@ Single-pass sibling of `walk_contents`. Objects passing all predicates are class
 
 Primary consumer: `combat.combat_utils.get_sides` (partitions living combatants into allies/enemies). Also used by the priority-bucketed actor resolvers and designed for future AI threat bucketing.
 
+#### `source.contents` is a cache, not a query
+
+Both helpers walk `source.contents`, which Evennia serves from an in-memory cache of
+primary keys (`ContentsHandler`), resolved through the idmapper. It is not read from the
+database, and `get()` does not verify that a cached object's `.location` still points at
+that source. An object whose location has moved on can therefore still be returned — it
+will appear in the room's contents while reporting a different `.location`.
+
+This affects every scope in the table below, since they all resolve from `room.contents`.
+Combat hardened its own path: the repeating-attack retarget re-checks
+`enemy.location == self.obj.location` before committing to a target (see
+[combat-system.md](combat-system.md) § Repeating-Attack Retarget).
+
+`[TBD — needs discussion: what corrupts the cache, and whether other resolvers/scopes
+should validate location the way combat now does. Observed in play; cause not established.]`
+
 ### Direction parser
 
 [`utils/direction_parser.py`](../src/game/utils/direction_parser.py) — `parse_direction(text)` splits player input into `(name, direction)` by checking each word against `ExitVerticalAware.DIRECTION_ALIASES`:
