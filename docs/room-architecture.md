@@ -194,45 +194,71 @@ RoomBase has a `vert_descriptions` stub (currently unused) for per-height-level 
 
 ## Visibility Filtering
 
+Two rules govern everything in this section.
+
+**Cause-agnostic perception.** What a recipient receives depends on **whether** they can see the
+sender, never on **why** they can't. HIDDEN and INVISIBLE produce identical observer experience, and
+a future concealment cause inherits the behaviour without touching these methods.
+
+**Perceptibility, not contact.** When deciding whether an unseeing observer should receive anything
+at all, the question is: does the action produce a sound, move an object, or make contact obvious
+enough to notice? A bow disturbs nothing, so nobody unseeing perceives it. A slap makes a noise, so
+they do — anonymised. A poke is too subtle to count. Purely visual actions use `msg_contents`, which
+drops non-seers entirely; perceptible ones use `msg_contents_with_invis_alt`.
+
 ### msg_contents Override
 
-`RoomBase.msg_contents()` filters broadcast messages based on the sender's visibility:
+`RoomBase.msg_contents()` asks `p_actor_visible_to(from_obj, recipient)` once per recipient and
+excludes anyone who fails. Note the operand order — the sender is the thing seen, the recipient is
+the observer; targeting calls the same predicate the other way round.
 
-- **HIDDEN sender:** Message suppressed for all recipients except those with true sight or holy sight (MASTER+)
-- **INVISIBLE sender:** Message suppressed for recipients without DETECT_INVIS
+The predicate is the single source of the rules, so this method does not restate them. See
+[unified-search-system.md](unified-search-system.md) § Predicate library: HIDDEN is pierced only by
+`true_sight`, INVISIBLE only by `DETECT_INVIS`, and a sender under both requires both counters.
 
-`from_obj=caller` is **required** on all `msg_contents` calls for filtering to work. Without it, messages bypass filtering entirely.
+`from_obj=caller` is **required** on all `msg_contents` calls for filtering to work. Without it,
+messages bypass filtering entirely.
 
 ### msg_contents_with_invis_alt
 
-For actions where invisible actors produce observable side-effects (tools moving, crafting sounds):
+For actions that remain perceptible even when the actor isn't — crafting sounds, tools moving, a
+laugh from an unseen speaker. Recipients who can see the actor get `normal_msg`; those who can't get
+`invis_msg`.
 
 ```python
 room.msg_contents_with_invis_alt(
-    "Bob begins crafting.",              # DETECT_INVIS recipients see this
-    "Tools seem to move on their own.",  # everyone else sees this
+    "Bob begins crafting.",              # recipients who can see Bob
+    "Tools seem to move on their own.",  # everyone else
     from_obj=caller,
 )
 ```
 
-### Name Redaction for Blind/Dark-Sighted Lookers
+Both messages go through Evennia's funcparser, so `$You()` / `$conj()` work in either. That enables
+a second pattern: **pass the same template as both arguments** and let `get_display_name` do the
+anonymising. `"$You() $conj(slap) {target}."` then renders as "Bob slaps Fred" for those who can see
+him and "Someone slaps Fred" for those who can't — correct conjugation, no separately authored
+string. `cmd_social` uses this for non-silent socials.
 
-`utils.visibility.looker_is_blind(looker)` is True when either:
-- the looker's current location is dark for them (no light, no DARKVISION), or
-- the looker has the BLINDED condition (independent of room lighting)
+`mapping=` is forwarded, so any name in the template resolves per recipient.
 
-`RoomBase.get_display_name()` and `BaseActor.get_display_name()` (the common
-parent of characters, mobs, and NPCs) check this and redact to "Somewhere" /
-"Someone" respectively when true. This does NOT wrap every message — it only
-fires for messages built through Evennia's `mapping` substitution, which calls
-`mapping[key].get_display_name(looker=recipient)` per recipient (e.g. the
-default movement broadcast "`{object}` is leaving `{origin}`, heading for
-`{destination}`."). Without this, a blind character standing in a pitch-black
-room would still learn the real room/character names from broadcasts around
-them, even though `look` correctly shows them "Unknown". Message text built
-directly from `.key`/`.name`/an f-string bypasses `get_display_name()` and
-this redaction entirely — those call sites need their own `is_dark()` /
-`looker_is_blind()` check if they reveal a name to a bystander.
+### Name Redaction
+
+`BaseActor.get_display_name()` (the common parent of characters, mobs, and NPCs) and
+`RoomBase.get_display_name()` redact to "Someone" / "Somewhere" when the looker cannot see. Two
+independent reasons, same outcome:
+
+- **The looker can't see anything** — `utils.visibility.looker_is_blind(looker)` is True when their
+  location is dark for them (no light, no DARKVISION) or they hold the BLINDED condition.
+- **The looker can't see that actor** — `p_actor_visible_to` fails, i.e. the actor is HIDDEN or
+  INVISIBLE without the matching counter. Self is exempt: you always know your own name.
+
+This does NOT wrap every message. It fires for messages built through Evennia's `mapping`
+substitution, which calls `mapping[key].get_display_name(looker=recipient)` per recipient, and for
+funcparser actor-stance strings, where `$You()` resolves through the same method.
+
+**Never format a name into a broadcast string yourself.** Text built from `.key` / `.name` / an
+f-string bypasses `get_display_name()` and leaks the name to every recipient off one observer's
+view. Pass the object via `mapping=` instead and let each recipient resolve it.
 
 ## Specialised Room Types
 
@@ -379,6 +405,7 @@ Rooms are classified as `"WORLD"` for blockchain service dispatch — fungible o
 2. **CmdSets are injected once** in `at_object_creation()` with `persistent=True`. They survive server restarts.
 3. **Override display hooks, not return_appearance** — customize rooms by overriding `get_display_header/footer/desc`, not by rewriting the assembly logic.
 4. **`from_obj=caller` is mandatory** on all `msg_contents` calls for HIDDEN/INVISIBLE filtering to work.
+4a. **Never format a name into a broadcast string.** Pass the object via `mapping=` so each recipient resolves it through `get_display_name()`. An f-string leaks a concealed name to the whole room off one observer's view.
 5. **Terrain drives defaults** — set terrain once, lighting and weather exposure derive automatically. Only override `natural_light`, `always_lit`, `sheltered`, or `subterranean` when the default derivation is wrong (or when the room has no terrain tag and shouldn't fall through to the "no terrain = exposed, lit by sun" defaults).
 6. **Quest tags are lists** — a room can trigger multiple quests on entry.
 7. **Safe zones** set `allow_combat=False, allow_pvp=False, allow_death=False` — this is the standard pattern for banks, inns, temples, etc.

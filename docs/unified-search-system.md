@@ -119,9 +119,10 @@ Each predicate is a pure `(obj, caller) -> bool` function, 3–8 lines long, wit
 | `p_not_actor` | `not isinstance(obj, DefaultCharacter)` — excludes all actors (PCs, NPCs, mobs, pets, mounts). Vocabulary: "actor" = any DefaultCharacter subclass. |
 | `p_is_character` | `isinstance(obj, FCMCharacter)` — matches player characters only, not NPCs/mobs/pets. |
 | `p_not_exit` | `not isinstance(obj, DefaultExit)` — excludes exits from item candidates. |
-| `p_visible_to` | **Stealth gate.** Delegates to `obj.is_hidden_visible_to(caller)` when the `HiddenObjectMixin` method exists; returns True otherwise. |
+| `p_object_visible_to` | **Object concealment gate.** Delegates to both object mixins — `obj.is_hidden_visible_to(caller)` (`HiddenObjectMixin`) and `obj.is_invis_visible_to(caller)` (`InvisibleObjectMixin`). An object must clear both. Objects composing neither pass through. |
+| `p_actor_visible_to` | **Actor concealment gate.** Two composing condition gates: `HIDDEN` is pierced only by the `true_sight` effect, `INVISIBLE` only by the `DETECT_INVIS` condition. An actor under both requires both counters. Non-actors pass through. |
 | `p_height_visible_to` | **Spatial gate.** Delegates to `obj.is_height_visible_to(caller)` — checks the room's visibility barriers against the object's size. Objects small enough to be concealed by a barrier between observer and object are hidden. Same-height objects are always visible. |
-| `p_can_see` | **Composite gate.** `p_visible_to AND p_height_visible_to`. Use for display/perception paths (look, scan) where "can the player see this?" is the whole question. Extensible — future visibility gates (ethereal, fog-of-war) get added here and propagate to all consumers. |
+| `p_can_see` | **Composite gate.** `p_object_visible_to AND p_height_visible_to AND p_actor_visible_to`. Use for display/perception paths (look, scan) where "can the observer see this?" is the whole question. Extensible — future visibility gates (ethereal, fog-of-war) get added here and propagate to all consumers. |
 | `p_living` | `hp > 0` — excludes items (hp=None), corpses (hp=0), dead mobs. Defensive on type. |
 | `p_in_combat` | Has a `combat_handler` script attached. Combat-specific runtime-state filter. |
 | `p_is_container` | `getattr(obj, "is_container", False)` — matches `ContainerMixin`. Corpses are NOT containers. |
@@ -137,11 +138,27 @@ Each predicate is a pure `(obj, caller) -> bool` function, 3–8 lines long, wit
 
 **Visibility predicate family:**
 
-The three visibility predicates serve different roles:
+Three single-axis gates and one composite. Each axis predicate names the subject or dimension it
+gates on; `p_can_see` is the assembled answer and is what most consumers should reach for.
 
-- `p_visible_to` — stealth only. Used in targeting resolvers where height is handled separately by range predicates (`p_same_height`, `p_different_height`).
-- `p_height_visible_to` — spatial only. Used by room display methods that have their own stealth logic.
-- `p_can_see` — composite of both. Used for display/perception paths (look, scan, climb, search) and as an `extra_predicates` entry in command-layer calls where "can the player perceive this?" is the whole question.
+- `p_object_visible_to` — object concealment only (the two object mixins). Used in targeting
+  resolvers where height is handled separately by range predicates (`p_same_height`,
+  `p_different_height`).
+- `p_actor_visible_to` — actor conditions only (`HIDDEN` / `INVISIBLE`). Also used directly by
+  `RoomBase.msg_contents` and `msg_contents_with_invis_alt`, which ask it per recipient with the
+  operands in messaging order: the sender is the thing seen, the recipient is the observer.
+- `p_height_visible_to` — spatial only.
+- `p_can_see` — composite of all three. Used for display and perception paths (look, scan, climb,
+  search) and as an `extra_predicates` entry in command-layer calls where "can the observer
+  perceive this?" is the whole question.
+
+The two concealment systems are independent: an actor can be `HIDDEN` by condition while a chest is
+hidden by mixin. Their counters are independent too — `true_sight` pierces physical concealment and
+`DETECT_INVIS` pierces invisibility, and neither covers the other.
+
+**Prefer `p_can_see`.** A single-axis predicate is correct only where another mechanism already
+covers the remaining axes — for example a resolver that applies its own height predicate. Reaching
+for `p_object_visible_to` by default silently skips actor concealment.
 
 Each predicate has a docstring explaining what Evennia handles natively instead. [predicates.py](../src/game/utils/targeting/predicates.py) opens with a detailed comment block listing the dozen-plus filters a developer should implement with a native Evennia kwarg instead of adding a predicate.
 
@@ -376,7 +393,9 @@ All four accept `extra_predicates=()` for caller-supplied filters.
 
 The `self` bucket is intentionally last-priority for hostile and first-priority for friendly. The `_is_self_keyword` helper intercepts `"me"` / `"self"` keywords at the top of each resolver to bypass an Evennia direct-match quirk.
 
-**These resolvers still have baked-in `p_visible_to`** — the stealth predicate is in their `bucket_contents` call, not supplied by the caller. This is a known inconsistency with the "no baked-in predicates" principle. Refactoring to caller-supplied visibility is pending.
+**These resolvers still have baked-in `p_object_visible_to`** — the object-concealment predicate is in their `bucket_contents` call, not supplied by the caller. This is a known inconsistency with the "no baked-in predicates" principle. Refactoring to caller-supplied visibility is pending.
+
+It also has a behavioural consequence worth noting: `p_object_visible_to` gates objects, not actors, so **actor concealment is unchecked during resolution** unless the calling command adds `p_can_see` itself. `[TBD — needs discussion: should the actor resolvers default to `p_can_see`?]`
 
 ## AoE Secondaries System
 
@@ -419,11 +438,11 @@ These helpers predate the building block architecture and are still used by some
 
 | Helper | Used by | Notes |
 |---|---|---|
-| `resolve_item_in_source` | `cmd_get` (some paths) | Pre-filters with `p_not_actor, p_not_exit, p_visible_to`. Source-agnostic. |
+| `resolve_item_in_source` | `cmd_get` (some paths) | Pre-filters with `p_not_actor, p_not_exit, p_object_visible_to`. Source-agnostic. |
 | `resolve_container` | `cmd_get`, `cmd_put` | Inventory-first, room-fallback container lookup with `p_is_container`. |
 | `resolve_character_in_room` | `cmd_give` | PC-only lookup via `p_is_character`. |
 | `_resolve_world_item` | Internal | Delegates to `find_exit_target` for directional parsing. |
-| `_resolve_all_room` | Internal | Room contents walk for `p_not_actor, p_visible_to`. |
+| `_resolve_all_room` | Internal | Room contents walk for `p_not_actor, p_object_visible_to`. |
 
 These will be retired as remaining consumers migrate to building blocks.
 
@@ -512,7 +531,7 @@ Every command migration runs the command's existing test suite as the regression
 
 NFT pickup by integer ID is a different shape from keyword search — no string matching, no disambiguation. Currently inline in `cmd_get`.
 
-**Open question**: should visibility filtering apply? Currently `_get_by_token_id` does NOT check hidden-mixin visibility — if you know the id you can get it. Adding `p_visible_to` would be a behaviour change.
+**Open question**: should visibility filtering apply? Currently `_get_by_token_id` does NOT check hidden-mixin visibility — if you know the id you can get it. Adding `p_object_visible_to` would be a behaviour change.
 
 **Revisit when**: the visibility question is answered or a third exact-id call site appears.
 
@@ -526,7 +545,7 @@ Corpses are NOT containers — they use `FungibleInventoryMixin` and their own `
 
 ### Actor resolver refactor
 
-`resolve_attack_target_in/out_of_combat` still have baked-in `p_visible_to` in their `bucket_contents` calls. This should be moved to `extra_predicates` for consistency with the "no baked-in predicates" principle.
+`resolve_attack_target_in/out_of_combat` still have baked-in `p_object_visible_to` in their `bucket_contents` calls. This should be moved to `extra_predicates` for consistency with the "no baked-in predicates" principle — and the baked-in axis is the object one, so actor concealment is not checked during resolution today.
 
 ### Old helper retirement
 

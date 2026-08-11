@@ -28,6 +28,11 @@ Foundation class for all permanent world objects.
 - `InvisibleObjectMixin` — `is_invisible`, requires DETECT_INVIS to see
 - `is_visible_to(character)` — combined visibility check
 
+Both object concealment mixins are also honoured by `p_object_visible_to`, so an object flagged
+`is_hidden` or `is_invisible` is filtered out of targeting as well as room display — a fixture you
+can't see can't be `get`, `open`, `unlock`, or cast at either. See
+[unified-search-system.md](unified-search-system.md) § Predicate library.
+
 ### WorldSign (`typeclasses/world_objects/sign.py`)
 
 Read-only ASCII art sign. `sign_text`, `sign_style` (post/hanging/wall/stone). Display rendered via `return_appearance()`.

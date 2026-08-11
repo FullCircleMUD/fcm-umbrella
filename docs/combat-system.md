@@ -565,6 +565,16 @@ Hide command (`commands/all_char_cmds/cmd_hide.py`) — available to ALL charact
 
 **Restrictions:** Cannot hide in combat (`scripts.get("combat_handler")`). Aggressive/noisy actions (attacking, speaking) break hide.
 
+Three rules govern when concealment is lost. They apply to any command, not only the ones listed here.
+
+**1. Interacting with the room breaks hide.** Socials engage the people around you, which is incompatible with hiding from them — so any social breaks HIDDEN regardless of whether anyone perceived it (`CmdSocialBase._break_hiding`). Purely observational commands (`case`) do not.
+
+**2. Only your own actions break your concealment.** Nothing another character does *to* you can reveal you — otherwise any targeted command becomes a free reveal and `search`, the contested roll that is meant to be the counterplay, is bypassed. Being attacked does not reveal you; fighting back does. Check any new targeted command against this.
+
+**3. Break only on commitment.** A concealment-breaking action fires only once the action is certain to happen — after target resolution succeeds, not before. A mistyped or unresolvable target must not cost the actor their concealment. This rules out doing the check in `at_pre_cmd` or at the top of a command's `func()`.
+
+**Invisibility is not hiding.** INVISIBLE is magical and does not depend on staying out of sight, so it survives socials, contact, and movement — an invisible character can shake a hand and stay invisible. It breaks only on offensive action (`cmd_attack`, `combat_utils.execute_attack`).
+
 ### Stash Command (Object Concealment)
 
 Stash command (`commands/class_skill_cmdsets/class_skill_cmds/cmd_stash.py`) — STEALTH class skill (thief, ninja, bard). Two branches:
@@ -581,7 +591,7 @@ Stash command (`commands/class_skill_cmdsets/class_skill_cmds/cmd_stash.py`) —
 - `WorldItem` — non-NFT takeables (keys, novelty items)
 - `WorldFixture` — immovable world objects (signs, chests) — had the mixin originally
 
-All default to `is_hidden=False`. Room display filtering (`get_display_things()`) already handles `is_visible_to()`.
+All default to `is_hidden=False`. Room display filtering (`get_display_things()`) and targeting both route through `p_can_see`, so a hidden or invisible object is filtered from display and from command targeting alike.
 
 ### Case & Pickpocket (SUBTERFUGE Skill)
 

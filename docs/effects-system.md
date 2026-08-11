@@ -99,6 +99,31 @@ target.break_effect(NamedEffect.SANCTUARY)  # or break_sanctuary() alias
 
 **Use `apply_named_effect()` directly only when:** no convenience method exists (e.g. data-driven potions where effect key, stat bonuses, and condition come from item data baked at craft time).
 
+### Concealment and its counters
+
+Two independent concealment axes, each pierced by its own counter and **only** its own counter:
+
+| Concealment | Nature | Pierced by |
+|---|---|---|
+| `Condition.HIDDEN` | physical — behind cover, in shadow | the `true_sight` named effect |
+| `Condition.INVISIBLE` | magical | the `Condition.DETECT_INVIS` condition |
+
+The counters do not overlap, and holding one does not excuse the other axis. An actor who is both
+HIDDEN and INVISIBLE is visible only to an observer holding **both**. This is why
+`apply_true_sight()` takes an explicit `detect_invis` flag — the True Sight spell passes `False`,
+and its own mechanics text says it "does NOT ... see invisible entities". The detection potion is
+the reverse: it grants `DETECT_INVIS` and does not pierce physical concealment.
+
+`utils.targeting.predicates.p_actor_visible_to` is the single implementation of these rules. Never
+re-derive them at a call site — every consumer (room display, broadcast filtering, targeting,
+name redaction) routes through that predicate so the rules stay in one place. See
+[unified-search-system.md](unified-search-system.md) § Predicate library.
+
+**What breaks them differs too.** INVISIBLE breaks on offensive action (attack, offensive cast) and
+survives everything else — it does not depend on staying out of sight, so contact, socials and
+movement leave it intact. HIDDEN is physical, so it breaks on any interaction with the room. See
+[combat-system.md](combat-system.md) § Stealth & HIDDEN Condition.
+
 **Anti-stacking rule of thumb:** Effects with stat bonuses (AC, damage, etc.) MUST anti-stack — double Shield = double AC is broken. Effects that only set a boolean condition flag (INVISIBLE, DETECT_INVIS) with no stat impact do NOT need anti-stacking — conditions are ref-counted, so multiple sources just increment the count. `has_condition()` is a boolean gate (count > 0), so ref count 1 and ref count 50 behave identically. Multiple sources = safe redundancy. When the condition needs to be broken (e.g. attacking breaks invisibility), zero the entire ref count rather than decrementing.
 
 - `has_effect(key)` → `bool` check if a named effect is active
