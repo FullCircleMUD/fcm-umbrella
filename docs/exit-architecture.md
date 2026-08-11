@@ -69,7 +69,22 @@ The standard exit for the game world. Provides two systems:
 - Encumbrance: blocks flying/swimming while overloaded (falling, sinking)
 - Height: blocks movement if character is too high for destination room
 - Depth: blocks movement if character is too deep for destination room
-- All checks run before `super().at_traverse()` — failed checks cancel movement silently
+- All checks run before the move — a failed check cancels movement and returns early
+
+**Performs the move:** `at_traverse()` calls `move_to()` itself rather than delegating to
+`DefaultExit`, which hardcodes `move_type="traverse"` and discards `**kwargs`. Callers moving an
+actor for a reason of their own — fleeing, retreating, a mob wandering — need their `move_type` and
+their movement wording to reach `move_to()`, because `move_type` gates the in-combat block, movement
+point cost and the mount/pet size rules in `Character.at_pre_move`. See
+[Moving actors through exits](#moving-actors-through-exits).
+
+Returns `True` when the move happened. Callers test truthiness: a gate above this one — a closed
+door, wrong height — returns `None`, which is falsy too.
+
+**Arrival height and falling are conditional on the move landing.** `arrival_heights` is applied
+before `move_to()` because the destination room's display reads it on arrival, so the previous
+height is saved and restored if the move is refused; otherwise a character refused entry would be
+left airborne in the room they never left. The fall check runs only when the move succeeded.
 
 **Size gating:**
 - `max_size` AttributeProperty — largest actor size that can pass. Defaults to `Size.GARGANTUAN.value` (unrestricted). Set to a smaller `Size.X.value` to restrict passage (e.g. `Size.TINY.value` for a mousehole, `Size.SMALL.value` for a halfling tunnel).
@@ -275,6 +290,65 @@ Exit-specific mixins:
 | TrapMixin | `is_trapped`, `trigger_trap()`, `disarm_trap()` | TrapDoor, TripwireExit |
 | ProceduralDungeonMixin | `enter_dungeon()` | ProceduralDungeonExit, ConditionalDungeonExit |
 
+## Moving actors through exits
+
+**Actors move through exits by calling `at_traverse()` on the exit. `move_to()` is not how actors
+move around the game.**
+
+This applies to every actor — players, mobs, pets, familiars, mounts — and to every reason for
+moving: walking, fleeing, retreating, wandering, being driven off. It does not apply to objects.
+Items moving between inventories, containers and rooms (`get`, `drop`, `give`, `put`, banking) go
+through `move_to()`, because no exit is involved and none of the gating below is meaningful for a
+sword.
+
+### Why
+
+`move_to()` relocates an object. It does not know an exit exists, so it cannot ask the exit whether
+passage is allowed. Everything an exit gates lives in `at_traverse()`:
+
+| Gate | Where it lives |
+|---|---|
+| Door open / closed / locked | `ExitDoor.at_traverse` |
+| Door hidden or invisible to the traverser | `ExitDoor.at_traverse` |
+| Encumbrance (too loaded to fly or swim) | `ExitVerticalAware.at_traverse` |
+| Height and depth compatibility with the destination | `ExitVerticalAware.at_traverse` |
+| Size gating (`max_size`) | `ExitVerticalAware.at_traverse` |
+| Arrival height adaptation and fall warnings | `ExitVerticalAware.at_traverse` |
+| Tripwires and trap doors | `TrapMixin` via `at_traverse` |
+| Dungeon instance creation, tag cleanup, conditional routing | the dungeon exit classes |
+
+A caller that reaches `move_to()` directly silently skips all of it. The character walks through the
+closed door, arrives at an impossible height, and never sets off the tripwire — with no error,
+because nothing was asked. This is a whole class of bug that does not announce itself, and it is why
+the rule is structural rather than advisory.
+
+`at_traverse()` forwards `move_type` and `**kwargs` through to `move_to()`, so nothing is lost by
+routing through it: a caller keeps its `move_type` and its movement wording.
+
+### The exception, and what it costs
+
+A direct `move_to()` on an actor is permitted only when **all** of the following hold:
+
+1. `at_traverse()` was tried first and genuinely cannot work for this case.
+2. A human has discussed it and agreed to the exception for that specific callsite.
+3. Every check from the table above that applies has been reproduced at the callsite.
+4. A comment at the callsite states plainly why `at_traverse()` could not be used, and which
+   checks are reproduced where.
+
+Absent that evidence, a direct `move_to()` on an actor is a defect, not a style choice.
+
+**Teleports are not an exception** — they are a different thing. A teleport has no exit and crosses
+no threshold, so there is nothing to gate; `move_type="teleport"` is the honest description and
+`move_to()` is correct. Recall, purgatory, dungeon entry, sailing and tutorial transitions are all
+teleports in this sense. The distinction is whether the actor passes *through an exit*. If there is
+an exit object involved, use it.
+
+### Followers
+
+The follower cascade is a known bypass: when a leader moves, followers are relocated by
+`at_post_move` hooks rather than by re-traversing the exit. Any cleanup or gating that must apply to
+followers has to be done explicitly at the leader's traverse — see rule 7 below.
+
 ## Key Implementation Rules
 
 1. **All exits MUST be authored in YAML** (`exits:` blocks on rooms in fcm-world). Runtime exit creation (procedural dungeons, conditional rebinds) MUST go through `utils/exit_helpers.py`. Never use bare `create_object()` for exits. If a new exit type isn't covered by an existing helper, create the helper first, then use it.
@@ -282,9 +356,10 @@ Exit-specific mixins:
 3. **Doors must be created in pairs** — the Loader handles this when authoring in YAML; runtime callers use `connect_bidirectional_door_exit()`. Unpaired doors will desync.
 4. **Use `set_direction()`, not manual alias adds** — it handles both the attribute and aliases atomically.
 5. **Distinct `door_name` values** when multiple doors exist in one room — prevents `open door` from matching the wrong one.
-6. **at_traverse super() chain** — each exit class checks its own conditions then calls `super().at_traverse()`. Breaking the chain skips downstream checks (e.g. skipping ExitVerticalAware's height checks). Dungeon entry exits (`ProceduralDungeonExit`) intentionally skip super since they handle movement internally.
+6. **at_traverse super() chain** — each exit class checks its own conditions then calls `super().at_traverse()`. Breaking the chain skips downstream checks (e.g. skipping ExitVerticalAware's height checks). `ExitVerticalAware` is the end of the chain: it performs the move itself rather than delegating to `DefaultExit`, so it must not call super. Dungeon entry exits (`ProceduralDungeonExit`) intentionally skip super since they handle movement internally.
 7. **Follower cascade bypasses exit at_traverse** — when a leader moves, followers are moved by `at_post_move` hooks, not by re-traversing the exit. Any cleanup that must happen for followers (e.g. dungeon tag removal) must be done explicitly in the leader's exit traverse.
 8. **ProceduralDungeonMixin is a capability, not an exit type** — it provides `enter_dungeon()` but never overrides `at_traverse`. The host class decides when to call it. This allows dungeon entry to compose with any exit behavior.
+9. **Actors move via `at_traverse()`, never `move_to()`** — see [Moving actors through exits](#moving-actors-through-exits). A direct `move_to()` on an actor skips every door, height, size, encumbrance and trap check, silently. Objects (inventory transfers) and teleports are outside this rule.
 
 ## Test Coverage
 

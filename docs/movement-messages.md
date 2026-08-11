@@ -38,8 +38,8 @@ Wording can come from either of two sources, and the split between them follows 
   common path there is nothing there to pass wording in with. The seam reads the mover's state
   instead.
 - **A command's own intent comes from the command**, passed in as text. Fleeing, panicking, being
-  dragged out by a collapse — these belong to the caller, and the callers that have them are exactly
-  the ones already invoking `move_to()` directly. See Caller-supplied wording below.
+  dragged out by a collapse — these belong to the caller, and it passes them as kwargs when it calls
+  `at_traverse()`. See Caller-supplied wording below.
 
 Those two are the whole system. There is no third mechanism, and in particular no flag that selects
 between stored messages: a caller in a position to set such a flag is equally able to pass the text
@@ -111,18 +111,29 @@ table — that is the caller's to say, and the caller can say it directly.
 
 ## Caller-supplied wording
 
-A caller that invokes `move_to()` directly can pass its own lines through the seam rather than around
-it, via `msg_from` and `msg_to`. Both ride `move_to()`'s `**kwargs` to the announce pair, so a single
-call can give each side different text — Evennia's own `msg=` cannot, since it applies to both.
+> **Moving an actor? Read
+> [exit-architecture.md § Moving actors through exits](exit-architecture.md#moving-actors-through-exits)
+> first.** Actors move through exits by calling `at_traverse()` on the exit, not `move_to()` — a
+> direct `move_to()` silently skips every door, height, size, encumbrance and trap check. The
+> wording channel below is the same either way: `at_traverse()` forwards `move_type` and `**kwargs`
+> straight through, so nothing here is lost by going via the exit. `move_to()` remains correct for
+> objects and for teleports.
+
+A caller can pass its own lines through the seam rather than around it, via `msg_from` and `msg_to`.
+Both ride `**kwargs` to the announce pair, so a single call can give each side different text —
+Evennia's own `msg=` cannot, since it applies to both.
 
 ```python
-caller.move_to(
-    destination,
-    exit_obj=chosen,
+chosen.at_traverse(
+    caller,
+    chosen.destination,
+    move_type="flee",
     msg_from="{name} panics and flees {direction} for no apparent reason!",
     msg_to="{name} arrives {direction}, in a panic.",
 )
 ```
+
+The exit passes itself as `exit_obj`, which is what `{direction}` is resolved from.
 
 **An override is a template, not a finished string.** `{name}` is bound to the mover as an *object*,
 so it resolves per recipient through `get_display_name()` — which is what redacts it to "Someone" for
@@ -225,8 +236,8 @@ per room, and the follower-facing side to one line per move, with nothing duplic
 
 Flee is the worked example of caller-supplied wording, and of the shared-constant pattern.
 
-Every flee calls `move_to()` directly, so every flee can say what it means. Combat flee and the
-out-of-combat panic run pass different text; nothing about the move is inferred:
+Every flee passes its wording through `at_traverse()`, so every flee can say what it means. Combat
+flee and the out-of-combat panic run pass different text; nothing about the move is inferred:
 
 ```
 combat    source room       Fred flees north!
@@ -242,10 +253,9 @@ spelling the wording out. One definition, two callers, nothing in between.
 
 Two fixes come along with the migration. The destination room currently hears nothing at all when
 someone flees into it — `cmd_flee` writes a departure line only — so routing through the seam gives
-the arrival side for free. And `cmd_flee` must pass `exit_obj` alongside its text: it currently
-derives direction from `chosen.key`, which is the exit's *name*, so the message reads "You flee Old
-Trade Way West!" instead of naming a direction. Passing the exit lets `{direction}` come from the
-same logic every other move uses.
+the arrival side for free. And `{direction}` resolves correctly without the caller doing anything:
+`at_traverse()` passes the exit as `exit_obj` itself, where a caller deriving direction from
+`chosen.key` gets the exit's *name* and a message reading "You flee Old Trade Way West!".
 
 The private message to the fleeing character (`"You flee north!"` / `"You panic and flee north!"`)
 is untouched by any of this — `announce_move_from`/`announce_move_to` exclude the mover and never

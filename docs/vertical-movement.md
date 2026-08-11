@@ -15,6 +15,8 @@ Rooms define vertical bounds:
 
 `ExitVerticalAware.at_traverse()` blocks movement when the character's height exceeds the destination room's bounds. Characters retain their vertical position when moving between rooms.
 
+These checks only run for actors that move by calling `at_traverse()` on the exit. A direct `move_to()` skips them entirely — see [exit-architecture.md](exit-architecture.md#moving-actors-through-exits) § Moving actors through exits, which makes `at_traverse()` the required path for moving actors.
+
 **Commands:** `fly up`/`fly down` (requires FLY condition), `swim up`/`swim down`, `climb up/down <target>` (requires ClimbableMixin fixture in room).
 
 **Consequences:** Losing FLY while airborne triggers fall damage (10 HP per height level) — UNLESS a ClimbableMixin fixture in the room supports the character's current height, in which case the character grabs on and slides safely to ground (no damage). Water cushions falls — rooms with `max_depth < 0` absorb the first 20 HP of fall damage (`WATER_FALL_ABSORB`), so a 1-2 level fall into water is harmless (splash message) while high falls still hurt (e.g. height 5 into water = 30 damage instead of 50). Underwater without WATER_BREATHING starts a breath timer (CON-based duration: `20 + CON_mod × 5` seconds, min 10s) that leads to drowning (~5% max HP per tick). Breath timer starts on any transition to underwater — diving within a room (`swim down`), moving between rooms at underwater depth, or losing WATER_BREATHING while submerged. Timer stops when surfacing (height ≥ 0) or gaining WATER_BREATHING. Entering an air pocket (e.g. underwater cave at height 0) stops the timer; leaving back into water restarts it.
