@@ -43,7 +43,7 @@ RECIPE_SPEAR = {
 
 Enchanting is a **mage-only** crafting skill (`skills.ENCHANTING`) that transforms vanilla items into enchanted variants with magical effects. Key design decisions:
 
-**Recipes auto-granted by mastery level** — no recipe scrolls for enchanting (unlike other crafting skills). Implemented via `_get_auto_granted_enchanting_recipes()` in [`typeclasses/mixins/recipe_book.py`](../src/game/typeclasses/mixins/recipe_book.py) — `knows_recipe()` checks both the explicit recipe book AND the auto-granted set, returning every enchanting recipe at or below the character's `class_skill_mastery_levels[ENCHANTING].mastery`. No scrolls, no migration entries, no manual learn step.
+**Recipes auto-granted by mastery level** — no recipe scrolls for enchanting, unlike every other crafting skill. Enchanting is the sole member of `AUTO_GRANT_RECIPE_SKILLS`, so a character holds every enchanting recipe at or below their `class_skill_mastery_levels[ENCHANTING].mastery`, granted into `db.granted_recipes` and checked by `knows_recipe()` alongside the learned recipe book. No scrolls, no gold, no manual learn step, and no migration when recipes are added. See [knowledge-grants.md](knowledge-grants.md) for the grant engine and when it runs.
 
 **Item split — vanilla vs enchanted:**
 - **Vanilla items** (tailored/leathered): simple names (Bandana, Kippah, Cloak, Veil, Scarf, Sash, Leather Cap, Leather Gloves), no effects, no class restrictions. Crafted by tailors/leatherworkers.

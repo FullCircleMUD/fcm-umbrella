@@ -623,7 +623,7 @@ def register_spell(cls):
 @register_spell
 class MagicMissile(Spell):
     key = "magic_missile"
-    aliases = []
+    aliases = []                       # always empty — see below
     name = "Magic Missile"
     school = skills.EVOCATION          # skills enum member
     min_mastery = MasteryLevel.BASIC
@@ -643,11 +643,11 @@ class MagicMissile(Spell):
         })
 ```
 
-**Base `Spell` class** (`world/spells/base_spell.py`) handles: mastery check, cooldown check (via shared `CombatHandler.skill_cooldown`), mana deduction, dispatch to `_execute()`, combat entry on hostile casts (via `should_enter_combat` per affected target), and cooldown application on success. Subclass per spell implements `_execute(caster, target)` which returns `(bool, dict)` with first/second/third person messages. Validation failures return `(False, str)`. Each spell also has `description` (short flavour text) and `mechanics` (multi-line rules/scaling text) for the future `spellinfo` command.
+**Base `Spell` class** (`world/spells/base_spell.py`) handles: mastery check, cooldown check (via shared `CombatHandler.skill_cooldown`), mana deduction, dispatch to `_execute()`, combat entry on hostile casts (via `should_enter_combat` per affected target), and cooldown application on success. Subclass per spell implements `_execute(caster, target)` which returns `(bool, dict)` with first/second/third person messages. Validation failures return `(False, str)`. Each spell also has `description` (short flavour text) and `mechanics` (multi-line rules/scaling text) for the `spells info <name>` command.
 
 **Class attributes:**
 - `key` — unique registry key (e.g. `"magic_missile"`)
-- `aliases` — alternative names, default `[]` (most spells have none; players create their own shortcuts via `alias`)
+- `aliases` — always `[]`. `cast` matches only on `name` and on `key` with underscores as spaces, so an alias declared here would appear in the `spells` listing and in `spells info` without being castable. Spells are addressed by their full name; players make their own shortcuts with `alias`. A test in `tests/typeclass_tests/test_spells.py` holds this invariant.
 - `name` — display name (e.g. `"Magic Missile"`)
 - `school` — `skills` enum member (e.g. `skills.EVOCATION`). Use `spell.school_key` property for string lookups against `class_skill_mastery_levels` dict.
 - `min_mastery` — `MasteryLevel` enum (BASIC=1 through GRANDMASTER=5)
@@ -690,7 +690,9 @@ Item-target spells receive the resolved item as `target` in `_execute()` and dis
 
 ### SpellbookMixin (typeclasses/mixins/spellbook.py)
 
-Mixed into `FCMCharacter`. Provides `learn_spell()`, `knows_spell()`, `memorise_spell()`, `forget_spell()`, `is_memorised()`, `get_memorisation_cap()`, `get_known_spells()`, `get_memorised_spells()`. Storage: `db.spellbook` and `db.memorised_spells` (both `{spell_key: True}` dicts).
+Mixed into `FCMCharacter`. Provides `learn_spell()`, `knows_spell()`, `memorise_spell()`, `forget_spell()`, `is_memorised()`, `get_memorisation_cap()`, `get_known_spells()`, `get_memorised_spells()`, and the granted-spell set `grant_spell()`, `revoke_spell()`, `revoke_all_granted_spells()`, `is_granted()`.
+
+**Storage** — three `{spell_key: True}` dicts. `db.spellbook` holds spells **learned** permanently (transcribed scrolls, chargen picks); `db.granted_spells` holds spells **granted** by skill mastery, which remort clears; `db.memorised_spells` holds what is currently ready to cast. `knows_spell()` and `get_known_spells()` consult both spellbook and granted spells — granted spells are castable exactly like learned ones. Which spells a character is granted, and when that set is refreshed, is the subject of [knowledge-grants.md](knowledge-grants.md).
 
 **Commands**: `cast`, `transcribe`, `memorise`/`memorize`, `forget`, `spells` — all in `commands/all_char_cmds/`.
 
@@ -699,8 +701,9 @@ Mixed into `FCMCharacter`. Provides `learn_spell()`, `knows_spell()`, `memorise_
 | Aspect | Mage | Cleric |
 |---|---|---|
 | Schools | evocation, conjuration, divination, abjuration, necromancy, illusion (6 casting schools — enchanting is a crafting skill, not casting) | divine_healing, divine_protection, divine_revelation, divine_dominion (cleric/paladin); divine_judgement (**paladin only**); nature_magic (druid/ranger) |
-| Learning | `transcribe <scroll>` — consumes spell scroll NFT | Auto-learn all spells at new skill tier when gaining a domain skill level (deferred) |
-| Spellbook | Learned via transcribe | Populated automatically on skill-up |
+| Learning | `transcribe <scroll>` — consumes spell scroll NFT | Granted automatically — every spell in a domain at or below the character's mastery in it |
+| Storage | `db.spellbook` — permanent, survives remort | `db.granted_spells` — mastery-derived, cleared by remort |
+| New tier reached | Nothing automatic — find and transcribe the scroll | Every spell at the new tier is granted on the spot ([knowledge-grants.md](knowledge-grants.md)) |
 | Memorise/Forget | Yes — memorise has delay, forget is instant | Same |
 | Cast | From memory, costs mana | Same |
 | Memorise cap | floor(mage_class_level / 4) + get_attribute_bonus(intelligence) + extra_memory_slots | floor(cleric_class_level / 4) + get_attribute_bonus(wisdom) + extra_memory_slots |
@@ -717,7 +720,7 @@ Mixed into `FCMCharacter`. Provides `learn_spell()`, `knows_spell()`, `memorise_
 - `SpellScrollNFTItem` — `ConsumableNFTItem` subclass with `spell_key` AttributeProperty
 - Mages consume via `transcribe` command — Y/N confirmation, then spell added to spellbook, scroll consumed
 - Scrolls can also be cast directly (one-time use, no transcription, lower/no level requirement) — deferred
-- Every mage spell has a corresponding scroll prototype in `world/prototypes/consumables/scrolls/`. Cleric spells are auto-learned on skill-up (no scrolls needed).
+- Every mage spell has a corresponding scroll prototype in `world/prototypes/consumables/scrolls/`. Cleric spells have no scrolls — they are granted by divine-school mastery instead ([knowledge-grants.md](knowledge-grants.md)).
 
 ### Combat Integration
 

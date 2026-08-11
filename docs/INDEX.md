@@ -56,6 +56,7 @@ and the cross-cutting invariants) that no single doc holds.
 | Document | Summary |
 |---|---|
 | [character-progression.md](character-progression.md) | Races/classes, point-buy ability scores, levelling, skill/weapon mastery tiers, remort. |
+| [knowledge-grants.md](knowledge-grants.md) | How mastery-derived spells and recipes reach a character — the learned/granted split, the reconcile engine, and its chargen/training/login triggers. |
 | [survival-system.md](survival-system.md) | Survival mechanics — hunger & thirst. |
 
 ### Combat, spells & effects

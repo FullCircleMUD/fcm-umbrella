@@ -202,11 +202,14 @@ Levelling Up (XP → levels_to_spend)
     Skill training (TrainerNPC) → mastery tiers BASIC → GM
     Weapon training (TrainerNPC) → weapon mastery tiers
 
-Knowledge (one-way acquisition)
-    Spell scrolls (mage) → transcribe → spellbook permanent
-    Recipe scrolls → learn → recipe book permanent
-    Enchanting → auto-granted at mastery tier (no scrolls)
-    Cleric spells → auto-granted at divine skill tier
+Knowledge — learned (permanent, survives remort)
+    Spell scrolls (mage) → transcribe → db.spellbook
+    Recipe scrolls / trainer purchase → learn → db.recipe_book
+
+Knowledge — granted (mastery-derived, cleared by remort)
+    Cleric & paladin spells → every spell at or below divine-school mastery
+    Enchanting recipes → every recipe at or below enchanting mastery
+    Reconciled at chargen, on mastery training, and at login
 
 Guild Quests (one-time unlock)
     Warrior Initiation → rat cellar clearance

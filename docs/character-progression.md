@@ -73,6 +73,7 @@ Same auto-collecting registry pattern as races. Each class is a frozen `CharClas
 - `required_races` / `excluded_races` (`List[str]`)
 - `required_alignments` / `excluded_alignments` (`List[Alignment]`)
 - `class_cmdset` (`Optional[Type[CmdSet]]`)
+- `grants_spells` (`bool`) — the class is given its schools' spells by mastery rather than learning them from scrolls (cleric, paladin). See [knowledge-grants.md](knowledge-grants.md).
 
 **Level progression per level:** `weapon_skill_pts`, `class_skill_pts`, `general_skill_pts`, `hp_gain`, `mana_gain`, `move_gain`.
 
