@@ -42,10 +42,13 @@
 - [Shards view gamedirs — fix at symlink layer, not settings](feedback_shards_view_gamedirs.md) — Windows runs all roles from `src/game/`; Unix needs view gamedirs (`game-router/`, `game-shard1/`) with symlinks back to `../game/`. Solve path errors with symlinks, not settings edits.
 
 ## Working approach
-- [Cheap tests beat confident theory](feedback_cheap_tests_over_theory.md) — when user experience contradicts my model, propose a `--plan`/dry-run/read-only check before re-asserting. Two wrong calls in one session were both avoidable with a cheap test.
+- [Cheap tests beat confident theory](feedback_cheap_tests_over_theory.md) — verify before asserting; and when I haven't verified, ask ("does this make sense to you?") rather than declaring it broken — or fine.
+- [Reason, don't reflexively gather](feedback_reason_dont_just_gather.md) — senior-dev role: before running a check, ask what result would change the recommendation. "Changes behaviour" ≠ "risky".
+- [Targeted tests during dev, full suite at end of day](feedback_targeted_tests_during_dev.md) — the full `src/game` suite runs ~2 hours and holds the test DBs, blocking all other test runs. Name the specific suites while working.
 - [Stop on each problem](feedback_stop_on_each_problem.md) — when auditing, surface one finding, stop, and let the user decide fix/leave/defer before editing or hunting the next one. Don't auto-fix or batch-enumerate.
 - [No legacy-data concerns during shards work](feedback_no_legacy_data_concerns.md) — pre-alpha, fresh DB every deploy, live deploy replaces the current one wholesale. Don't weigh existing-database impact until a sharded deployment is live and working.
 - [Terse confirmations](feedback_terse_confirmations.md) — answer yes/no or confirmation questions in 1-3 sentences, no re-derivation or hedging caveats.
+- [Lead with the no](feedback_lead_with_the_no.md) — when a proposal won't work, say so in the first sentence; never open with agreement, never raise caveats that don't change the decision.
 - [No alarming phrasing](feedback_no_alarming_phrasing.md) — don't dramatize minor refinements/corrections ("that changes the design", "poor way to say it"); state the refined version plainly.
 - [Don't overinvest in tangents](feedback_dont_overinvest_tangents.md) — don't chain multiple tool calls chasing precise answers to side questions unrelated to the actual task outcome.
 - [Show code as links, not dumps](feedback_code_links_not_dumps.md) — when asked to see code, give a file link + line number; don't paste the code. Quote a line only when the exact wording is the point.
