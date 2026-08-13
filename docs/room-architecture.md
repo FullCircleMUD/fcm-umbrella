@@ -243,14 +243,39 @@ string. `cmd_social` uses this for non-silent socials.
 
 ### Name Redaction
 
-`BaseActor.get_display_name()` (the common parent of characters, mobs, and NPCs) and
-`RoomBase.get_display_name()` redact to "Someone" / "Somewhere" when the looker cannot see. Two
-independent reasons, same outcome:
+Naming something the looker cannot see leaks it, whatever the cause. `UnseenNameMixin`
+([typeclasses/mixins/unseen_name.py](../src/game/typeclasses/mixins/unseen_name.py)) is the single
+implementation of that rule, composed onto every root typeclass a player can be shown:
 
-- **The looker can't see anything** — `utils.visibility.looker_is_blind(looker)` is True when their
-  location is dark for them (no light, no DARKVISION) or they hold the BLINDED condition.
-- **The looker can't see that actor** — `p_actor_visible_to` fails, i.e. the actor is HIDDEN or
-  INVISIBLE without the matching counter. Self is exempt: you always know your own name.
+```python
+def get_display_name(self, looker=None, **kwargs):
+    if looker is not None and looker is not self:
+        if not p_can_see(self, looker):
+            return self.unseen_name
+    return super().get_display_name(looker, **kwargs)
+```
+
+`p_can_see` covers both halves at once — the thing being concealed (HIDDEN, INVISIBLE, an object
+mixin, a height barrier) and the looker being unable to see at all (BLINDED, or a room dark for
+them). Self is exempt: you always know your own name.
+
+**The rule is code, the word is content.** `unseen_name` is an `AttributeProperty`, so a spawn rule
+can set it per instance from YAML — a wolf is "something", a gnoll carrying a spear is "Someone",
+and neither needs a new typeclass to say so.
+
+| Root | Default |
+|---|---|
+| `BaseActor` | `"Someone"` — players, NPCs, pets |
+| `CombatMob` | `"something"` — most mobs are animals |
+| `RoomBase` | `"Somewhere"` |
+| `ExitBase` | `"somewhere"` |
+| `BaseNFTItem`, `WorldItem`, `WorldFixture`, `MobItem`, `Corpse` | `"something"` |
+
+Compose the mixin **first** in the bases so it answers before anything else. A subclass that
+overrides `get_display_name` runs ahead of it and decorates whatever it gets back, so
+`TorchNFTItem` appending "(lit)" appends to the placeholder as readily as to the name. `Corpse` is
+the exception that builds its name rather than delegating, so it repeats the check explicitly —
+without that, an unseen corpse would still name the dead player.
 
 This does NOT wrap every message. It fires for messages built through Evennia's `mapping`
 substitution, which calls `mapping[key].get_display_name(looker=recipient)` per recipient, and for

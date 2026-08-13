@@ -170,9 +170,10 @@ differently in play:
 
 - **Concealment excludes.** A hidden or invisible actor fails `p_can_perceive`, drops out of the
   candidate list, and the observer never learns they were there.
-- **Darkness redacts.** It never reaches the predicates. `BaseActor.get_display_name` and
-  `RoomBase.get_display_name` call `utils.visibility.looker_is_blind` at *render* time and return
-  "Someone" / "Somewhere", leaving the candidate in place.
+- **Darkness redacts.** It is not part of `p_can_perceive`, so it never removes a candidate from a
+  filtered list. It is asked separately at *render* time by `UnseenNameMixin`, which calls
+  `p_can_see` and returns the object's `unseen_name` — "Someone", "something", "Somewhere" — leaving
+  the candidate in place. See [room-architecture.md](room-architecture.md) § Name Redaction.
 
 So an unlit room reads as several people you cannot identify rather than an empty room. Folding
 darkness into `p_can_perceive` would collapse one into the other.

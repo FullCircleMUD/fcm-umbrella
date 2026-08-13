@@ -281,9 +281,11 @@ Both of these need doing. They are sequenced after the core, not decided against
   two. What is missing is only the wording: the rule table has verbs for airborne and in-water and
   nothing for mounted, so a rider departs with the walking verb. Adding a rule is a natural
   extension of this same dispatch.
-- **Darkness.** Movement messages name the mover regardless of whether the room is lit. Whether an
-  unlit room should read "Someone arrives from the south" affects every room message, not only
-  movement, so it belongs with that wider pass rather than here.
+Darkness was listed here too and has since been answered by the wider pass it was waiting on. An
+unlit room does read "Someone arrives from the south", because `{name}` is bound as an object and
+`UnseenNameMixin.get_display_name` substitutes the mover's `unseen_name` for any recipient who
+cannot see them — see [room-architecture.md](room-architecture.md) § Name Redaction. Nothing in the
+movement seam had to change for it.
 
 ## Remaining quiet callers
 
