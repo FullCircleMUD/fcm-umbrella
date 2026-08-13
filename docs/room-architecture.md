@@ -100,9 +100,9 @@ A room is dark when ALL of these are true:
 - NOT (looker carries a lit light source — torch, lantern)
 - NOT (looker has DARKVISION condition)
 
-Dark rooms show "Unknown" as the room name and "It is pitch black. You can't see a thing." as the description. No exits, objects, or characters are shown — this is what a looker without DARKVISION gets.
+A looker who cannot see gets the room's `unseen_name` — "Somewhere" by default — no description and no exits, but **still the things and the characters**, anonymised. An occupied dark room reads as bodies and shapes you cannot identify, not as an empty one. See § Darkness and the room display below.
 
-A looker WITH DARKVISION sees the room fully (name, description, exits, objects, characters) — DARKVISION does not trigger the "Unknown" shortcut. They instead get a `(Dark)` tag appended to the room name (see Vertical Position Display), so they still experience the darkness — knowing they're relying on DARKVISION rather than genuine light, and can anticipate when non-DARKVISION companions won't be able to see.
+A looker WITH DARKVISION sees the room fully (name, description, exits, objects, characters). They get a `(Dark)` tag appended to the room name (see Vertical Position Display), so they still experience the darkness — knowing they're relying on DARKVISION rather than genuine light, and can anticipate when non-DARKVISION companions won't be able to see.
 
 See also: `LitFixture`, `TorchNFTItem`, `LanternNFTItem` for light source objects.
 
@@ -137,11 +137,11 @@ The display is assembled by `return_appearance()` from modular hooks. Empty sect
 | Section | Hook | Color | Notes |
 |---|---|---|---|
 | Header | `get_display_header()` | — | Default empty. Subclass hook. |
-| Room name | `get_display_name()` | `\|c` cyan | Plus vertical suffix (Flying/Swimming/Underwater) and, for DARKVISION lookers in a dark room, a (Dark) tag |
-| Description | `get_display_desc()` | — | Respects brief mode. Includes weather line. |
-| Auto-exits | `get_display_exits()` | `\|c` cyan | Compact `[ Exits: n s e w ]`. Filtered. |
-| Objects | `get_display_things()` | `\|g` green | Ground descriptions + grouped bare items + fungibles |
-| Characters | `get_display_characters()` | `\|y` yellow | Room descriptions + visibility tags |
+| Room name | `get_display_name()` | `\|c` cyan | Always shown; anonymises itself. Vertical suffix (Flying/Swimming/Underwater) and the DARKVISION (Dark) tag are sight-only |
+| Description | `get_display_desc()` | — | Sight-only. Respects brief mode. Includes weather line. |
+| Auto-exits | `get_display_exits()` | `\|c` cyan | Sight-only. Compact `[ Exits: n s e w ]`. Filtered. |
+| Objects | `get_display_things()` | `\|g` green | Always shown. Sighted: ground descriptions + grouped bare items + fungibles. Unsighted: collapsed and anonymised |
+| Characters | `get_display_characters()` | `\|y` yellow | Always shown. Sighted: room descriptions + visibility tags. Unsighted: one anonymised line per body |
 | Footer | `get_display_footer()` | — | Default empty. Subclass hook (e.g. DungeonRoom "path blocked"). |
 
 ### Exit Display
@@ -169,13 +169,37 @@ Two tiers:
 - Bare items grouped by name and counted (e.g. "two corpses of cellar rats")
 - Fungibles (gold, resources) appended if present in room
 
-### Darkness Override
+### Darkness and the room display
 
-When `is_dark(looker)` is True, the entire display is replaced:
-- Name: "Unknown"
-- Description: "It is pitch black. You can't see a thing."
-- No exits, objects, or characters shown
-- Header and footer still rendered (for subclass hooks that should work in darkness)
+Darkness does not replace the display, it thins it. `return_appearance` asks
+`looker_is_blind(looker)` once — which covers a dark room *and* the BLINDED condition, so a blinded
+character in a lit room is treated the same — and assembles:
+
+| Section | Unsighted |
+|---|---|
+| Header | shown |
+| Room name | the room's `unseen_name`, "Somewhere" by default |
+| Name decorations | withheld — height suffix and the `(Dark)` tag |
+| Description | withheld |
+| Exits | withheld — you cannot pick out a doorway across an unlit room |
+| Things | **shown**, anonymised |
+| Characters | **shown**, anonymised |
+| Footer | shown |
+
+That last pair is the point. A dark room that contains people and dropped items reads as
+*"Someone is in the room."* and *"Something is on the ground."* rather than as empty — you know
+bodies and shapes are present, you cannot tell what they are.
+
+`get_display_characters` renders one line per body, since character counts stay small.
+`get_display_things` collapses — *"Something is on the ground."* for one, *"Several things are on
+the ground."* for more — because a room can hold far more items than people. The singular keeps the
+item's own `unseen_name`, so a settable word still reads: *"A strange shape is on the ground."*
+
+Each section withholds the identifying detail that travels with a name: room descriptions, ground
+descriptions, alignment auras, height tags, concealment tags, and loose gold on the floor.
+
+Neither method decides lighting for itself — both are usable in either state, and
+`return_appearance` is the only place the question is asked.
 
 ### Vertical Position Display
 
