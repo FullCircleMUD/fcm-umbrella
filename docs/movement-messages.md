@@ -7,10 +7,13 @@ as another parallel message source. For the exit classes themselves see
 [exit-architecture.md](exit-architecture.md); for the height mechanics that decide the verb see
 [vertical-movement.md](vertical-movement.md).
 
-> **Not yet built.** Movement messages today come from two independent sources: Evennia's stock
-> announce pair for every exit, plus a second pair emitted by `ExitDoor` for doors only, so a door
-> traversal produces four messages instead of two. This document describes the intended design and
-> the work to reach it.
+> **The seam is built.** `announce_move_from` / `announce_move_to` on `BaseActor` are the single
+> emission point, the rule table below picks the verb from the mover's state, and callers pass their
+> own wording as `msg_from` / `msg_to`. Every actor movement path routes through it.
+>
+> Three extensions remain, each described where it belongs below: a **"rides" verb** for mounted
+> movement, **darkness** redaction, and routing the last two quiet callers — **procedural-dungeon
+> transitions** and the **NFT/pet mirror moves** — through the seam.
 
 ## Why one seam
 
@@ -247,45 +250,47 @@ panic     source room       Fred panics and flees north for no apparent reason!
           destination room  Fred arrives north, in a panic.
 ```
 
-Combat flee has two callers — `cmd_flee` and `combat_handler` — which must not drift apart. They
-share one named pair of templates defined alongside the rule table and pass it, rather than each
-spelling the wording out. One definition, two callers, nothing in between.
+Every flee runs one implementation — `combat_utils.flee_from_combat()` — so the wordings cannot
+drift apart. A caller supplies a `FleeWording` and nothing else: the voluntary `flee` command, a
+wimpy threshold firing, and a creature compelled by the frightened effect all pass through the same
+code with words of their own. Combat flee's pair is a named constant shared by the callers that
+must read alike, rather than each spelling it out.
 
-Two fixes come along with the migration. The destination room currently hears nothing at all when
-someone flees into it — `cmd_flee` writes a departure line only — so routing through the seam gives
-the arrival side for free. And `{direction}` resolves correctly without the caller doing anything:
-`at_traverse()` passes the exit as `exit_obj` itself, where a caller deriving direction from
-`chosen.key` gets the exit's *name* and a message reading "You flee Old Trade Way West!".
+Both rooms hear a flee, and `{direction}` resolves without the caller doing anything, because
+`at_traverse()` passes the exit as `exit_obj` itself. A caller that derived direction from
+`chosen.key` would get the exit's *name* and a message reading "You flee Old Trade Way West!".
 
 The private message to the fleeing character (`"You flee north!"` / `"You panic and flee north!"`)
 is untouched by any of this — `announce_move_from`/`announce_move_to` exclude the mover and never
 speak to them.
 
-## Explicitly out of scope
+## Decided: no first-person echo
 
-- **Mounted movement.** A mount travels as a follower, so a mounted move today emits the rider's
-  pair *and* the mount's pair. Resolving this needs both a "rides" verb for the leader and
-  suppression of the mount's own announce while ridden — a natural extension of this same dispatch,
-  but deliberately sequenced after walking/flying/swimming/followers land, so the core rework isn't
-  held up working out mount specifics. The base system does not regress mounted movement in the
-  meantime; it emits the same four messages it does today.
+The mover receives the new room's description on arrival and nothing else. No "You leave north." is
+added for the person moving.
+
+The arrival description *is* the confirmation that the move worked, and a refused move produces its
+own message saying why. An echo would be a third line telling the mover what two already told them.
+
+## Deferred — not in this pass
+
+Both of these need doing. They are sequenced after the core, not decided against.
+
+- **A "rides" verb.** `mount()` leaves `following` alone, so a ridden animal travels as an ordinary
+  follower and is silenced by the same `quiet=True` — a mounted move already reads as one event, not
+  two. What is missing is only the wording: the rule table has verbs for airborne and in-water and
+  nothing for mounted, so a rider departs with the walking verb. Adding a rule is a natural
+  extension of this same dispatch.
 - **Darkness.** Movement messages name the mover regardless of whether the room is lit. Whether an
   unlit room should read "Someone arrives from the south" affects every room message, not only
-  movement, so it belongs to a broader pass rather than this document.
-- **First-person echo.** The mover receives only the new room's description on arrival, as today; no
-  "You leave north." is added for the person moving.
+  movement, so it belongs with that wider pass rather than here.
 
-## Cleanup this design requires
+## Remaining quiet callers
 
-`ExitDoor` emits a departure message from `at_traverse()` and an arrival message from
-`at_post_traverse()`. Both are removed: they are the duplicate source, and they cannot be suppressed
-by a quiet caller. The door keeps its open, close and lock messages, which are about the door rather
-than about the movement.
+Two paths still move actors quietly and write their own text: **procedural-dungeon entry and exit**,
+and the **NFT/pet mirror moves**. Both are candidates for the same treatment under the "everything
+goes through the seam" default above, to be weighed individually rather than rewritten as a batch.
 
-Nothing else in the exit hierarchy emits movement text — every other exit type relies on the
-announce pair alone.
-
-Beyond the exit hierarchy, every other quiet caller — retreat, procedural-dungeon entry/exit, the
-NFT/pet mirror moves — is a candidate for the same treatment under the "everything goes through the
-seam" default above. Flee is the one this document resolves; the rest are for the implementation
-audit to inventory and weigh individually, not a blanket rewrite.
+Nothing in the exit hierarchy emits movement text — every exit type relies on the announce pair
+alone. `ExitDoor` keeps its open, close and lock messages, which are about the door rather than
+about the movement.

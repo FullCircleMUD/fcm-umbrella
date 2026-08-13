@@ -48,7 +48,7 @@ Height-gated visibility uses a **room + object** model:
 
 `is_height_visible_to(looker)` checks whether a barrier lies between the observer and the object, and whether the object is small enough to be concealed. Same-height objects are always visible regardless of barriers.
 
-Used by `p_height_visible_to` predicate (wraps `is_height_visible_to`) and the composite `p_can_see` predicate (stealth + height). Room display methods (`get_display_characters`, `get_display_things`) and `cmd_scan` use `p_height_visible_to` for filtering.
+Used by `p_height_visible_to` predicate (wraps `is_height_visible_to`) and the composite `p_can_see` predicate (stealth + height). Room display methods (`get_display_characters`, `get_display_things`) use `p_height_visible_to` for filtering; `cmd_scan` uses the composite `p_can_see`, so height gating applies to both the characters it reports and the exits it looks through.
 
 Examples:
 - A forest canopy room sets `visibility_up_barrier = (1, "small")` — tiny/small creatures in the canopy are hidden from ground-level observers.

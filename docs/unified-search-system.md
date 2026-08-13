@@ -130,6 +130,8 @@ Each predicate is a pure `(obj, caller) -> bool` function, 3–8 lines long, wit
 | `p_is_locked` | `getattr(obj, "is_locked", False)` — state check, True if currently locked. |
 | `p_is_openable` | `hasattr(obj, "is_open")` — type check for `CloseableMixin`. Does NOT check current open/closed state. |
 | `p_is_open` | `getattr(obj, "is_open", False)` — state check, True if currently open. |
+| `p_is_open_exit` | Is this exit barred by its own door? Unlocked *and* open. Defaults to True where `p_is_open` defaults to False — an exit with no door bars nothing. Movement paths only; see Sight lines vs routes below. |
+| `p_fits_through(actor)` | **Factory** wrapping the `max_size` gate `ExitVerticalAware.at_traverse` enforces. Takes the actor *to fit*, not the caller looking — a retreat leader checks the party's largest member, not themselves. |
 | `p_passes_lock(lock_type)` | **Factory** returning a predicate wrapping `obj.access(caller, lock_type)`. |
 | `p_same_height(caller)` | **Factory** returning a predicate matching objects at the caller's `room_vertical_position`. Used by melee-range spells. |
 | `p_different_height(caller)` | **Factory** — inverse of `p_same_height`. For future `ranged_only` spells. |
@@ -159,6 +161,26 @@ hidden by mixin. Their counters are independent too — `true_sight` pierces phy
 **Prefer `p_can_see`.** A single-axis predicate is correct only where another mechanism already
 covers the remaining axes — for example a resolver that applies its own height predicate. Reaching
 for `p_object_visible_to` by default silently skips actor concealment.
+
+**Sight lines vs routes.** Two questions that look alike and take different predicates:
+
+| Question | Composition |
+|---|---|
+| *May I go this way?* | `p_passes_lock("traverse")` + `p_can_see` + `p_is_open_exit`, i.e. `open_exits()` |
+| *Can I see this way?* | `is_open` + `p_can_see` |
+
+A lock governs passage, never sight — you can see down a corridor you are barred from walking into,
+so `p_passes_lock` has no place in a perception path. Nor does `p_is_open_exit`, which folds a lock
+check into its answer. Every locked door is a shut one anyway (`lock()` refuses on an open door), so
+the plain `is_open` check covers every state that can legitimately occur; an open-and-locked exit is
+a data anomaly, not a case to handle.
+
+Concealment cuts across both: an exit the looker cannot perceive blocks sight *and* passage, whether
+it stands open or not. Scanning past an undiscovered door would report who is beyond a passage the
+character does not know exists.
+
+`cmd_scan` is the worked example — see `_can_scan_through`, and the test that pins a
+traverse-locked-but-open exit as still scannable so nobody consolidates it onto `open_exits` later.
 
 Each predicate has a docstring explaining what Evennia handles natively instead. [predicates.py](../src/game/utils/targeting/predicates.py) opens with a detailed comment block listing the dozen-plus filters a developer should implement with a native Evennia kwarg instead of adding a predicate.
 
@@ -194,6 +216,24 @@ def bucket_contents(caller, source, key_fn, *predicates, order=None):
 Single-pass sibling of `walk_contents`. Objects passing all predicates are classified by `key_fn(obj, caller)` into named buckets. Returns `{bucket_name: [objects]}`. When `order` is supplied, pre-populates those keys (with empty lists) and preserves insertion order for priority-based iteration.
 
 Primary consumer: `combat.combat_utils.get_sides` (partitions living combatants into allies/enemies). Also used by the priority-bucketed actor resolvers and designed for future AI threat bucketing.
+
+### `open_exits`
+
+```python
+def open_exits(caller):
+    """The exits caller could actually leave the room through."""
+```
+
+Composes `p_passes_lock("traverse")`, `p_can_see` and `p_is_open_exit` over `room.exits` — Evennia's
+own filtered view, which is why there is no "is an exit" predicate.
+
+**Selection, not permission.** The chosen exit's `at_traverse` enforces passage and applies gates
+these predicates cannot see — encumbrance, size, traps. A caller picks from this list and then
+traverses; membership is a candidate, never a guarantee.
+
+Consumers: `flee_from_combat` and `retreat_group` in `combat/combat_utils.py`, and mob AI via
+`AIHandler.get_area_exits`, which every wander, flee, retreat and cornered check reaches. Perception
+paths deliberately do **not** use it — see Sight lines vs routes above.
 
 #### `source.contents` is a cache, not a query
 
@@ -479,6 +519,8 @@ Every migrated command follows the same pattern: darkness check → `resolve_tar
 | cmd_unlock | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_see` | Same pattern |
 | cmd_picklock | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_see` | Same pattern |
 | cmd_disarm_trap | `items_room_exit_by_direction` / `items_room_all_then_room` | `p_can_see` | Room fallback for pressure plates |
+| cmd_scan | `room.exits` | `is_open` + `p_can_see` | Sight line, not a route — lock state deliberately unread. Applied at each step outward, judged from the caller at every depth |
+| cmd_flee / cmd_retreat | `open_exits` | `p_passes_lock("traverse")` + `p_can_see` + `p_is_open_exit` | Retreat additionally gates on `p_fits_through` for the party's largest member |
 
 ### Commands with darkness/visibility checks (no structural migration)
 
