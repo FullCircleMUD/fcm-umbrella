@@ -462,26 +462,41 @@ A mob perceives exactly what a character standing in its place would perceive. T
 
 | Helper | Answers | Gate applied |
 |---|---|---|
-| `get_targets_in_room(target_filter=None)` | who is in this room | `p_can_see` |
+| `get_targets_in_room(*predicates)` | who and what is in this room | `p_can_perceive` |
 | `get_area_exits()` | where can I go from here | `open_exits` + the mob's `mob_area` tag |
 
-**Perception is a floor.** `get_targets_in_room` applies `p_can_see` in both branches. A caller may pass `target_filter` — `callable(obj) -> bool` — to narrow the result to what its own behaviour cares about, but a filter can only ever narrow. There is no way for a caller to widen past what the mob can perceive.
+**Perception is the floor.** `get_targets_in_room` always applies `p_can_perceive`, and the supplied predicates narrow the result further — they can never widen it. There is no way for a caller to reach past what the mob can perceive.
+
+Predicates take the targeting library's `(obj, caller) -> bool` shape, so they are the same objects a command passes to `resolve_target`. Prefer an existing library predicate; where none fits, add one rather than filtering the returned list inline. They can be passed loose or as a single list, so a mob can hold a named predicate stack as an attribute and pass it whole.
 
 ```python
-# Default — player characters the mob can see
-players = self.ai.get_targets_in_room()
+# Everything the mob perceives that is a character
+players = self.ai.get_targets_in_room(p_is_character)
 
-# Caller-supplied policy, still perception-gated
-threats = self.ai.get_targets_in_room(self._is_threat)
+# A narrower policy, still perception-gated
+targets = self.ai.get_targets_in_room(p_is_character, p_living, p_excluding(victim))
+
+# A mob's own declared rule, held as an attribute
+threats = self.ai.get_targets_in_room(self.THREAT_PREDICATES)
 ```
 
-That split is the point: `get_targets_in_room` decides **what the mob can perceive**, the filter decides **what the mob cares about**. Keeping behaviour policy out of the perception gate is what lets a mob react to its wider environment — other mobs, sizes, factions — without each behaviour re-deriving visibility.
+That split is the point: `get_targets_in_room` decides **what the mob can perceive**, the predicates decide **what the mob cares about**. Keeping behaviour policy out of the perception gate is what lets a mob react to its wider environment — other mobs, sizes, factions — without each behaviour re-deriving visibility.
+
+**Perceive, not see.** The floor is `p_can_perceive`, so darkness does not empty the list: a mob in an unlit room still knows something is there. What darkness costs is *knowledge about* what it found — size, kind, alignment — because those need sight. A mob whose behaviour turns on a trait it cannot read needs a defined answer, and the right answer differs per mob: a coward flees the unknown, an aggressor attacks it. Sightlessness is one boolean for the whole room (`looker_is_blind(self)`), not a per-target filter, so a behaviour branches on it rather than filtering with it. `[TBD — needs discussion: how each behaviour should act on what it cannot identify.]`
 
 **The counters behave as they do for players.** A concealed actor is returned only to a mob holding the matching counter — the `true_sight` effect for HIDDEN, the `DETECT_INVIS` condition for INVISIBLE, both for an actor carrying both. `BaseNPC` composes `EffectsManagerMixin`, so a mob can be granted either through the same machinery a player uses.
 
 **`.ai` is a `CombatMob` capability, not an actor one.** `StateMachineAIMixin` is composed onto `CombatMob`, so `LLMCombatMob` has it but `LLMRoleplayNPC(LLMMixin, BaseNPC)` and `LLMGuildmasterNPC` do not. Perception code that must serve those classes calls `walk_contents` and the predicates from the targeting library directly — the library is the seam, and `get_targets_in_room` is one convenient consumer of it.
 
-**Known divergences.** Five behaviours scan `location.contents` directly rather than going through the helper, so they answer outside the shared gate: `street_urchin` (city-watch check), `wolf` (rabbit hunting), `pack_courage_mixin` (ally count), `mob_followable_mixin` (squad leader), and `llm_mixin`'s room-context builder, which names players into the LLM prompt without a perception check. `[TBD — needs discussion: migrate these onto the helper, or the library directly for the LLM path.]`
+**Known divergences.** Four behaviours scan `location.contents` directly rather than going through the helper, so they answer outside the shared gate: `street_urchin` (city-watch check), `wolf` (rabbit hunting), `pack_courage_mixin` (ally count) and `mob_followable_mixin` (squad leader). `[TBD — needs discussion: migrate these onto the helper.]`
+
+### What an LLM NPC is told
+
+`LLMMixin` composes onto `BaseNPC`, which has no `.ai`, so its room context calls `walk_contents` and the predicates directly rather than `get_targets_in_room`. It applies the same floor:
+
+- **`nearby_characters`** filters on `p_can_perceive` and names each one through `get_display_name(self)`. A concealed character is absent from the prompt entirely; one the NPC can sense but not see arrives under its `unseen_name`, so the model is never handed a name the NPC could not have learned.
+- **Arrivals** are identified by sight alone — nobody has spoken yet. A sightless NPC therefore challenges from `llm_blind_challenges` ("Who's that? Name yourself.") instead of calling the LLM, which has nothing to work with and would cost a request to say so.
+- **Speech is not gated.** A voice identifies a person as well as a face does, so `say` and `whisper` reach the LLM normally whether or not the NPC can see. Gating them would strand a player mid-quest in an unlit room.
 
 ### LLMAIMixin (Future)
 

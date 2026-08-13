@@ -65,7 +65,9 @@ This is intentional. Future LLM AI just swaps the decision-maker — the LLM out
 
 `CombatMixin._can_start_fight_now()` answers one question: may this actor *start* a fight right now. It returns `(True, None)` or `(False, reason)`, where reason is a short key rather than finished prose — call sites turn the key into their own wording, with `combat_utils.fight_refusal_message()` supplying the default.
 
-Every condition that should stop an actor picking a fight belongs in that one method rather than being repeated across the combat commands. Today there is one: `ndb.is_processing`, the lock held while harvesting, crafting or processing.
+Every condition that should stop an actor picking a fight belongs in that one method rather than being repeated across the combat commands. Today there is one: `ndb.is_processing`, the busy lock.
+
+That lock is owned by `utils/busy.py` and held by any action that takes time and takes both hands — harvesting, crafting, processing, and searching by touch in the dark. See [unified-search-system.md](unified-search-system.md#busy-actions--the-shared-lock) § Busy actions. Being attacked mid-action does not release it: a character jumped while groping for a door handle finishes the search before they can swing back.
 
 Six call sites consult it, covering every player-initiated route into combat:
 

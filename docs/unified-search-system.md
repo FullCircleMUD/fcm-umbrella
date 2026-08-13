@@ -430,18 +430,71 @@ Height filtering has been **removed from `resolve_target`**. There is no `range`
 
 This keeps the targeting library free of range semantics — it identifies, the command gates.
 
-### Darkness checks
+### Sightlessness — the three shapes
 
-Every command that interacts with the world performs a darkness check before targeting:
+**Darkness without darkvision and blindness are one state.** `looker_is_blind(caller)`
+(`utils/visibility.py`) is the whole test: it is true when the caller holds `BLINDED`, *or* when
+the room is dark for them. Nothing downstream distinguishes the two causes.
 
-```python
-room = caller.location
-if room and hasattr(room, "is_dark") and room.is_dark(caller):
-    caller.msg("It's too dark to see anything.")
-    return
-```
+Each command answers one question — **can this be done by touch?** — and the answer puts it in one
+of three shapes. Which predicate a command passes to `resolve_target` follows from its shape, which
+is why the migrated-command table below is not uniform.
 
-This is a command-layer responsibility, not a targeting-library concern. Darkness blocks the command entirely — there's no point identifying a target in total darkness.
+**Fumble — the action works by touch.** Keeps `p_can_perceive`, and charges time instead of
+refusing. `check_busy(caller)` at entry, then `start_busy(caller, fumble_seconds(), ...)` with the
+command's own wording when sightless (see [busy actions](#busy-actions--the-shared-lock)). The
+search runs *before* the outcome is known, so a failed search costs the same as a successful one —
+a character who is not carrying what they asked for still spends the time, then hears so. That
+matters: an instant failure would tell them what is in their own pack without looking.
+
+*Hold, drink, climb, light, quaff, remove, wear, refuel, drop, open, switch, put.*
+
+**Refuse — the action needs eyes.** `p_can_see` on the resolvers, and an early return naming what
+was asked for: `"It's too dark to make out 'chest'."` Never `"You don't see it here"`, which reads
+as *absent* when the thing is right in front of them.
+
+*Lock, unlock, read, refill, scan, show, zap, trade, give, join, socials with a target, and every
+skill command.*
+
+**Reduced fidelity — presence survives, detail does not.** `look` at a specific actor or object
+resolves on `p_can_perceive`, then renders at whatever fidelity is available: *"Someone is there,
+but it's too dark to make out any detail."* The name comes from `UnseenNameMixin`, so a builder can
+set it per mob. Bare `look` is not gated in the command at all — `RoomBase.return_appearance` thins
+its own display. Things with no presence to sense (a compass direction, a room detail) answer as if
+there were nothing there.
+
+*Look.*
+
+**Untargeted actions are never gated.** You can laugh in the dark; you just cannot laugh *at*
+someone.
+
+**Concealment and darkness are not the same lever.** Concealment *excludes* — a hidden or invisible
+actor drops out of the candidate list entirely, at every shape. Darkness *redacts* — the thing is
+still there, and what changes is how much you can tell about it.
+
+### Busy actions — the shared lock
+
+`utils/busy.py` owns `ndb.is_processing`, the lock held by any action that takes time and takes
+both hands — harvesting, and the fumble shape above.
+
+| Function | Purpose |
+|---|---|
+| `check_busy(caller)` | Entry guard. Messages and returns `True` if the caller is already occupied |
+| `start_busy(caller, seconds, on_complete, self_msg=None, room_msg=None)` | Announce, lock, wait, clear, then run the outcome |
+| `fumble_seconds()` | The search-by-touch duration, 3–4 seconds |
+| `BUSY_MESSAGE` | The refusal wording — busy is busy regardless of cause, so it lives in one place |
+
+Two different strings, and both are needed: the *refusal* a second command gets is generic and
+shared; the *announcement* is per-action and passed in ("You begin gathering...", "You grope about
+in the dark, feeling for something to climb...").
+
+Being interrupted does not cancel a busy action — a character jumped mid-harvest finishes the swing
+before they can react. Every command that respects the lock refuses while it is held, including
+attack, via `CombatMixin._can_start_fight_now()`. The lock is released *before* `on_complete` runs,
+so an outcome that starts something else is not blocked by the action that produced it.
+
+Crafting, processing, repair and insetting still hand-roll the same lock rather than calling
+`start_busy`. `[TBD — needs discussion: whether to migrate them]`
 
 ## Priority-Bucketed Actor Resolvers
 
@@ -520,36 +573,43 @@ These will be retired as remaining consumers migrate to building blocks.
 
 ## Commands Migrated to `resolve_target`
 
-Every migrated command follows the same pattern: darkness check → `resolve_target` with building block + `extra_predicates` → command-layer state/type checks → action.
+Every migrated command follows the same pattern: sightlessness handling → `resolve_target` with
+building block + `extra_predicates` → command-layer state/type checks → action.
+
+The **Shape** column is the one from [Sightlessness](#sightlessness--the-three-shapes), and it
+determines the predicate: *fumble* commands keep `p_can_perceive` and charge time, *refuse*
+commands take `p_can_see` and return early.
 
 | Command | target_type | extra_predicates | Notes |
 |---|---|---|---|
 | cmd_cast | per spell | `p_can_see` if `requires_sight` | Central range/height check after resolution |
 | cmd_zap | per spell | `p_can_see` if `requires_sight` | Same pattern as cmd_cast |
 | cmd_attack | `actor_hostile` | | POC — weapon range mapped at call site |
-| cmd_hold | `items_inventory` | `p_can_see` | |
-| cmd_wear | `items_inventory` | `p_can_see` | |
-| cmd_remove | `items_equipped` | `p_can_see` | |
-| cmd_drop | `items_inventory` | `p_can_see` | |
-| cmd_give | `items_inventory` + `resolve_character_in_room` | `p_can_see` | Two-target: item + recipient |
-| cmd_put | `items_inventory` + `items_inventory_then_room_nonexit` | `p_can_see` | Two-target: item + container |
-| cmd_get | `items_room_nonexit` | `p_can_see` | Broad targeting, get-lock check at command layer |
-| cmd_look (container) | `items_inventory_then_room_nonexit` | `p_can_see` | "look in" path |
-| cmd_quaff | `items_inventory` | `p_can_see` | |
-| cmd_drink | `items_inventory_then_room_nonexit` | `p_can_perceive` | Your own pack is found by touch; unseen adds fumbling flavour |
-| cmd_light | `items_equipped` | `p_can_see` | No darkness check (lighting a torch) |
-| cmd_extinguish | `items_equipped` | `p_can_see` | No darkness check (lit = not dark) |
-| cmd_refuel | `items_equipped` | `p_can_see` | |
-| cmd_read | `items_inventory_then_room_nonexit` | `p_can_see` | |
+| cmd_hold | `items_inventory` | `p_can_perceive` | Fumble — your own pack is found by feel |
+| cmd_wear | `items_inventory` | `p_can_perceive` | Fumble — dressing in the dark takes longer |
+| cmd_remove | `items_equipped` | `p_can_perceive` | Fumble — undressing by touch is fiddlier than it sounds |
+| cmd_drop | `items_inventory` | `p_can_perceive` | Fumble |
+| cmd_give | `items_inventory` + `resolve_character_in_room` | `p_can_see` | Refuse — no point finding the item if you cannot find who to give it to |
+| cmd_put | `items_inventory` + `items_inventory_then_room_nonexit` | `p_can_perceive` | Fumble — one search covers both targets. A room container is the same chest `open` works by touch |
+| cmd_get | `items_room_nonexit` | `p_object_visible_to` | Broad targeting, get-lock check at command layer. **Object axis only** — not reviewed against the three shapes yet |
+| cmd_look (target) | quiet search | `p_can_perceive` | Reduced fidelity — unseen renders as "Someone is there, but it's too dark to make out any detail." |
+| cmd_look (container) | `items_inventory_then_room_nonexit` | `p_can_perceive` | "look in" path. The container is sensed; its contents are not listed |
+| cmd_quaff | `items_inventory` | `p_can_perceive` | Fumble |
+| cmd_drink | `items_inventory_then_room_nonexit` | `p_can_perceive` | Fumble |
+| cmd_light | `items_equipped` | `p_can_perceive` | Fumble — an equipped torch is found by feel |
+| cmd_extinguish | `items_equipped` | `p_can_perceive` | Not gated — if the source is lit, the room is not dark |
+| cmd_refuel | `items_inventory` then `items_equipped` | `p_can_perceive` | Fumble |
+| cmd_read | `items_room_fixed_nonexit` | `p_can_see` | Refuse — reading is the one thing with no version done by touch |
 | cmd_consider | `actor_hostile` | `p_can_see` | |
 | cmd_diagnose | `actor_friendly` | `p_can_see` | |
 | cmd_follow | `actor_hostile` | `p_can_see` | Strangers = most likely follow target |
-| cmd_join | `actors_in_combat_then_not_in_combat` | `p_can_see` | Combat state check at command layer |
-| cmd_open | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_see` | Direction parser splits input |
+| cmd_join | `actors_in_combat_then_not_in_combat` | `p_can_see` | Refuse, not fumble — a three second grope while your ally takes hits reads wrong |
+| cmd_open | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_perceive` | Fumble — a latch is found by feel. Direction parser splits input |
 | cmd_close | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_perceive` | A door, or your own pack, closes by touch |
-| cmd_lock | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_see` | Same pattern |
-| cmd_unlock | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_see` | Same pattern |
-| cmd_picklock | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_see` | Same pattern |
+| cmd_switch | `items_room_nonexit` | `p_can_perceive` | Fumble — a lever is found by running your hands along the wall |
+| cmd_lock | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_see` | Refuse — lining a key up with a keyhole needs eyes |
+| cmd_unlock | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_see` | Refuse — same as lock |
+| cmd_picklock | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_see` | Refuse — eyes on the keyway, same as using a key |
 | cmd_disarm_trap | `items_room_exit_by_direction` / `items_room_all_then_room` | `p_can_see` | Room fallback for pressure plates |
 | cmd_scan | `room.exits` | `is_open` + `p_can_see` | Sight line, not a route — lock state deliberately unread. Applied at each step outward, judged from the caller at every depth |
 | cmd_flee / cmd_retreat | `open_exits` | `p_passes_lock("traverse")` + `p_can_see` + `p_is_open_exit` | Retreat additionally gates on `p_fits_through` for the party's largest member |
@@ -558,8 +618,11 @@ Every migrated command follows the same pattern: darkness check → `resolve_tar
 
 | Command | What was added |
 |---|---|
-| cmd_climb | `p_can_perceive` on inline climbable filtering — you climb a wall you can feel. Unseen gropes for the sole climbable, or refuses to tell several apart rather than listing what the climber cannot see |
-| cmd_search | Darkness check (uses its own search loop for hidden objects) |
+| cmd_climb | `p_can_perceive` on inline climbable filtering — you climb a wall you can feel. Fumble shape: unseen gropes for the sole climbable, or refuses to tell several apart rather than listing what the climber cannot see |
+| cmd_social | `p_can_see` on the **targeted** path only. Untargeted and self-target are never gated |
+| cmd_scan | `looker_is_blind` refusal at entry, and `p_can_see` throughout. A dark *destination* room is a separate check — it stops the scan in that direction |
+| cmd_survey | `looker_is_blind` refusal at entry; `p_can_see` on mappable exits |
+| cmd_search | Darkness check (uses its own search loop for hidden objects) — **not yet reviewed** |
 
 ## Testing Strategy
 

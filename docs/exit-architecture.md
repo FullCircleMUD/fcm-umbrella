@@ -235,9 +235,14 @@ Exits participate in the game's visibility system at multiple levels:
 |---|---|---|
 | `is_visible_to(looker)` | `get_display_exits()` | Auto-exit line `[ Exits: ]` |
 | `is_visible_to(looker)` | `CmdExits.func()` | Verbose `exits` command |
-| `is_visible_to(looker)` | `find_exit_target()` | `open`, `close`, `lock`, `unlock`, `picklock` |
-| `is_visible_to(looker)` | `CmdLook.func()` | `look <direction>` |
+| `p_can_perceive` | `resolve_target` in `open` | Finding a door by feel — see [the three shapes](unified-search-system.md#sightlessness--the-three-shapes) |
+| `p_can_see` | `resolve_target` in `close`, `lock`, `unlock`, `picklock` | A keyway needs eyes |
+| `looker_is_blind` | `CmdLook._look_direction()` | `look <direction>` answers as if there were nothing there |
 | `is_open` | `get_display_exits()` | Closed doors hidden from auto-exits |
+
+Door commands resolve through `resolve_target` with the `items_room_exit_by_direction` and
+`items_room_all_then_inventory` building blocks, not through `find_exit_target()` — that helper is
+now internal to `utils/targeting/helpers.py`.
 
 Hidden objects that fail visibility checks produce the message "You don't see 'X' here" (no period) — a subtle hint for observant players that something is there to find. Objects that truly don't exist produce "You don't see 'X' here." (with period).
 
