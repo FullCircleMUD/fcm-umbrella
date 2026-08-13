@@ -112,7 +112,7 @@ src/game/utils/direction_parser.py
 
 ### Predicate library
 
-Each predicate is a pure `(obj, caller) -> bool` function, 3–8 lines long, with its own unit test. Factory predicates return a closure bound to caller-specific state at creation time.
+Each predicate is a pure `(obj, caller) -> bool` function, 3–8 lines long, with its own unit test. Factory predicates return a closure bound at creation time to whatever the check needs and the predicate signature has no room for — a caller, an actor, a lock type, a set of classes.
 
 | Predicate | Purpose |
 |---|---|
@@ -131,6 +131,8 @@ Each predicate is a pure `(obj, caller) -> bool` function, 3–8 lines long, wit
 | `p_is_openable` | `hasattr(obj, "is_open")` — type check for `CloseableMixin`. Does NOT check current open/closed state. |
 | `p_is_open` | `getattr(obj, "is_open", False)` — state check, True if currently open. |
 | `p_is_open_exit` | Is this exit barred by its own door? Unlocked *and* open. Defaults to True where `p_is_open` defaults to False — an exit with no door bars nothing. Movement paths only; see Sight lines vs routes below. |
+| `p_typeclass(*typeclasses)` | **Factory** — `isinstance(obj, typeclasses)`. The general form of the named type predicates, for checks the library has no name for. The caller supplies the classes, so targeting imports no typeclasses and stays a leaf package. Prefer a named predicate where one exists: `p_is_character` carries meaning `p_typeclass(FCMCharacter)` does not. |
+| `p_excluding(*excluded)` | **Factory** — rejects specific objects by **identity**, not equality, so a typeclass defining `__eq__` cannot smuggle one past. "Everything but these": the on-kill chain attack excludes the victim it just killed. Dropping the caller is not its job — helpers that must never return their own caller do that themselves. |
 | `p_fits_through(actor)` | **Factory** wrapping the `max_size` gate `ExitVerticalAware.at_traverse` enforces. Takes the actor *to fit*, not the caller looking — a retreat leader checks the party's largest member, not themselves. |
 | `p_passes_lock(lock_type)` | **Factory** returning a predicate wrapping `obj.access(caller, lock_type)`. |
 | `p_same_height(caller)` | **Factory** returning a predicate matching objects at the caller's `room_vertical_position`. Used by melee-range spells. |
