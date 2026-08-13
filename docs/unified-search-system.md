@@ -122,7 +122,8 @@ Each predicate is a pure `(obj, caller) -> bool` function, 3–8 lines long, wit
 | `p_object_visible_to` | **Object concealment gate.** Delegates to both object mixins — `obj.is_hidden_visible_to(caller)` (`HiddenObjectMixin`) and `obj.is_invis_visible_to(caller)` (`InvisibleObjectMixin`). An object must clear both. Objects composing neither pass through. |
 | `p_actor_visible_to` | **Actor concealment gate.** Two composing condition gates: `HIDDEN` is pierced only by the `true_sight` effect, `INVISIBLE` only by the `DETECT_INVIS` condition. An actor under both requires both counters. Non-actors pass through. |
 | `p_height_visible_to` | **Spatial gate.** Delegates to `obj.is_height_visible_to(caller)` — checks the room's visibility barriers against the object's size. Objects small enough to be concealed by a barrier between observer and object are hidden. Same-height objects are always visible. |
-| `p_can_see` | **Composite gate.** `p_object_visible_to AND p_height_visible_to AND p_actor_visible_to`. Use for display/perception paths (look, scan) where "can the observer see this?" is the whole question. Extensible — future visibility gates (ethereal, fog-of-war) get added here and propagate to all consumers. |
+| `p_can_perceive` | **Concealment composite.** `p_object_visible_to AND p_height_visible_to AND p_actor_visible_to`. Is the thing there and unconcealed — nothing about whether the observer can see. Use for display, perception, and actions done by touch. Extensible: future concealment gates (ethereal, fog-of-war) get added here and propagate to all consumers, `p_can_see` included. |
+| `p_can_see` | **Concealment plus sight.** `p_can_perceive` and the observer is neither `BLINDED` nor in a room dark for them — darkvision, carried light, lit fixtures and the day/night phase all fold into that via `RoomBase.is_dark`. Use where the action needs eyes. Not for display: darkness is meant to redact names, not remove candidates. |
 | `p_living` | `hp > 0` — excludes items (hp=None), corpses (hp=0), dead mobs. Defensive on type. |
 | `p_in_combat` | Has a `combat_handler` script attached. Combat-specific runtime-state filter. |
 | `p_is_container` | `getattr(obj, "is_container", False)` — matches `ContainerMixin`. Corpses are NOT containers. |
@@ -145,8 +146,8 @@ Each predicate is a pure `(obj, caller) -> bool` function, 3–8 lines long, wit
 
 **Visibility predicate family:**
 
-Three single-axis gates and one composite. Each axis predicate names the subject or dimension it
-gates on; `p_can_see` is the assembled answer and is what most consumers should reach for.
+Three single-axis concealment gates, a composite of them, and a stricter composite that also
+requires working sight.
 
 - `p_object_visible_to` — object concealment only (the two object mixins). Used in targeting
   resolvers where height is handled separately by range predicates (`p_same_height`,
@@ -155,24 +156,49 @@ gates on; `p_can_see` is the assembled answer and is what most consumers should 
   `RoomBase.msg_contents` and `msg_contents_with_invis_alt`, which ask it per recipient with the
   operands in messaging order: the sender is the thing seen, the recipient is the observer.
 - `p_height_visible_to` — spatial only.
-- `p_can_see` — composite of all three. Used for display and perception paths (look, scan, climb,
-  search) and as an `extra_predicates` entry in command-layer calls where "can the observer
-  perceive this?" is the whole question.
+- `p_can_perceive` — composite of all three. Is the thing there, and is it concealed from this
+  observer.
+- `p_can_see` — `p_can_perceive` plus the observer half: not `BLINDED`, and the room not dark for
+  them.
 
 The two concealment systems are independent: an actor can be `HIDDEN` by condition while a chest is
 hidden by mixin. Their counters are independent too — `true_sight` pierces physical concealment and
 `DETECT_INVIS` pierces invisibility, and neither covers the other.
 
-**Prefer `p_can_see`.** A single-axis predicate is correct only where another mechanism already
-covers the remaining axes — for example a resolver that applies its own height predicate. Reaching
-for `p_object_visible_to` by default silently skips actor concealment.
+**Perceiving is not seeing**, and the split is load-bearing because the two halves behave
+differently in play:
+
+- **Concealment excludes.** A hidden or invisible actor fails `p_can_perceive`, drops out of the
+  candidate list, and the observer never learns they were there.
+- **Darkness redacts.** It never reaches the predicates. `BaseActor.get_display_name` and
+  `RoomBase.get_display_name` call `utils.visibility.looker_is_blind` at *render* time and return
+  "Someone" / "Somewhere", leaving the candidate in place.
+
+So an unlit room reads as several people you cannot identify rather than an empty room. Folding
+darkness into `p_can_perceive` would collapse one into the other.
+
+**Which to reach for.** `p_can_perceive` when the question is "is it there" — room appearance, look,
+scan, mob perception, and actions that do not depend on sight, like swinging at the opponent you are
+already fighting or finding your own dagger by touch. `p_can_see` when the action genuinely needs
+eyes. Sight is a property of the observer, so it is the same answer for every candidate in the room
+and costs a room-contents and inventory scan to compute — fine on a targeting path resolving one
+command, wrong on a display path rendering every object.
+
+A single-axis predicate is correct only where another mechanism already covers the remaining axes —
+for example a resolver that applies its own height predicate. Reaching for `p_object_visible_to` by
+default silently skips actor concealment.
+
+**Telling the player why.** A command that needs sight may keep an early `looker_is_blind(caller)`
+return alongside the predicate. The predicate is the gate; the early return exists so the refusal
+reads honestly. Filtering alone produces "You don't see 'goblin' here", which is misleading when the
+goblin is standing in front of them.
 
 **Sight lines vs routes.** Two questions that look alike and take different predicates:
 
 | Question | Composition |
 |---|---|
-| *May I go this way?* | `p_passes_lock("traverse")` + `p_can_see` + `p_is_open_exit`, i.e. `open_exits()` |
-| *Can I see this way?* | `is_open` + `p_can_see` |
+| *May I go this way?* | `p_passes_lock("traverse")` + `p_can_perceive` + `p_is_open_exit`, i.e. `open_exits()` |
+| *Can I see this way?* | `is_open` + `p_can_perceive` |
 
 A lock governs passage, never sight — you can see down a corridor you are barred from walking into,
 so `p_passes_lock` has no place in a perception path. Nor does `p_is_open_exit`, which folds a lock
@@ -229,7 +255,7 @@ def open_exits(caller):
     """The exits caller could actually leave the room through."""
 ```
 
-Composes `p_passes_lock("traverse")`, `p_can_see` and `p_is_open_exit` over `room.exits` — Evennia's
+Composes `p_passes_lock("traverse")`, `p_can_perceive` and `p_is_open_exit` over `room.exits` — Evennia's
 own filtered view, which is why there is no "is an exit" predicate.
 
 **Selection, not permission.** The chosen exit's `at_traverse` enforces passage and applies gates
@@ -509,7 +535,7 @@ Every migrated command follows the same pattern: darkness check → `resolve_tar
 | cmd_get | `items_room_nonexit` | `p_can_see` | Broad targeting, get-lock check at command layer |
 | cmd_look (container) | `items_inventory_then_room_nonexit` | `p_can_see` | "look in" path |
 | cmd_quaff | `items_inventory` | `p_can_see` | |
-| cmd_drink | `items_inventory_then_room_nonexit` | `p_can_see` | |
+| cmd_drink | `items_inventory_then_room_nonexit` | `p_can_perceive` | Your own pack is found by touch; unseen adds fumbling flavour |
 | cmd_light | `items_equipped` | `p_can_see` | No darkness check (lighting a torch) |
 | cmd_extinguish | `items_equipped` | `p_can_see` | No darkness check (lit = not dark) |
 | cmd_refuel | `items_equipped` | `p_can_see` | |
@@ -519,7 +545,7 @@ Every migrated command follows the same pattern: darkness check → `resolve_tar
 | cmd_follow | `actor_hostile` | `p_can_see` | Strangers = most likely follow target |
 | cmd_join | `actors_in_combat_then_not_in_combat` | `p_can_see` | Combat state check at command layer |
 | cmd_open | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_see` | Direction parser splits input |
-| cmd_close | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_see` | Same pattern as cmd_open |
+| cmd_close | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_perceive` | A door, or your own pack, closes by touch |
 | cmd_lock | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_see` | Same pattern |
 | cmd_unlock | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_see` | Same pattern |
 | cmd_picklock | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_see` | Same pattern |
@@ -531,7 +557,7 @@ Every migrated command follows the same pattern: darkness check → `resolve_tar
 
 | Command | What was added |
 |---|---|
-| cmd_climb | Darkness check + `p_can_see` on inline climbable filtering |
+| cmd_climb | `p_can_perceive` on inline climbable filtering — you climb a wall you can feel. Unseen gropes for the sole climbable, or refuses to tell several apart rather than listing what the climber cannot see |
 | cmd_search | Darkness check (uses its own search loop for hidden objects) |
 
 ## Testing Strategy
