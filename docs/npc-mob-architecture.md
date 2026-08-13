@@ -444,7 +444,7 @@ AI is a composable axis — each mob picks one AI mixin. All three share the sam
 
 ### StateMachineAIMixin
 
-The current system (refactored from the existing `AIMixin`). A tick-driven state machine (`AIHandler`) that fires every `ai_tick_interval` seconds and dispatches to state-specific methods (`ai_wander`, `ai_retreating`, etc.).
+A tick-driven state machine (`AIHandler`) that fires every `ai_tick_interval` seconds and dispatches to state-specific methods (`ai_wander`, `ai_retreating`, etc.).
 
 **Used for:** Simple/commodity mobs — wolves, kobolds, rats, crows. Predictable behavior patterns defined in code. Fast, zero latency, zero cost.
 
@@ -453,6 +453,35 @@ The current system (refactored from the existing `AIMixin`). A tick-driven state
 - `AIHandler` dispatches to current state method
 - State methods call `execute_cmd()` to perform actions
 - Special behaviors composed in via **mob behavior mixins** (`mob_behaviours/`): PackCourageMixin (Kobold, Crow), TacticalDodgeMixin (DireWolf), RampageMixin (Gnoll)
+
+### How mobs see the room
+
+A mob perceives exactly what a character standing in its place would perceive. The predicates in the [unified search system](unified-search-system.md) take `(obj, caller)` and never assume the observer is a player, so the same engine answers for both.
+
+`AIHandler` exposes two helpers, and **both are the default way a mob reaches the world** — AI code should go through them rather than walking `location.contents` itself:
+
+| Helper | Answers | Gate applied |
+|---|---|---|
+| `get_targets_in_room(target_filter=None)` | who is in this room | `p_can_see` |
+| `get_area_exits()` | where can I go from here | `open_exits` + the mob's `mob_area` tag |
+
+**Perception is a floor.** `get_targets_in_room` applies `p_can_see` in both branches. A caller may pass `target_filter` — `callable(obj) -> bool` — to narrow the result to what its own behaviour cares about, but a filter can only ever narrow. There is no way for a caller to widen past what the mob can perceive.
+
+```python
+# Default — player characters the mob can see
+players = self.ai.get_targets_in_room()
+
+# Caller-supplied policy, still perception-gated
+threats = self.ai.get_targets_in_room(self._is_threat)
+```
+
+That split is the point: `get_targets_in_room` decides **what the mob can perceive**, the filter decides **what the mob cares about**. Keeping behaviour policy out of the perception gate is what lets a mob react to its wider environment — other mobs, sizes, factions — without each behaviour re-deriving visibility.
+
+**The counters behave as they do for players.** A concealed actor is returned only to a mob holding the matching counter — the `true_sight` effect for HIDDEN, the `DETECT_INVIS` condition for INVISIBLE, both for an actor carrying both. `BaseNPC` composes `EffectsManagerMixin`, so a mob can be granted either through the same machinery a player uses.
+
+**`.ai` is a `CombatMob` capability, not an actor one.** `StateMachineAIMixin` is composed onto `CombatMob`, so `LLMCombatMob` has it but `LLMRoleplayNPC(LLMMixin, BaseNPC)` and `LLMGuildmasterNPC` do not. Perception code that must serve those classes calls `walk_contents` and the predicates from the targeting library directly — the library is the seam, and `get_targets_in_room` is one convenient consumer of it.
+
+**Known divergences.** Five behaviours scan `location.contents` directly rather than going through the helper, so they answer outside the shared gate: `street_urchin` (city-watch check), `wolf` (rabbit hunting), `pack_courage_mixin` (ally count), `mob_followable_mixin` (squad leader), and `llm_mixin`'s room-context builder, which names players into the LLM prompt without a perception check. `[TBD — needs discussion: migrate these onto the helper, or the library directly for the LLM path.]`
 
 ### LLMAIMixin (Future)
 
