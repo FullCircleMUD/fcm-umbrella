@@ -484,6 +484,12 @@ That split is the point: `get_targets_in_room` decides **what the mob can percei
 
 **Perceive, not see.** The floor is `p_can_perceive`, so darkness does not empty the list: a mob in an unlit room still knows something is there. What darkness costs is *knowledge about* what it found — size, kind, alignment — because those need sight. A mob whose behaviour turns on a trait it cannot read needs a defined answer, and the right answer differs per mob: a coward flees the unknown, an aggressor attacks it. Sightlessness is one boolean for the whole room (`looker_is_blind(self)`), not a per-target filter, so a behaviour branches on it rather than filtering with it. `[TBD — needs discussion: how each behaviour should act on what it cannot identify.]`
 
+**Identify with predicates, not flags.** A behaviour asking "is this a player?" calls
+`p_is_character(obj, self)` rather than reading the `is_pc` attribute. The flag still exists and is
+still what `FCMCharacter` and `BaseNPC` set, but a behaviour that reads it directly is a filter rule
+living at a call site — the thing this whole layer exists to avoid. The same applies to any other
+trait a behaviour gates on: reach for a library predicate, and add one where none fits.
+
 **The counters behave as they do for players.** A concealed actor is returned only to a mob holding the matching counter — the `true_sight` effect for HIDDEN, the `DETECT_INVIS` condition for INVISIBLE, both for an actor carrying both. `BaseNPC` composes `EffectsManagerMixin`, so a mob can be granted either through the same machinery a player uses.
 
 **`.ai` is a `CombatMob` capability, not an actor one.** `StateMachineAIMixin` is composed onto `CombatMob`, so `LLMCombatMob` has it but `LLMRoleplayNPC(LLMMixin, BaseNPC)` and `LLMGuildmasterNPC` do not. Perception code that must serve those classes calls `walk_contents` and the predicates from the targeting library directly — the library is the seam, and `get_targets_in_room` is one convenient consumer of it.
