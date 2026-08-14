@@ -496,6 +496,27 @@ trait a behaviour gates on: reach for a library predicate, and add one where non
 
 **Known divergences.** Four behaviours scan `location.contents` directly rather than going through the helper, so they answer outside the shared gate: `street_urchin` (city-watch check), `wolf` (rabbit hunting), `pack_courage_mixin` (ally count) and `mob_followable_mixin` (squad leader). `[TBD — needs discussion: migrate these onto the helper.]`
 
+### Reacting to someone you cannot see
+
+A mob that speaks or emotes at an arrival has a problem the dispatcher does not solve for it. The
+arrival is filtered — a concealed player is never announced — but an unlit room still produces the
+notification, and half of a scripted line pool tends to assume sight. A bandit bowing to someone he
+cannot see reads as a bug.
+
+The pattern is two pools chosen on `looker_is_blind(self)`, one for what the mob would say seeing
+you and one for what it would say only hearing you. `TightsBandit` is the worked example:
+
+```python
+pool = _GREETINGS_UNSEEN if looker_is_blind(self) else _GREETINGS_SEEN
+```
+
+The unseen pool asks rather than gestures — "Oi! Who's this then?", "Show yourself, friend." — which
+is what someone aware of a presence but not an identity would actually say. `LLMMixin` does the same
+thing with `llm_blind_challenges`, standing in for a prompt that would have nothing to work with.
+
+The rule is code, the words are content, so a builder can vary the pool per mob without touching
+behaviour.
+
 ### What an LLM NPC is told
 
 `LLMMixin` composes onto `BaseNPC`, which has no `.ai`, so its room context calls `walk_contents` and the predicates directly rather than `get_targets_in_room`. It applies the same floor:
