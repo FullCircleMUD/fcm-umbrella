@@ -750,7 +750,7 @@ Adds "attacks on sight" behavior. Extracted from the current `AggressiveMob` cla
 
 **Provides:**
 - `is_aggressive_to_players` attribute (default True, can be toggled)
-- `at_new_arrival(arriving_obj)` — aggro when a player enters the room
+- `at_new_arrival(arriving_obj)` — aggro when a player enters the room. Only fired for arrivals the mob can perceive; the room dispatcher applies that floor, so the behaviour never sees a concealed arrival
 - `_try_reach_and_attack(target)` — height-aware attack initiation
 - `_try_match_height(target)` — adjust vertical position to reach target (respects FlyingMixin/SwimmingMixin bounds if present)
 - `_schedule_attack(target)` — delayed attack with random interval (`attack_delay_min`/`attack_delay_max`)

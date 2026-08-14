@@ -126,7 +126,24 @@ When a character enters a room with quest tags, `at_object_receive()` fires an `
 
 ### Mob Arrival Notification
 
-`at_object_receive()` also notifies all mobs in the room via `at_new_arrival(moved_obj)` when a character enters. This is how aggressive mobs detect and attack players on entry.
+`at_object_receive()` also notifies mobs in the room via `at_new_arrival(moved_obj)` when a character
+enters. This is how aggressive mobs detect and attack players on entry.
+
+The notification is gated on `p_can_perceive`, asked once per recipient with the arriver as the
+thing being perceived — the push-side counterpart to what `AIHandler.get_targets_in_room` answers
+when a mob looks around. A concealed arrival is not announced at all, so a mob no longer attacks an
+invisible character who walked past it. The counters travel with the predicate: a mob holding
+`DETECT_INVIS` is still told about an invisible arrival, one under `true_sight` about a hidden one.
+
+**Perceive, not see.** Someone walking in makes noise, so an unlit room still gets the notification
+— darkness does not silence an arrival, it only limits what the mob can work out about it. Note
+that the hook is handed the *object*, not a name, so a mob that cannot see the arriver can still
+read traits off it. What a mob may legitimately know about something it can only sense is open:
+`[TBD — needs discussion: gating trait access for a sightless mob.]`
+
+`TrapMixin._trigger_alarm` calls `at_new_arrival` through its own loop rather than this one, and is
+not yet gated. `[TBD — needs discussion: an alarm is not an arrival and probably wants its own
+hook.]`
 
 ## Room Display System
 
