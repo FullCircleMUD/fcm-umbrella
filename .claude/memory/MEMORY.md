@@ -49,6 +49,7 @@
 - [No legacy-data concerns during shards work](feedback_no_legacy_data_concerns.md) — pre-alpha, fresh DB every deploy, live deploy replaces the current one wholesale. Don't weigh existing-database impact until a sharded deployment is live and working.
 - [Terse confirmations](feedback_terse_confirmations.md) — answer yes/no or confirmation questions in 1-3 sentences, no re-derivation or hedging caveats.
 - [A question is not an instruction](feedback_question_is_not_instruction.md) — answer questions in prose and stop; wait for an imperative before editing code.
+- [No manufactured objections](feedback_no_manufactured_objections.md) — raise only concerns that bind in this codebase; check a consequence actually bites before stating it. Zero real objections means say so.
 - [Lead with the no](feedback_lead_with_the_no.md) — when a proposal won't work, say so in the first sentence; never open with agreement, never raise caveats that don't change the decision.
 - [No alarming phrasing](feedback_no_alarming_phrasing.md) — don't dramatize minor refinements/corrections ("that changes the design", "poor way to say it"); state the refined version plainly.
 - [Don't overinvest in tangents](feedback_dont_overinvest_tangents.md) — don't chain multiple tool calls chasing precise answers to side questions unrelated to the actual task outcome.
