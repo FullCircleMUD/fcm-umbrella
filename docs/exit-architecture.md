@@ -233,8 +233,9 @@ Exits participate in the game's visibility system at multiple levels:
 
 | Check | Where | What it filters |
 |---|---|---|
-| `is_visible_to(looker)` | `get_display_exits()` | Auto-exit line `[ Exits: ]` |
-| `is_visible_to(looker)` | `CmdExits.func()` | Verbose `exits` command |
+| `p_object_visible_to` | `get_display_exits()` | Auto-exit line `[ Exits: ]` |
+| `p_object_visible_to` | `CmdExits.func()` | Verbose `exits` command |
+| `p_object_visible_to` | `ExitDoor.at_traverse()` | A door you can't see can't be walked through |
 | `p_can_perceive` | `resolve_target` in `open` | Finding a door by feel — see [the three shapes](unified-search-system.md#sightlessness--the-three-shapes) |
 | `p_can_see` | `resolve_target` in `close`, `lock`, `unlock`, `picklock` | A keyway needs eyes |
 | `looker_is_blind` | `CmdLook._look_direction()` | `look <direction>` answers as if there were nothing there |

@@ -169,7 +169,7 @@ Exits with height requirements are filtered from `get_display_exits()` based on 
 
 When multiple exits share the same direction at different heights, only the one matching the character's current height appears. The player sees one `s` in `[Exits: s]` regardless — the system picks the right exit.
 
-The filtering integrates with the existing visibility system — `get_display_exits()` already filters by `is_visible_to()` and closed door state. Height filtering is an additional gate.
+The filtering integrates with the existing visibility system — `get_display_exits()` already filters by `p_object_visible_to` and closed door state. Height filtering is an additional gate.
 
 The `exits` command and `look <direction>` also respect this — you can't look through an exit you can't see at your current height.
 

@@ -26,7 +26,6 @@ Foundation class for all permanent world objects.
 - `HeightAwareMixin` — `room_vertical_position`, `visible_min_height`/`visible_max_height` for height-gated visibility
 - `HiddenObjectMixin` — `is_hidden`, `find_dc`, discoverable via `search`
 - `InvisibleObjectMixin` — `is_invisible`, requires DETECT_INVIS to see
-- `is_visible_to(character)` — combined visibility check
 
 Both object concealment mixins are also honoured by `p_object_visible_to`, so an object flagged
 `is_hidden` or `is_invisible` is filtered out of targeting as well as room display — a fixture you

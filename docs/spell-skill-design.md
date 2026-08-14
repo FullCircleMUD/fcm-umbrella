@@ -673,7 +673,7 @@ class MagicMissile(Spell):
 | Value | Meaning |
 |---|---|
 | `"inventory_item"` | An NFT item in the caster's own contents. Always visible to the owner — no hidden/invisible filtering. Examples: Mending, Recharge, Enchant Weapon. |
-| `"world_item"` | An object or exit in the caster's room, filtered by `is_visible_to(caster)` so hidden/invisible objects are excluded until discovered. Delegates to `utils/find_exit_target.py` and inherits its directional qualifier handling ("door south"). Examples: Knock, Shatter. |
+| `"world_item"` | An object or exit in the caster's room, filtered by `p_object_visible_to` so hidden/invisible objects are excluded until discovered. Delegates to `utils/find_exit_target.py` and inherits its directional qualifier handling ("door south"). Examples: Knock, Shatter. |
 | `"any_item"` | Try `world_item` first (the room takes precedence), then fall through to `inventory_item`. Use only when a spell genuinely works on either context. |
 
 Item-target spells receive the resolved item as `target` in `_execute()` and dispatch via duck-typing on the relevant capability (`hasattr(target, "is_locked")`, `hasattr(target, "durability")`, etc.) rather than `isinstance`. This keeps each spell content-complete for any future typeclass that adopts the same capability mixin.

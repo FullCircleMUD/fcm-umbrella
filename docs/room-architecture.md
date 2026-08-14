@@ -293,16 +293,44 @@ drops non-seers entirely; perceptible ones use `msg_contents_with_invis_alt`.
 
 ### msg_contents Override
 
-`RoomBase.msg_contents()` asks `p_actor_visible_to(from_obj, recipient)` once per recipient and
-excludes anyone who fails. Note the operand order — the sender is the thing seen, the recipient is
-the observer; targeting calls the same predicate the other way round.
+`RoomBase.msg_contents()` asks both concealment axes about `from_obj` once per recipient and
+excludes anyone who fails either — `p_actor_visible_to` for a concealed actor, and
+`p_object_visible_to` for a door or fixture composing `HiddenObjectMixin` or `InvisibleObjectMixin`.
+Each predicate passes anything outside its own domain through untouched, so an actor is gated only
+by the first and a door only by the second. Note the operand order — the sender is the thing seen,
+the recipient is the observer; targeting calls the same predicates the other way round.
 
-The predicate is the single source of the rules, so this method does not restate them. See
+The predicates are the single source of the rules, so this method does not restate them. See
 [unified-search-system.md](unified-search-system.md) § Predicate library: HIDDEN is pierced only by
 `true_sight`, INVISIBLE only by `DETECT_INVIS`, and a sender under both requires both counters.
 
-`from_obj=caller` is **required** on all `msg_contents` calls for filtering to work. Without it,
-messages bypass filtering entirely.
+### Two shapes, chosen by what the action produces
+
+Every room broadcast makes two choices, and they are independent.
+
+**Whose name resolves.** Any name in the string must travel via `mapping=` so `get_display_name`
+answers per recipient. A name formatted in beforehand is the same for everyone, which leaks one
+observer's view to the whole room.
+
+```python
+room.msg_contents(
+    "{basher} bashes {victim} to the ground!",
+    exclude=[caller, target],
+    mapping={"basher": caller, "victim": target},
+)
+```
+
+**Who receives it at all.** If an unsighted observer could plausibly perceive the action — a shout,
+a blow landing, a weapon ringing — the line goes to everyone and the concealed actor renders as
+"Someone". That is `mapping=` alone, with no `from_obj`. If there is nothing to perceive —
+bookkeeping, a silent gesture, a state change — pass `from_obj` as well and they get nothing.
+
+Dodging and stepping in front of an ally count as nothing: no one sees you dodge if they cannot see
+you. Disbanding a group is bookkeeping. Shouting an order to your party is not.
+
+Anything done *to* an actor never reveals them. Poison ticking, a bola holding them, a cleave
+catching them — a per-round broadcast would turn any lasting effect into a detector and bypass
+`cmd_search`, which is meant to be the counterplay.
 
 ### msg_contents_with_invis_alt
 
@@ -514,8 +542,8 @@ Rooms are classified as `"WORLD"` for blockchain service dispatch — fungible o
 1. **Always extend RoomBase** for game rooms — never bare `DefaultRoom` (except RoomRecycleBin which intentionally avoids game systems).
 2. **CmdSets are injected once** in `at_object_creation()` with `persistent=True`. They survive server restarts.
 3. **Override display hooks, not return_appearance** — customize rooms by overriding `get_display_header/footer/desc`, not by rewriting the assembly logic.
-4. **`from_obj=caller` is mandatory** on all `msg_contents` calls for HIDDEN/INVISIBLE filtering to work.
-4a. **Never format a name into a broadcast string.** Pass the object via `mapping=` so each recipient resolves it through `get_display_name()`. An f-string leaks a concealed name to the whole room off one observer's view.
+4. **Never format a name into a broadcast string.** Pass the object via `mapping=` so each recipient resolves it through `get_display_name()`. An f-string leaks a concealed name to the whole room off one observer's view.
+4a. **`from_obj` decides who receives it at all**, and is not automatic. Pass it when there is nothing an unsighted observer could perceive, so they get nothing; leave it off when the action makes a noise or lands a blow, so they get the line with the actor as "Someone".
 5. **Terrain drives defaults** — set terrain once, lighting and weather exposure derive automatically. Only override `natural_light`, `always_lit`, `sheltered`, or `subterranean` when the default derivation is wrong (or when the room has no terrain tag and shouldn't fall through to the "no terrain = exposed, lit by sun" defaults).
 6. **Quest tags are lists** — a room can trigger multiple quests on entry.
 7. **Safe zones** set `allow_combat=False, allow_pvp=False, allow_death=False` — this is the standard pattern for banks, inns, temples, etc.

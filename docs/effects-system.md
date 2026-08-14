@@ -92,6 +92,47 @@ target.break_effect(NamedEffect.INVISIBLE)  # or break_invisibility() alias
 target.break_effect(NamedEffect.SANCTUARY)  # or break_sanctuary() alias
 ```
 
+### break_conditions_from_hostile_action() — the whole set at once
+
+Acting with hostile intent ends several conditions together, and which ones is one decision rather
+than a decision per command:
+
+```python
+broken = attacker.break_conditions_from_hostile_action()          # the whole set
+broken = attacker.break_conditions_from_hostile_action(           # keeping one
+    Condition.SANCTUARY,
+)
+```
+
+`HOSTILE_ACTION_BREAKS` in `enums/condition.py` holds the set — INVISIBLE, HIDDEN, SANCTUARY today —
+and is **the single place a condition joins it**. Every call site inherits an addition there, so the
+set cannot drift out of step between paths. A call site that genuinely needs a subset passes the
+exceptions as `excluded`, and the omission then reads at the site that makes it.
+
+Two removal routes, chosen per condition rather than declared: `break_effect` where a named effect
+manages the condition, so its timer stops and its stat changes reverse; a plain `remove_condition`
+where none does. HIDDEN is the standing example of the second.
+
+Sends no messages, matching `break_effect` — what to say depends on what the actor just did. It
+returns the conditions it actually broke, so callers drive messaging and advantage off the result
+rather than off state that is now gone:
+
+```python
+if Condition.INVISIBLE in broken:
+    handler.set_advantage(target, rounds=1)
+```
+
+**Where it is called.** `execute_attack` is the main one, which reaches every attack — commands, mob
+attacks, auto-attack ticks, ripostes and reach counters. `cmd_assist` calls it directly, because
+granting an ally advantage against every enemy never routes through an attack. Commands that reach
+`execute_attack` some other way carry a comment saying where instead of a duplicate call, so a later
+scan reads "analysed and delegated" rather than "missing".
+
+**What deliberately does not break.** Parrying and intercepting a blow are things done *to* you (R3).
+Taunting breaks nothing either, and that is the point of the skill: it exists to make the *mob* the
+aggressor, so ending the taunter's own concealment would undercut it. What taunt has instead is a
+gate — the target must be able to see who is goading them.
+
 ### Low-Level API
 
 - `apply_named_effect(key, source=None, effects, condition, duration, duration_type, messages, save_dc, save_stat, save_messages)` → accepts `NamedEffect` enum or string key. Auto-fills condition and duration_type from registry via `_UNSET` sentinel. Applies conditions incrementally, then calls `_recalculate_stats()` for numeric stat effects. Returns `True` if applied, `False` if already active (anti-stacking).

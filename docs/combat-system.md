@@ -589,7 +589,7 @@ Three rules govern when concealment is lost. They apply to any command, not only
 
 Stash command (`commands/class_skill_cmdsets/class_skill_cmds/cmd_stash.py`) — STEALTH class skill (thief, ninja, bard). Two branches:
 
-- **Object stashing:** `stash <object>` — physically hides objects in the current room. Rolls `d20 + effective_stealth_bonus`; result becomes the object's `find_dc`. Object disappears from room display via existing `is_visible_to()` filtering. Found via `search` command (uses `discover()` to reveal).
+- **Object stashing:** `stash <object>` — physically hides objects in the current room. Rolls `d20 + effective_stealth_bonus`; result becomes the object's `find_dc`. Object disappears from room display via `p_object_visible_to` filtering. Found via `search` command (uses `discover()` to reveal).
 - **Actor stashing:** `stash <ally>` — hides an ally using the stasher's stealth roll. Rolls `d20 + effective_stealth_bonus` vs `best_passive_perception(room, exclude={caller, target})`. On success, applies HIDDEN condition to the target. Target then follows normal hidden rules — they use their own stealth if they move, and all standard hidden-breaking triggers work. Cannot stash yourself (use `hide` instead), cannot stash someone already hidden or in combat.
 
 **Stash vs Conceal:** Two distinct commands for hiding things:

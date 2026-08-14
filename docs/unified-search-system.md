@@ -480,9 +480,17 @@ both hands — harvesting, and the fumble shape above.
 | Function | Purpose |
 |---|---|
 | `check_busy(caller)` | Entry guard. Messages and returns `True` if the caller is already occupied |
-| `start_busy(caller, seconds, on_complete, self_msg=None, room_msg=None)` | Announce, lock, wait, clear, then run the outcome |
+| `start_busy_ticks(caller, ticks, interval, on_complete, progress=None, done_msg=None, self_msg=None, room_msg=None, room_alt_msg=None)` | The general form. Lock, announce, report progress each tick, clear, then run the outcome |
+| `start_busy(caller, seconds, on_complete, self_msg=None, room_msg=None, room_alt_msg=None)` | The single-tick case, for actions short enough that progress would be noise |
+| `progress_bar(step, total, width=10)` | `####------`, shared by everything that draws one |
 | `fumble_seconds()` | The search-by-touch duration, 3–4 seconds |
 | `BUSY_MESSAGE` | The refusal wording — busy is busy regardless of cause, so it lives in one place |
+
+`start_busy` is `start_busy_ticks` with one tick and nothing to report, so there is one lock
+implementation rather than two. `progress` is a callable `(step, total) -> str` called before each
+wait, starting at step 0 so an empty bar appears immediately; every caller words its own. Supplying
+`room_alt_msg` switches the announcement to `msg_contents_with_invis_alt`, so observers who cannot
+perceive the actor see tools moving by themselves rather than a person using them.
 
 Two different strings, and both are needed: the *refusal* a second command gets is generic and
 shared; the *announcement* is per-action and passed in ("You begin gathering...", "You grope about
@@ -493,8 +501,9 @@ before they can react. Every command that respects the lock refuses while it is 
 attack, via `CombatMixin._can_start_fight_now()`. The lock is released *before* `on_complete` runs,
 so an outcome that starts something else is not blocked by the action that produced it.
 
-Crafting, processing, repair and insetting still hand-roll the same lock rather than calling
-`start_busy`. `[TBD — needs discussion: whether to migrate them]`
+Every timed action runs through this: harvesting and the fumble shape, crafting, processing, repair
+and insetting, skill and weapon training, and the travel, sail and explore journeys. Nothing outside
+`utils/busy.py` touches `ndb.is_processing`.
 
 ## Priority-Bucketed Actor Resolvers
 
