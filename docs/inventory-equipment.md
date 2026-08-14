@@ -109,7 +109,20 @@ The Mule and Horse enums are placeholder slot definitions ahead of the correspon
 | `get_all_worn()` | `list` | All currently worn items |
 | `get_slot(slot_name)` | item or None | What's in a specific slot |
 | `get_carried()` | `list` | Contents minus worn items (for inventory display) |
-| `equipment_cmd_output(header)` | `str` | Formatted equipment display |
+| `equipment_cmd_output(header, looker)` | `str` | The full slot sheet — every slot, filled or not, with condition labels |
+| `worn_summary(looker)` | `str` | Compact list of filled slots, for `look <actor>` |
+| `empty_slot_note(slot, looker)` | `str` | Override point: why an empty slot is unusable |
+
+**Both views name items through `get_display_name(looker)`.** An item the looker cannot make out —
+concealed, or the looker blind or in the dark — reads as its own `unseen_name` rather than a
+hardcoded placeholder, so the word is content a spawn rule can set per instance. A masked item also
+loses its condition label: durability is detail, and detail belongs to something you can identify.
+
+The two views differ on darkness. The sheet is your own kit, so it still lists the slots and masks
+the names. `worn_summary` suppresses entirely — a kit list is detail, and looking at a stranger in an
+unlit room should not itemise what they are carrying. Concealment masks rather than drops in both:
+an armed stranger you cannot identify is still visibly armed, and dropping the entry would read as
+an unarmed one.
 
 ### Wear Effects (Data-Driven)
 
