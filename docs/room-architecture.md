@@ -164,10 +164,11 @@ Note that the hook is handed the *object*, not a name, so a recipient that canno
 can still read traits off it. What a mob may legitimately know about something it can only sense is
 open: `[TBD — needs discussion: gating trait access for a sightless mob.]`
 
-One gap the dispatcher does not cover: `FCMCharacter._check_hidden_on_entry` — the stealth roll that
-can reveal a hidden arrival — runs in `at_post_move`, which fires *after* `at_object_receive`. A
-player revealed by that roll was concealed when the room was notified, so nobody is told they
-arrived. `[TBD — needs discussion: whether the stealth roll should resolve before notification.]`
+**Stealth resolves before the dispatcher runs.** `_check_hidden_on_entry` is called from
+`BaseActor.announce_move_to`, which Evennia invokes just before `at_object_receive`, so the arriver's
+concealment is settled by the time the room decides who to notify. A thief who fails the roll
+produces the same arrival anyone else would — announced to the room, pushed to the mobs. One who
+passes is excluded from both. See [combat-system.md](combat-system.md) § Stealth for the roll itself.
 
 ### Alarm traps
 

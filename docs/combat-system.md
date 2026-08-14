@@ -559,7 +559,15 @@ Hide command (`commands/all_char_cmds/cmd_hide.py`) — available to ALL charact
 
 **Racial Skill Advantages:** Races can have permanent advantage on specific skill checks via `racial_skill_advantages` frozenset on `RaceBase` (e.g. halflings have `{"stealth"}`). This grants advantage (roll 2d20, take best) on all stealth checks — hide, movement stealth rechecks, and stash. Racial advantage is permanent and does NOT consume the one-shot `non_combat_advantage` flag from `assist` — both can be active, but advantage doesn't stack beyond "you have advantage". The `racial_skill_advantages` field is extensible for future races (e.g. elves could get `{"perception"}`).
 
-**Movement while HIDDEN:** `FCMCharacter.at_post_move()` automatically rolls stealth vs best perceiver in destination room on entry. Success = stay hidden. Fail = revealed with messaging. Check is on **entry only**, not exit. No separate sneak command — movement while HIDDEN *is* sneaking.
+**Movement while HIDDEN:** moving into a room automatically rolls stealth vs the best perceiver already in it. Success = stay hidden. Fail = revealed with messaging. Check is on **entry only**, not exit, and one roll per move. No separate sneak command — movement while HIDDEN *is* sneaking.
+
+The roll resolves in `BaseActor.announce_move_to`, which Evennia calls immediately before the room's `at_object_receive`. That ordering is load-bearing: the room decides who to notify from the arriver's concealment state, so a thief who fails the roll produces the same arrival anyone else would — announced to the room, pushed to the mobs. Resolve it any later and failing your stealth roll would be *safer* than walking in openly, because nothing in the room would ever be told you arrived. See [room-architecture.md](room-architecture.md) § Arrival Notification.
+
+**Followers are the exception.** They travel with `quiet=True`, and Evennia skips both announce hooks on a quiet move, so `FCMCharacter.at_post_move` catches them instead — guarded on `move_type == "follow"`, which is the only way to reach it, so there is still exactly one roll per move. The consequence is that a hidden follower is checked *after* the party's arrival rather than before it: the room hears about the group, then notices the extra body. Accepted deliberately — a group is cover, and an aggressive mob attacking any member drags the thief into a fight that strips HIDDEN anyway. Without it, a hidden character could follow a party across the map without rolling once.
+
+Teleports also travel quietly — recall, purgatory, dungeon and tutorial transitions, sail, gateway travel — and correctly roll nothing. Materialising somewhere is not sneaking into it.
+
+**Bolting breaks cover.** The out-of-combat panic run (`cmd_flee.py`) strips HIDDEN before it moves you. Combat flee needs no equivalent: `attack`, `stab` and `join` all break concealment, so nobody reaches a fight still hidden.
 
 **Search reveals hidden characters:** `cmd_search.py` rolls active perception (`d20 + effective_perception_bonus`) vs passive stealth (`10 + effective_stealth_bonus`).
 
