@@ -124,10 +124,28 @@ room.quest_tags = ["rat_cellar", "warrior_initiation"]
 
 When a character enters a room with quest tags, `at_object_receive()` fires an `"enter_room"` event to the character's quest handler. The handler filters to quests matching the room's tags.
 
-### Mob Arrival Notification
+### Arrival Notification
 
-`at_object_receive()` also notifies mobs in the room via `at_new_arrival(moved_obj)` when a character
-enters. This is how aggressive mobs detect and attack players on entry.
+**Arrivals are announced by the container that received the object, never by the object that
+moved.** `at_object_receive()` is the single arrival dispatcher: it holds the perception gate and
+fires every arrival hook from one loop. Anything that wants to react to an arrival implements a hook
+and waits to be called — it does not go looking, and the mover does not go telling.
+
+Two dispatchers for one event means fixing one leaves the other wrong, and the one nobody is looking
+at is the one without a perception gate — an invisible player walks in and the NPC greets them by
+name. A hook added to a room, a mob or an NPC belongs here.
+
+`at_post_move` keeps only what the mover does to *itself* — movement points, breath timer, map
+auto-creation, the follower cascade. Telling other people something happened is the room's job.
+
+Two hooks fire from the dispatcher today:
+
+- `at_new_arrival(moved_obj)` — mobs. This is how aggressive mobs detect and attack players on entry
+- `at_llm_player_arrive(moved_obj)` — LLM NPCs. Carries two extra conditions: `source_location is
+  not None`, which gates out initial placement during chargen (an instantiated character is not
+  "arriving", and a reactive NPC in the start room would make a blocking multi-second LLM call
+  during finalisation), and `p_is_character`, because the dispatcher fires for anything entering and
+  a dropped sword is not an arrival worth talking to
 
 The notification is gated on `p_can_perceive`, asked once per recipient with the arriver as the
 thing being perceived — the push-side counterpart to what `AIHandler.get_targets_in_room` answers
@@ -136,10 +154,20 @@ invisible character who walked past it. The counters travel with the predicate: 
 `DETECT_INVIS` is still told about an invisible arrival, one under `true_sight` about a hidden one.
 
 **Perceive, not see.** Someone walking in makes noise, so an unlit room still gets the notification
-— darkness does not silence an arrival, it only limits what the mob can work out about it. Note
-that the hook is handed the *object*, not a name, so a mob that cannot see the arriver can still
-read traits off it. What a mob may legitimately know about something it can only sense is open:
-`[TBD — needs discussion: gating trait access for a sightless mob.]`
+— darkness does not silence an arrival, it only limits what the recipient can work out about it.
+That is also why the sight half belongs to the hook rather than the dispatcher: `at_llm_player_arrive`
+asks `looker_is_blind(self)` and challenges "Who's there?" instead of greeting. Gate the dispatcher
+on sight and the NPC is never told, so it goes silent instead — the dispatcher would have taken a
+decision that is the recipient's to make.
+
+Note that the hook is handed the *object*, not a name, so a recipient that cannot see the arriver
+can still read traits off it. What a mob may legitimately know about something it can only sense is
+open: `[TBD — needs discussion: gating trait access for a sightless mob.]`
+
+One gap the dispatcher does not cover: `FCMCharacter._check_hidden_on_entry` — the stealth roll that
+can reveal a hidden arrival — runs in `at_post_move`, which fires *after* `at_object_receive`. A
+player revealed by that roll was concealed when the room was notified, so nobody is told they
+arrived. `[TBD — needs discussion: whether the stealth roll should resolve before notification.]`
 
 `TrapMixin._trigger_alarm` calls `at_new_arrival` through its own loop rather than this one, and is
 not yet gated. `[TBD — needs discussion: an alarm is not an arrival and probably wants its own

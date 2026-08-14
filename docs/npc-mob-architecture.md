@@ -498,6 +498,12 @@ trait a behaviour gates on: reach for a library predicate, and add one where non
 
 ### Reacting to someone you cannot see
 
+Arrival hooks are called by the container that received the arrival — `RoomBase.at_object_receive`
+— and never dispatched by the thing that moved. Both `at_new_arrival` and `at_llm_player_arrive`
+fire from that one loop, behind one perception gate; see
+[room-architecture.md](room-architecture.md) § Arrival Notification. A mob or NPC reacting to an
+arrival implements its hook and waits to be called.
+
 A mob that speaks or emotes at an arrival has a problem the dispatcher does not solve for it. The
 arrival is filtered — a concealed player is never announced — but an unlit room still produces the
 notification, and half of a scripted line pool tends to assume sight. A bandit bowing to someone he
