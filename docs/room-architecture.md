@@ -169,9 +169,24 @@ can reveal a hidden arrival — runs in `at_post_move`, which fires *after* `at_
 player revealed by that roll was concealed when the room was notified, so nobody is told they
 arrived. `[TBD — needs discussion: whether the stealth roll should resolve before notification.]`
 
-`TrapMixin._trigger_alarm` calls `at_new_arrival` through its own loop rather than this one, and is
-not yet gated. `[TBD — needs discussion: an alarm is not an arrival and probably wants its own
-hook.]`
+### Alarm traps
+
+`TrapMixin._trigger_alarm` alerts mobs through its own loop rather than the room dispatcher, because
+an alarm is not an arrival — the victim is already in the room, and something has just given away
+where they are. It applies the same `p_can_perceive` gate, with one difference.
+
+**An alarm defeats stealth but not invisibility.** A `HIDDEN` victim is revealed before anyone is
+told, through the same `remove_condition` path a failed stealth roll on room entry uses — sneaking
+past an alarm is precisely what the trap exists to prevent. Invisibility survives it: the noise says
+someone is here, it does not make them visible, so no mob is handed a target it cannot perceive. A
+mob holding `DETECT_INVIS` still is.
+
+The alarm message itself sounds to the room either way. Everyone learns someone is coming; only
+those who can perceive the victim learn who.
+
+It reuses the `at_new_arrival` hook to mean "be alerted to this person". `[TBD — needs discussion:
+a separate `at_alarm` hook, and mobs entering a `searching` state when an alarm fires and they can
+find nobody.]`
 
 ## Room Display System
 
