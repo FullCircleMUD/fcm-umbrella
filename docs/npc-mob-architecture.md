@@ -41,7 +41,7 @@ BaseActor
 │       ← player character, gets combat from CombatMixin
 │       ← die() override: player death (corpse, purgatory, XP penalty)
 │
-└── BaseNPC(BaseActor)                   ← is_pc=False, level, _EmptyNPCCmdSet
+└── BaseNPC(BaseActor)                   ← level, _EmptyNPCCmdSet
     │                                      (no FungibleInventoryMixin — service NPCs
     │                                       don't hold gold/resources directly)
     │

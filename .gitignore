@@ -36,5 +36,8 @@ __pycache__/
 # Process IDs written by a running server — per-instance, regenerated on every start.
 *.pid
 
+# Working files for in-flight analysis — notes, not documentation.
+/.scratch/
+
 # Personal, machine-local instructions — not synced.
 /CLAUDE.local.md
