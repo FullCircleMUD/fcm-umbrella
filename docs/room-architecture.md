@@ -97,8 +97,19 @@ A room is dark when ALL of these are true:
 - NOT `always_lit`
 - NOT (has natural light AND it's daytime)
 - NOT (lit fixture in room — e.g. lamppost, sconce)
-- NOT (looker carries a lit light source — torch, lantern)
+- NOT (a lit light source anywhere in the room — dropped, carried by anyone standing there, or the `light_spell` effect on someone)
 - NOT (looker has DARKVISION condition)
+
+**Light is a property of the room, not of the person holding it.** Only the last line varies by
+observer; everything above it is the same answer for everyone present, which is why
+`_dark_ignoring_darkvision()` takes no looker. Four in a dungeon with one lantern between them can
+all see.
+
+`_has_light_source_in_room` reaches into an actor's contents **one level deep**, gated on `p_living`.
+That is deliberate on both counts: the gate excludes chests, sacks and dropped packs, so a lantern
+shut inside one stays dark, and it excludes corpses, so a torch on a body has to be looted before it
+lights anything. One level means a lantern inside a backpack inside a character does not count
+either — same reasoning as the chest.
 
 A looker who cannot see gets the room's `unseen_name` — "Somewhere" by default — no description and no exits, but **still the things and the characters**, anonymised. An occupied dark room reads as bodies and shapes you cannot identify, not as an empty one. See § Darkness and the room display below.
 

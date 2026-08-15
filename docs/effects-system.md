@@ -123,15 +123,30 @@ if Condition.INVISIBLE in broken:
 ```
 
 **Where it is called.** `execute_attack` is the main one, which reaches every attack — commands, mob
-attacks, auto-attack ticks, ripostes and reach counters. `cmd_assist` calls it directly, because
-granting an ally advantage against every enemy never routes through an attack. Commands that reach
-`execute_attack` some other way carry a comment saying where instead of a duplicate call, so a later
-scan reads "analysed and delegated" rather than "missing".
+attacks, auto-attack ticks, ripostes and reach counters. Three commands call it directly because
+nothing routes them through an attack:
+
+| Caller | Gate | Excluded |
+|---|---|---|
+| `execute_attack` | every attack | — |
+| `cmd_assist` | granting an ally advantage | — |
+| `cmd_cast` / `cmd_zap` | `success and target_type == "actor_hostile"` | — |
+| `cmd_pickpocket` | a **failed** attempt only | `SANCTUARY` |
+
+A caster never passes through `execute_attack`: `BaseSpell._maybe_enter_combat` calls `enter_combat`
+without an `instigator`, so the free-attack block is skipped and only the *target* reaches the attack
+pipeline. Commands that do reach `execute_attack` some other way carry a comment saying where instead
+of a duplicate call, so a later scan reads "analysed and delegated" rather than "missing".
 
 **What deliberately does not break.** Parrying and intercepting a blow are things done *to* you (R3).
 Taunting breaks nothing either, and that is the point of the skill: it exists to make the *mob* the
 aggressor, so ending the taunter's own concealment would undercut it. What taunt has instead is a
 gate — the target must be able to see who is goading them.
+
+A *successful* pickpocket breaks nothing: a clean lift is not a hostile act, and the thief keeps both
+concealment axes. Only getting caught costs them, and even then sanctuary is excluded — a thief with
+their hand in someone else's purse keeps divine protection from the mob they have just woken up.
+This is the standing example of the `excluded` parameter earning its place.
 
 ### Low-Level API
 

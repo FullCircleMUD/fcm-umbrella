@@ -583,7 +583,7 @@ Three rules govern when concealment is lost. They apply to any command, not only
 
 **3. Break only on commitment.** A concealment-breaking action fires only once the action is certain to happen — after target resolution succeeds, not before. A mistyped or unresolvable target must not cost the actor their concealment. This rules out doing the check in `at_pre_cmd` or at the top of a command's `func()`.
 
-**Invisibility is not hiding.** INVISIBLE is magical and does not depend on staying out of sight, so it survives socials, contact, and movement — an invisible character can shake a hand and stay invisible. It breaks only on offensive action (`cmd_attack`, `combat_utils.execute_attack`).
+**Invisibility is not hiding.** INVISIBLE is magical and does not depend on staying out of sight, so it survives socials, contact, and movement — an invisible character can shake a hand and stay invisible. It breaks only on offensive action, and always through `break_conditions_from_hostile_action` — see the caller table in [effects-system.md](effects-system.md).
 
 ### Stash Command (Object Concealment)
 
@@ -609,13 +609,13 @@ Two linked commands forming a scout-then-steal workflow for thieves/ninjas/bards
 
 **Case** (`commands/class_skill_cmdsets/class_skill_cmds/cmd_case.py`) — passive observation of a target's inventory. Each item has a mastery-dependent % chance of being revealed (BASIC 50%, SKILLED 60%, EXPERT 70%, MASTER 80%, GM 90%). Gold shown as vague tiers ("a few coins", "some gold", "a decent purse", "a heavy coin purse", "a fortune"). Resources show type but not quantity ("some wheat"). Results cached for 5 minutes — repeat shows same results. Does NOT break HIDDEN (purely observational).
 
-**Pickpocket** (`commands/class_skill_cmdsets/class_skill_cmds/cmd_pickpocket.py`) — steal something revealed by case. Syntax: `pickpocket <thing> from <target>`. Contested roll: `d20 + DEX mod + SUBTERFUGE mastery bonus` vs `10 + target.effective_perception_bonus`. HIDDEN gives advantage (roll twice, take best). HIDDEN always breaks after attempt.
+**Pickpocket** (`commands/class_skill_cmdsets/class_skill_cmds/cmd_pickpocket.py`) — steal something revealed by case. Syntax: `pickpocket <thing> from <target>`. Contested roll: `d20 + DEX mod + SUBTERFUGE mastery bonus` vs `10 + target.effective_perception_bonus`. HIDDEN gives advantage (roll twice, take best). A clean lift breaks nothing — the thief keeps both HIDDEN and INVISIBLE, because stealing without being noticed is not a hostile act. Getting caught breaks both, via `break_conditions_from_hostile_action(Condition.SANCTUARY)`; sanctuary is excluded deliberately, so a caught thief keeps divine protection from whoever they have just alerted.
 
 Gate chain: parse "from" syntax → find target → not self → not in combat → room allows combat → PvP room for player targets → BASIC+ mastery → not immortal NPC → must have cased → target still has item → 60s per-target cooldown.
 
-Success: gold (`1d6 + mastery_bonus`, capped), resource (`1d4 + mastery_bonus//2`, capped), or item (moved to thief). Failure: target alerted, room message, aggressive CombatMobs aggro via `mob_attack()`.
+Success: gold (`1d6 + mastery_bonus`, capped), resource (`1d4 + mastery_bonus//2`, capped), or item (moved to thief). Failure: concealment broken, target alerted, room message, aggressive CombatMobs aggro via `initiate_attack()`.
 
-**Thief combo:** `hide` → `case` (stays hidden) → `pickpocket` (advantage from hidden, then revealed).
+**Thief combo:** `hide` → `case` (stays hidden) → `pickpocket` (advantage from hidden, and still hidden afterwards unless caught). The 60s per-target cooldown, not the loss of concealment, is what stops a thief emptying one pocket at a time.
 
 ---
 
