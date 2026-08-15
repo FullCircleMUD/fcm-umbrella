@@ -21,6 +21,8 @@
 - `src/game` branches: `main` (default), `dev`, and the active working branch `shards-rework`.
 
 ## World content
+- [NPC placement: fcm-world vs fcm-mobs](npc_placement_world_vs_mob_spawner.md) — killable NPCs need a spawn rule in `fcm-mobs` (respawn); only unkillable ones (no-combat rooms) go statically in `fcm-world`.
+- [mob_area tag controls wandering](mob_area_tag_controls_wandering.md) — mobs only move into rooms sharing their `mob_area` tag; remove the tag to fence them out of a room.
 - [fcm-world test-branch strategy](fcm_world_test_branch_strategy.md) — `main` is live content only; the test world lives on the `test` branch, kept current by merging main → test (never the reverse). Dev/staging point at it via `WORLDBUILDER_REF`; a CI guard on main makes it structural.
 
 ## Upcoming Work
