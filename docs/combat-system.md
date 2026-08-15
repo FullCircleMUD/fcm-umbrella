@@ -569,7 +569,7 @@ Teleports also travel quietly — recall, purgatory, dungeon and tutorial transi
 
 **Bolting breaks cover.** The out-of-combat panic run (`cmd_flee.py`) strips HIDDEN before it moves you. Combat flee needs no equivalent: `attack`, `stab` and `join` all break concealment, so nobody reaches a fight still hidden.
 
-**Search reveals hidden characters:** `cmd_search.py` rolls active perception (`d20 + effective_perception_bonus`) vs passive stealth (`10 + effective_stealth_bonus`).
+**Search reveals hidden characters:** `cmd_search.py` rolls active perception (`d20 + effective_perception_bonus`) vs passive stealth (`10 + effective_stealth_bonus`). One roll per target, not one per search. A searcher who cannot see goes over the room by hand instead — the fumble shape, with every roll at disadvantage — so a hider can be found by touch, just less reliably.
 
 **Attack from hide:** `cmd_attack.py` checks HIDDEN before combat — breaks hide, grants 1 round advantage via `combat_handler.set_advantage(target, rounds=1)`.
 

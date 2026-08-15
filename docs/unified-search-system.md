@@ -447,14 +447,24 @@ search runs *before* the outcome is known, so a failed search costs the same as 
 a character who is not carrying what they asked for still spends the time, then hears so. That
 matters: an instant failure would tell them what is in their own pack without looking.
 
-*Hold, drink, climb, light, quaff, remove, wear, refuel, drop, open, switch, put.*
+*Hold, drink, climb, light, quaff, remove, wear, refuel, drop, open, close, switch, put, search.*
+
+`search` adds the one thing a fumble can carry beyond time: every roll in a sightless search is
+made at **disadvantage**, through the dice helper the command already used, so there is no penalty
+constant to balance. Note the standing resolution rule — advantage and disadvantage cancel, so a
+blind searcher holding `non_combat_advantage` rolls normally.
 
 **Refuse — the action needs eyes.** `p_can_see` on the resolvers, and an early return naming what
 was asked for: `"It's too dark to make out 'chest'."` Never `"You don't see it here"`, which reads
 as *absent* when the thing is right in front of them.
 
-*Lock, unlock, read, refill, scan, show, zap, trade, give, join, socials with a target, and every
-skill command.*
+*Lock, unlock, read, refill, scan, show, zap, trade, give, join, exits, socials with a target, and
+every skill command.*
+
+`exits` is the one worth explaining, because `open_exits()` takes the opposite line for the same
+doorways: a doorway is *found* by touch, so losing your light must never leave you cornered, but
+*reading a list* of them is detail and detail is what darkness takes. You can still flee through a
+door whose label you cannot read.
 
 **Reduced fidelity — presence survives, detail does not.** `look` at a specific actor or object
 resolves on `p_can_perceive`, then renders at whatever fidelity is available: *"Someone is there,
@@ -614,14 +624,14 @@ commands take `p_can_see` and return early.
 | cmd_follow | `actor_hostile` | `p_can_see` | Strangers = most likely follow target |
 | cmd_join | `actors_in_combat_then_not_in_combat` | `p_can_see` | Refuse, not fumble — a three second grope while your ally takes hits reads wrong |
 | cmd_open | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_perceive` | Fumble — a latch is found by feel. Direction parser splits input |
-| cmd_close | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_perceive` | A door, or your own pack, closes by touch |
+| cmd_close | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_perceive` | Fumble — the mirror of `open` in every respect, including `check_busy` |
 | cmd_switch | `items_room_nonexit` | `p_can_perceive` | Fumble — a lever is found by running your hands along the wall |
 | cmd_lock | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_see` | Refuse — lining a key up with a keyhole needs eyes |
 | cmd_unlock | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_see` | Refuse — same as lock |
 | cmd_picklock | `items_room_exit_by_direction` / `items_room_all_then_inventory` | `p_can_see` | Refuse — eyes on the keyway, same as using a key |
 | cmd_disarm_trap | `items_room_exit_by_direction` / `items_room_all_then_room` | `p_can_see` | Room fallback for pressure plates |
 | cmd_scan | `room.exits` | `is_open` + `p_can_see` | Sight line, not a route — lock state deliberately unread. Applied at each step outward, judged from the caller at every depth |
-| cmd_flee / cmd_retreat | `open_exits` | `p_passes_lock("traverse")` + `p_can_see` + `p_is_open_exit` | Retreat additionally gates on `p_fits_through` for the party's largest member |
+| cmd_flee / cmd_retreat | `open_exits` | `p_passes_lock("traverse")` + `p_can_perceive` + `p_is_open_exit` | **Perceive, not see** — a doorway is found by touch, so an unlit room must not leave you cornered. Retreat additionally gates on `p_fits_through` for the party's largest member |
 
 ### Commands with darkness/visibility checks (no structural migration)
 
@@ -631,7 +641,25 @@ commands take `p_can_see` and return early.
 | cmd_social | `p_can_see` on the **targeted** path only. Untargeted and self-target are never gated |
 | cmd_scan | `looker_is_blind` refusal at entry, and `p_can_see` throughout. A dark *destination* room is a separate check — it stops the scan in that direction |
 | cmd_survey | `looker_is_blind` refusal at entry; `p_can_see` on mappable exits |
-| cmd_search | Darkness check (uses its own search loop for hidden objects) — **not yet reviewed** |
+| cmd_search | Fumble shape on its own search loop: `check_busy`, `fumble_seconds`, and every roll at disadvantage when sightless |
+| cmd_exits | `looker_is_blind` refusal, plus `p_fits_through` rendered as a `(too small)` label. Size is **labelled, not filtered** — this command lists a locked door and says `(locked)` rather than hiding it, and the room display does no size filtering at all, so hiding a passage would leave the two views disagreeing |
+| cmd_inventory | `looker_is_blind` gate: every carried item, every resource line and the gold total collapse to a placeholder, so the count survives and the identity does not. Concealed items do the same individually, via `p_object_visible_to` |
+| cmd_say / cmd_whisper / cmd_shout | The speaker names themselves per recipient — see below |
+
+### Who is speaking
+
+A voice carries to people who cannot see its owner, so the line always goes out and only the name
+changes. Each of the three speech commands messages its listeners individually rather than through
+`msg_contents`, so the per-recipient form is `caller.get_display_name(listener)` — which asks
+`p_can_see` and falls back to the speaker's own `unseen_name`.
+
+That single call covers what three hand-rolled copies did not: `HIDDEN` conceals a speaker as
+readily as `INVISIBLE`, a blinded listener cannot name anyone, `true_sight` and `DETECT_INVIS` each
+pierce their own axis and neither pierces the dark, and the placeholder is content a builder can
+set rather than a hardcoded string.
+
+`say` resolves its **target** the same way — being spoken to is not what gives you away. `shout`
+needs it in one loop only: adjacent rooms hear a muffled line that names nobody.
 
 ## Testing Strategy
 
