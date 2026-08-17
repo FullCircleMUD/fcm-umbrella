@@ -18,17 +18,17 @@
 
 The `material` field on a weapon prototype is a **power tier**, not necessarily a literal description of what the weapon is made from. The tier names (wood, bronze, iron, steel, adamantine) are convenient labels borrowed from the metal progression, but any weapon can be assigned to any tier based on where it should sit on the damage curve.
 
-For example, a quarterstaff is physically made of wood but is a proper weapon — not a training stick. It maps to **bronze** tier (tier 1). A future Ironwood Quarterstaff made from magically hardened wood might map to **steel** tier (tier 3). The physical material is flavour; the tier is mechanical.
+For example, a plain quarterstaff is physically wood and sits at **wood** tier (tier 0) — the entry-level staff. Metal-shod staves climb from there: a Bronze-Tipped Staff is bronze (tier 1), an Iron-Tipped Staff and an Ironwood Staff are both iron (tier 2). The physical material is flavour; the tier is mechanical.
 
 Builders should use their judgement when assigning tiers to non-metal weapons. The question to ask is: *"Where should this weapon sit on the damage curve relative to the standard metal progression?"*
 
 | Tier | Label | Typical Metal | Power Level | Examples |
 |---|---|---|---|---|
-| 0 | `"wood"` | — | Training / worst | Wooden training weapons, improvised weapons |
-| 1 | `"bronze"` | Bronze (Copper + Tin) | Starter real weapons | Bronze weapons, standard quarterstaff, basic sling |
-| 2 | `"iron"` | Iron | Standard military | Iron weapons, composite bow, war sling |
-| 3 | `"steel"` | Steel (Iron + Coal) | Advanced | Steel weapons, ironwood quarterstaff |
-| 4 | `"adamantine"` | Adamantine | Endgame legendary | Adamantine weapons, divine/mythic variants |
+| 0 | `"wood"` | — | Training / worst | Wooden training weapons, improvised weapons, quarterstaff |
+| 1 | `"bronze"` | Bronze (Copper + Tin) | Starter real weapons | Bronze weapons, bronze-tipped staff, basic sling |
+| 2 | `"iron"` | Iron | Standard military | Iron weapons, iron-tipped staff, ironwood staff, composite bow, war sling |
+| 3 | `"steel"` | Steel (Iron + Coal) | Advanced | Steel weapons, steel-tipped staff |
+| 4 | `"adamantine"` | Adamantine | Endgame legendary | Adamantine weapons, adamantine-tipped staff, divine/mythic variants |
 
 **Source zones for metal weapons:**
 
@@ -296,7 +296,7 @@ Up to 8 damage rolls in one tick, but requires the 25% cleave to succeed AND tha
 
 ## Medium Weapons Balance — d8 One-Handers
 
-The d8 weapons are the "real" weapons — each has a distinct combat identity. All deal 14 avg per hit at Adamantine GM.
+The d8 weapons are the "real" weapons — each has a distinct combat identity. All deal 14 avg per hit at Adamantine GM. The staff is compared alongside them for its defensive role, but it is a **d6** weapon and deals 10 avg per hit at Adamantine GM.
 
 ### d8 Weapon Summary (Adamantine GM)
 
@@ -305,7 +305,7 @@ The d8 weapons are the "real" weapons — each has a distinct combat identity. A
 | **Longsword** | 2 | 28 | 3 block | — | yes | STR |
 | **Rapier** | 1 (+riposte) | 14 base | 3 riposte | counter-fighter | yes | DEX |
 | **Spear** | 1 (+counters) | 14 base | 0 | 2 reach counters, crit 18+ | no (2H) | STR |
-| **Staff** | 1 (+riposte) | 14 base | 4 riposte | universal parry | no (2H) | STR |
+| **Staff** (d6) | 1 (+riposte) | 10 base | 4 riposte | universal parry | no (2H) | STR |
 | **Hammer** | 1 | 14 | 0 | 4x crit multiplier | yes | STR |
 
 ### d8 Weapon Identities
@@ -316,7 +316,7 @@ The d8 weapons are the "real" weapons — each has a distinct combat identity. A
 
 **Spear** — The bodyguard. Two-handed reach weapon with alternating crit/counter mastery progression: crit on 19+ at SKILLED, first counter at EXPERT, crit on 18+ at MASTER, second counter at GM. When an enemy hits an ally in the same combat, the spear wielder fires a free counter-attack. Useless solo (just 14/tick), powerful in a party protecting a tank. Against a boss hitting the tank 2 times per tick, the spear deals 14 + (2 × 14) = 42 effective DPS with crits pushing higher. Two-handed means no shield, no parries — the spear wielder relies entirely on the tank for protection. If the tank goes down, the spear user is exposed with 14 DPS and zero defence. Counter-attacks cannot be parried and do not cascade.
 
-**Staff** — The survivor. Worst offensive d8 weapon (14/tick, no extra attacks, no offensive mechanic), but the best defensive weapon in the game. 4 parries at GM that work against ALL physical attacks — armed, unarmed, animal bites, and missile attacks. Every other parry weapon only blocks armed melee. Two-handed (no shield), but combined with Mage Armor (+5 AC) and Shield spell (+6 AC reactive), an abjuration mage with a GM staff is a physical fortress. The Matt Cauthon weapon — terrible damage, unkillable. Vulnerable to magical attacks (spells bypass parries). Parries are automatic — the first 4 physical attacks each round regardless of source, no targeting needed.
+**Staff** — The survivor. The only d6 weapon in this group and the worst offensively (10/tick, no extra attacks, no offensive mechanic), but the best defensive weapon in the game. 4 parries at GM that work against ALL physical attacks — armed, unarmed, animal bites, and missile attacks. Every other parry weapon only blocks armed melee. Two-handed (no shield), but combined with Mage Armor (+5 AC) and Shield spell (+6 AC reactive), an abjuration mage with a GM staff is a physical fortress. The Matt Cauthon weapon — terrible damage, unkillable. Vulnerable to magical attacks (spells bypass parries). Parries are automatic — the first 4 physical attacks each round regardless of source, no targeting needed.
 
 **Hammer** — The gambler. Lowest sustained DPS of any d8 weapon (14/tick) but the biggest single-hit spike in the game. Devastating Blow multiplies already-doubled crit damage by mastery-scaled factor (up to 2.0x at GM = 4x total base damage). One GM crit = 14 × 4 = 56 damage in a single hit. Build-around weapon — stack crit threshold reduction gear to turn the gamble into a strategy. No parries, no extra attacks, no utility. Pure high-risk/high-reward.
 
@@ -386,11 +386,11 @@ QUARTERSTAFF = {
     "typeclass": "typeclasses.items.weapons.staff_nft_item.StaffNFTItem",
     "key": "Quarterstaff",
     "base_damage": "d6",
-    "material": "bronze",       # tier 1 — physically wood, but a proper weapon
+    "material": "wood",         # tier 0 — the plain timber staff
     "damage_type": DamageType.BLUDGEONING,
     "speed": 1,
     "weight": 2.0,
-    "max_durability": 2880,
+    "max_durability": 1440,
 }
 ```
 
