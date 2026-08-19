@@ -142,21 +142,34 @@ The library counts each rule's population independently via the `(file, rule_id)
 
 All ship from the library, auto-installed into `AccountCmdSet`, locked to `cmd:superuser()`. Same scope syntax across all: `all | <level>=<value> [<level>=<value> ...]`. Bare command (no args) prints usage.
 
-Because FCM's levels are `(shard, zone, file)`, every scope starts at `shard=`. Four of the six are gated to the shard they act on: `all` is refused, and so is any shard other than the one this process runs as — which rules out running them from the router. Work one shard at a time. See [evennia-mob-spawner/docs/interoperability.md](../libraries/evennia-mob-spawner/docs/interoperability.md).
+Because FCM's levels are `(shard, zone, file)`, every scope starts at `shard=`. Five of the six are gated to the shard they act on: `all` is refused, and so is any shard other than the one this process runs as — which rules out running them from the router. Work one shard at a time. See [evennia-mob-spawner/docs/interoperability.md](../libraries/evennia-mob-spawner/docs/interoperability.md).
 
 | Command | Where it runs | Effect |
 |---|---|---|
 | `ms_load shard=shard0` | owning shard | Fetch that shard's rule sets via the configured Reader, validate, and deploy. Per-file scripts get upserted in place; cooldown state preserved for rules that survive the swap. |
 | `ms_load shard=shard0 zone=millholm file=town` | owning shard | Same but scoped to one file. |
-| `ms_status [scope]` | anywhere | Read-only: lists scripts in scope with state (active/paused/stopped), rule count, tick interval, next-tick estimate. Derived from shared row fields, so the router sees the whole cluster. |
+| `ms_status [scope]` | owning shard | Read-only: lists scripts in scope with state, rule count, tick interval, and a next-tick estimate for a script that is ticking. State is colour-coded — green `active`, yellow `paused` / `stopped`, red `stalled`. |
 | `ms_spawn_report [scope]` | router only | Live population census: per-rule current vs target, grouped by `area_tag`. Under-target rules marked with `*`. Counts run under the tenancy auto-filter, so only an unscoped process can answer for the whole world. |
-| `ms_restart [scope]` | owning shard | Kick the ticker without re-reading YAML. Recovery for stopped/paused scripts; preserves state. |
-| `ms_stop [scope]` | owning shard | Pause the ticker. State preserved; resumable via `ms_restart`. |
+| `ms_restart [scope]` | owning shard | Kick the ticker without re-reading YAML. Recovery for stopped, paused and stalled scripts; preserves state. Confirms a tick actually attached before reporting success. |
+| `ms_stop [scope]` | owning shard | Pause the ticker. State preserved; resumable via `ms_restart`. Reports a stalled script rather than claiming to have paused it. |
 | `ms_delete [scope]` | owning shard | Remove scripts entirely (state lost). Use to clean up orphans whose YAML files have been removed from the manifest. |
 
-The three ticker commands are shard-gated because Evennia keeps a script's `LoopingCall` in `ndb._task`, which exists only in the process running it. Run from elsewhere, `ms_stop` writes nothing at all and still reports success, and `ms_delete` removes the shared row while the owning shard keeps ticking a script that no longer exists.
+The four ticker commands are shard-gated because Evennia keeps a script's `LoopingCall` in `ndb._task`, which exists only in the process running it. Run from elsewhere, `ms_stop` writes nothing at all and still reports success, `ms_delete` removes the shared row while the owning shard keeps ticking a script that no longer exists, and `ms_status` would call every script it does not own stalled.
 
 Each spawner script is also stamped with the shard that owns it, so a restart can't hand it to the wrong process — see [scaling.md](scaling.md#global-scripts--mechanism-and-classification-settled).
+
+### When nothing is respawning
+
+A script can be marked `active` and still have no tick attached — Evennia writes its pause marker only
+when a task exists, so a task lost any other way leaves a state that `pause()`, `unpause()` and the
+server's own boot walk all skip over. A restart does not clear it. Run
+`ms_status shard=shard0` on the shard itself and the state reads `stalled`.
+
+`ms_restart shard=shard0` is the fix, run on the owning shard. It is safe across a whole shard —
+healthy scripts are left alone — though it will also wake anything deliberately stopped with
+`ms_stop`. `ms_load` refuses while any script in scope is stalled and names them, so reaching for it
+first will point you here rather than reporting a deploy onto a dead script. Sightings are logged to
+`mob_spawner.log`; what causes the task to be lost is not yet established.
 
 ---
 

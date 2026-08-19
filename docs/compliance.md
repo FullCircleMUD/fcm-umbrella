@@ -1,6 +1,6 @@
 # Legal & Regulatory Compliance
 
-FullCircleMUD issues gold as an XRPL token. Players earn gold through gameplay. Gold, resources, and items exist as tokens on the XRPL, tradeable on the ledger's protocol-native decentralised exchange (DEX) and automated market maker (AMM) infrastructure.
+FullCircleMUD issues gold as an XRPL token. Players obtain gold through gameplay. Gold, resources, and items exist as tokens on the XRPL, tradeable on the ledger's protocol-native decentralised exchange (DEX) and automated market maker (AMM) infrastructure.
 
 **FullCircleMUD does not offer gold redemption.** There is no mechanism by which a player can exchange gold for fiat currency, stablecoins, or any other asset through FullCircleMUD. Players who wish to trade gold do so on the XRPL DEX/AMM — public, protocol-native infrastructure that FullCircleMUD did not build, does not operate, and cannot control.
 
@@ -211,3 +211,16 @@ See `ops/COMPLIANCE_LEGAL.md` §18 for the full prohibited and acceptable langua
 **Never use (anywhere, public or internal):** "backed", "pegged", "redeemable", "reserve" (in public-facing contexts), "collateralised", "guaranteed value", "earn real money", "cash out", "the gold is real", "fully backed", "investment/returns/yield" (to players).
 
 **Acceptable:** "own your items", "true ownership", "transparent economy", "player-driven economy", "trade with other players", "blockchain-native", "items persist on the XRP Ledger".
+
+### FullCircleMUD is not a play-to-earn game
+
+This is the core position and it is regulatory, not stylistic. Full detail in `ops/COMPLIANCE_LEGAL.md` §18.1.1.
+
+- **Prohibited outright:** "play to earn", "play and earn", "P2E".
+- **The proximity rule:** the words "play" and "earn" must not appear in the same sentence or the same paragraph, anywhere, public or internal. Proximity alone creates the implication.
+- Say tokens are obtained **"through gameplay"**, not "earned by playing".
+- We make **no representation** that a player can or will make money from the game. We do not sell tokens. We do not redeem game assets for anything of value outside the game — no fiat, no stablecoins, no XRP.
+- The XRPL is used for two things: **market pricing** via AMM pools, and **personal ownership** with outside-the-game trading of in-game assets.
+- **On third-party markets:** people may in fact profit trading game items in an open market we do not control. Do not claim otherwise. Phrase the position as a statement about us — "we make no representation that you can or will make money" — never as "you cannot make money".
+
+Every video carries an on-screen disclaimer card to this effect; see [youtube/CLAUDE.md](../youtube/CLAUDE.md).

@@ -71,6 +71,13 @@ rather than writing it as settled.
 - Distinguish archived/historical material from in-conversation decisions.
 - Smaller is better — three faithfully-captured points beat ten padded ones.
 - Self-correct — if you catch yourself writing beyond what was discussed, remove it or mark it `[TBD]`.
+
+**The one exception: regulatory and compliance rules.** These are written as hard rules — "never",
+"always", "no exceptions" — and that framing is approved. They are not preferences to be optimised
+against. The play-to-earn position and everything around it is the standing example; see
+[docs/compliance.md](docs/compliance.md) and `ops/COMPLIANCE_LEGAL.md`. Do not soften compliance wording
+to match the flexible tone used everywhere else, and do not borrow its absolute tone for a design,
+marketing, or engineering preference.
 - **Document what IS, not what WAS.** When something changes, record only the current state — drop
   "used to be" / "migrated from" / "formerly" / "renamed from" / "superseded" framing. The prior state
   serves no future session and goes stale; git history holds it. Record what-was **only** when there is

@@ -41,3 +41,6 @@ __pycache__/
 
 # Personal, machine-local instructions — not synced.
 /CLAUDE.local.md
+
+# Scratch website checkout — its own git repo, not part of the umbrella
+temp-website/
