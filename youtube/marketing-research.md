@@ -10,7 +10,7 @@ them.
 
 **Never "play to earn", "play and earn" or "P2E"** — and the words "play" and "earn" never share a
 sentence or paragraph. Not in titles, descriptions, tags or on camera. Say tokens are obtained
-**"through gameplay"**. Full rule in [CLAUDE.md](CLAUDE.md) and [docs/compliance.md](../docs/compliance.md).
+**"through gameplay"**. Full rule in [CLAUDE.md](CLAUDE.md) and [design/compliance.md](../design/compliance.md).
 
 This costs us the biggest traffic term in the category. Accepted — that traffic is people looking for
 income, not players.

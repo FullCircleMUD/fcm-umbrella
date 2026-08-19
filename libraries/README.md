@@ -5,7 +5,7 @@ remote, so the umbrella **gitignores** them (see the umbrella root `.gitignore`)
 is tracked here, to keep the folder and document what belongs in it.
 
 > On a fresh machine, cloning the umbrella does **not** bring these down. Re-clone them with the
-> commands below. (For the full umbrella-wide re-clone recipe across all sub-repos, see `docs/`.)
+> commands below. (For the full umbrella-wide re-clone recipe across all sub-repos, see `design/`.)
 
 ## Repos
 

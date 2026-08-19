@@ -3,7 +3,7 @@
 
 No model is in the loop: same input -> same output. This is the mechanical half of
 the library-standards audit. It checks the *machine-decidable* subset of
-`docs/library-standards.md` for each reusable library under `libraries/` and is
+`design/library-standards.md` for each reusable library under `libraries/` and is
 meant to be composed into agentic workflows (a future library-standards-auditor
 ingests `--json` and adjudicates declared divergences), called directly from a
 Claude session, or wired into CI.

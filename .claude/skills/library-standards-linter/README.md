@@ -2,7 +2,7 @@
 
 ## Purpose
 **The mechanical half of the library-standards audit.** A deterministic linter that checks each reusable
-library under `libraries/` against the *machine-decidable* parts of [docs/library-standards.md](../../../docs/library-standards.md)
+library under `libraries/` against the *machine-decidable* parts of [design/library-standards.md](../../../design/library-standards.md)
 — required files, src layout, naming consistency, `pyproject` fields, package `__version__`, SPDX
 headers, the required `docs/` files, and absence of a per-repo `documentation-structure.md` or memory
 surface. No model in the loop: same input always gives the same findings. It stops where judgment begins

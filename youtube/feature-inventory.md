@@ -3,7 +3,7 @@
 A first pass at everything FCM could show on camera, for Tim to review. Nothing here is decided. This
 is a menu, not a plan; the series plan comes after.
 
-**How the readiness column was set:** from the design docs in [docs/](../docs/INDEX.md) and the
+**How the readiness column was set:** from the design docs in [design/](../design/INDEX.md) and the
 2026-08-16 play-test notes. Nothing here was verified by running the game. Treat every "unverified" as
 a question for Tim, not a claim.
 

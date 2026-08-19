@@ -202,7 +202,7 @@ condition. The fix sits with the shopkeepers: they only accept **fully repaired*
 markets. Every item bought or sold is therefore in identical condition, so the market treats them as
 interchangeable. Worn gear has to be repaired before it can be sold.
 
-**Before recording:** [docs/design-overview.md](../docs/design-overview.md) § NFT Item Flow describes
+**Before recording:** [design/design-overview.md](../design/design-overview.md) § NFT Item Flow describes
 this as the Tracker Token AMM and marks it **not yet built**. Check whether that is still current. If it
 is, this is a "here is how it will work" explainer, not a demo — which is fine, as long as we say so.
 

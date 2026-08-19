@@ -52,5 +52,5 @@ published record is consistent, which is why the language rules are absolute.
 **How to apply:** check any title, description, tag, script, doc or on-screen text against the
 proximity rule before it ships. Every video carries an on-screen disclaimer card stating this position;
 draft wording lives in `youtube/CLAUDE.md`. The authoritative language policy is
-`ops/COMPLIANCE_LEGAL.md` §18.1.1, summarised in `docs/compliance.md`. See also
+`ops/COMPLIANCE_LEGAL.md` §18.1.1, summarised in `design/compliance.md`. See also
 [[fcm_subscription_after_pre_alpha]].

@@ -2,7 +2,7 @@
 
 ## Security Rules
 - **NEVER** run `git diff` on `secret_settings.local`/`secret_settings.py` or any git-crypt encrypted files before committing. This exposes plaintext secrets and defeats the purpose of denied read permissions. Just stage and commit without viewing the diff.
-- [git-crypt setup for src/game secrets](gitcrypt_game_secrets.md) — `src/game` encrypts `server/conf/secret_settings.local` via git-crypt (symmetric key, shared out-of-band). A **fresh clone is locked** — `git-crypt unlock <keyfile>` before the game runs locally. Also documented in `docs/` new-machine setup.
+- [git-crypt setup for src/game secrets](gitcrypt_game_secrets.md) — `src/game` encrypts `server/conf/secret_settings.local` via git-crypt (symmetric key, shared out-of-band). A **fresh clone is locked** — `git-crypt unlock <keyfile>` before the game runs locally. Also documented in `design/new-machine-setup.md`.
 
 ## Compliance — non-negotiable
 - [FCM is not a play-to-earn game](not_play_to_earn.md) — "play" and "earn" never share a sentence or paragraph, anywhere. No token sales, no redemption. Say "we make no representation that you can or will make money", never "you cannot".
@@ -20,7 +20,7 @@
 - **Discord server already exists** for FullCircleMUD — do not create a new one, assess what's already there
 
 ## Project Structure
-- Work happens in the **FCM umbrella** (`/Users/timbaird/Documents/FCM-umbrella/`) — the dev workspace that gitignores the nested repos. Full repo manifest + layout live in `docs/new-machine-setup.md`; design docs live in the umbrella `docs/` (edit them there, not in the deprecated standalone `design` repo).
+- Work happens in the **FCM umbrella** (`/Users/timbaird/Documents/FCM-umbrella/`) — the dev workspace that gitignores the nested repos. Full repo manifest + layout live in `design/new-machine-setup.md`; design docs live in the `design` repo (cloned into the umbrella root as `design/`).
 - `src/game` uses git-crypt — see [git-crypt setup for src/game secrets](gitcrypt_game_secrets.md).
 - `src/game` branches: `main` (default), `dev`, and the active working branch `shards-rework`.
 
@@ -37,8 +37,8 @@
 
 ## Documentation
 - **Document what IS, not what WAS** — see the always-on rule in [CLAUDE.md](../../CLAUDE.md). When something changes, record the current state only; no "used to be"/"migrated from"/"renamed from" framing unless a human agreed there's a direct need.
-- [Design docs live in the umbrella docs/](design-docs-in-umbrella.md) — FCM system design lives in `FCM-umbrella/docs/` (kebab-case); edit design docs there, not the deprecated `design` repo. Libraries self-document in their own `docs/`.
-- [Doc conventions live in doco-structure.md](doc-conventions-home.md) — record new doc conventions in `docs/doco-structure.md` (the spec); the `doc-convention-auditor` enforces them, the `doc-convention-linter` checks the mechanical subset.
+- [Design docs live in the design repo](design-docs-in-design-repo.md) — FCM system design lives in the `design` repo, cloned into the umbrella root as `design/` (kebab-case). Libraries self-document in their own `docs/`.
+- [Doc conventions live in doco-structure.md](doc-conventions-home.md) — record new doc conventions in `design/doco-structure.md` (the spec); the `doc-convention-auditor` enforces them, the `doc-convention-linter` checks the mechanical subset.
 - [Doc/library audit toolchain + consistency campaign](doc-audit-toolchain-and-campaign.md) — the spec→linter→auditor pairs (all read-only) and the in-flight code-vs-doc consistency sweep (shards + world-builder done; mob-spawner, yaml-reader, src/game next; targeting deferred).
 
 ## Do not use

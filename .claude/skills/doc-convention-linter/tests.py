@@ -16,8 +16,8 @@ import lint  # noqa: E402
 
 # A minimal, fully-correct corpus: one docs/ root, an INDEX linking one good doc.
 CLEAN = {
-    "docs/INDEX.md": "# Index\n\nThe docs catalogue.\n\n- [good](good.md)\n",
-    "docs/good.md": "# Good Doc\n\nA one-paragraph summary.\n\nBody text.\n",
+    "design/INDEX.md": "# Index\n\nThe docs catalogue.\n\n- [good](good.md)\n",
+    "design/good.md": "# Good Doc\n\nA one-paragraph summary.\n\nBody text.\n",
 }
 
 
@@ -66,10 +66,10 @@ class HelperTests(unittest.TestCase):
         self.assertEqual(lint.resolve_link(src, "../CLAUDE.md", root), Path("/repo/CLAUDE.md"))
 
     def test_path_in_scope(self):
-        self.assertTrue(lint.path_in_scope("docs/a.md", ["docs/a.md"]))
-        self.assertTrue(lint.path_in_scope("docs/a.md", ["docs"]))
-        self.assertFalse(lint.path_in_scope("docs/b.md", ["docs/a.md"]))
-        self.assertFalse(lint.path_in_scope("README.md", ["docs"]))
+        self.assertTrue(lint.path_in_scope("design/a.md", ["design/a.md"]))
+        self.assertTrue(lint.path_in_scope("design/a.md", ["design"]))
+        self.assertFalse(lint.path_in_scope("design/b.md", ["design/a.md"]))
+        self.assertFalse(lint.path_in_scope("README.md", ["design"]))
 
     def test_links_in_skips_inline_code(self):
         lines = ["a real [x](real.md) and an example `[y](ex.md)`"]
@@ -94,50 +94,50 @@ class CheckTests(unittest.TestCase):
 
     def test_broken_link(self):
         spec = dict(CLEAN)
-        spec["docs/good.md"] = "# Good\n\nSummary.\n\nSee [x](missing-xyz.md).\n"
+        spec["design/good.md"] = "# Good\n\nSummary.\n\nSee [x](missing-xyz.md).\n"
         f = self.checks_for(spec)
-        self.assertIn("broken_link", self.kinds(f, "docs/good.md"))
+        self.assertIn("broken_link", self.kinds(f, "design/good.md"))
 
     def test_filename_not_kebab(self):
         spec = dict(CLEAN)
-        spec["docs/Bad_Name.md"] = "# Bad\n\nSummary.\n"
+        spec["design/Bad_Name.md"] = "# Bad\n\nSummary.\n"
         self.assertIn("filename_not_kebab", self.kinds(self.checks_for(spec)))
 
     def test_h1_missing(self):
         spec = dict(CLEAN)
-        spec["docs/nohead.md"] = "No heading line.\n\nMore.\n"
-        self.assertIn("h1_missing", self.kinds(self.checks_for(spec), "docs/nohead.md"))
+        spec["design/nohead.md"] = "No heading line.\n\nMore.\n"
+        self.assertIn("h1_missing", self.kinds(self.checks_for(spec), "design/nohead.md"))
 
     def test_summary_missing(self):
         spec = dict(CLEAN)
-        spec["docs/nosum.md"] = "# Title\n\n## Section\n\nbody\n"
-        self.assertIn("summary_missing", self.kinds(self.checks_for(spec), "docs/nosum.md"))
+        spec["design/nosum.md"] = "# Title\n\n## Section\n\nbody\n"
+        self.assertIn("summary_missing", self.kinds(self.checks_for(spec), "design/nosum.md"))
 
     def test_not_indexed_and_orphaned(self):
         spec = dict(CLEAN)
-        spec["docs/lonely.md"] = "# Lonely\n\nSummary.\n"  # exists, nothing links/indexes it
-        kinds = self.kinds(self.checks_for(spec), "docs/lonely.md")
+        spec["design/lonely.md"] = "# Lonely\n\nSummary.\n"  # exists, nothing links/indexes it
+        kinds = self.kinds(self.checks_for(spec), "design/lonely.md")
         self.assertIn("not_indexed", kinds)
         self.assertIn("orphaned", kinds)
 
     def test_was_phrasing(self):
         spec = dict(CLEAN)
-        spec["docs/INDEX.md"] = "# Index\n\nCatalogue.\n\n- [good](good.md)\n- [h](hist.md)\n"
-        spec["docs/hist.md"] = "# Hist\n\nThis API was formerly the only one.\n"
-        self.assertIn("was_phrasing", self.kinds(self.checks_for(spec), "docs/hist.md"))
+        spec["design/INDEX.md"] = "# Index\n\nCatalogue.\n\n- [good](good.md)\n- [h](hist.md)\n"
+        spec["design/hist.md"] = "# Hist\n\nThis API was formerly the only one.\n"
+        self.assertIn("was_phrasing", self.kinds(self.checks_for(spec), "design/hist.md"))
 
     def test_indexed_doc_is_not_orphaned(self):
         # good.md is linked from INDEX, so it must not be flagged orphaned/not_indexed
-        kinds = self.kinds(self.checks_for(CLEAN), "docs/good.md")
+        kinds = self.kinds(self.checks_for(CLEAN), "design/good.md")
         self.assertNotIn("orphaned", kinds)
         self.assertNotIn("not_indexed", kinds)
 
 
 class ScopeTests(unittest.TestCase):
     SPEC = {
-        "docs/INDEX.md": "# Index\n\nCatalogue.\n\n- [a](a.md)\n- [b](b.md)\n",
-        "docs/a.md": "# A\n\nSummary.\n\n[bad](nope-a.md)\n",
-        "docs/b.md": "# B\n\nSummary.\n\n[to a](a.md) and [bad](nope-b.md)\n",
+        "design/INDEX.md": "# Index\n\nCatalogue.\n\n- [a](a.md)\n- [b](b.md)\n",
+        "design/a.md": "# A\n\nSummary.\n\n[bad](nope-a.md)\n",
+        "design/b.md": "# B\n\nSummary.\n\n[to a](a.md) and [bad](nope-b.md)\n",
     }
 
     def setUp(self):
@@ -147,18 +147,18 @@ class ScopeTests(unittest.TestCase):
     def test_unscoped_sees_both_broken_links(self):
         findings, _, _ = lint.lint(self.root)
         paths = {f.path for f in findings if f.check == "broken_link"}
-        self.assertEqual(paths, {"docs/a.md", "docs/b.md"})
+        self.assertEqual(paths, {"design/a.md", "design/b.md"})
 
     def test_file_scope_reports_only_that_file(self):
-        findings, n_files, n_roots = lint.lint(self.root, ["docs/a.md"])
+        findings, n_files, n_roots = lint.lint(self.root, ["design/a.md"])
         self.assertTrue(findings, "file scope must not silently scan nothing")
-        self.assertTrue(all(f.path == "docs/a.md" for f in findings))
+        self.assertTrue(all(f.path == "design/a.md" for f in findings))
         self.assertEqual(n_files, 1)
         self.assertEqual(n_roots, 1)
 
     def test_scope_keeps_global_context(self):
         # a.md is linked by b.md, so even when scoping to a.md it must NOT be orphaned
-        findings, _, _ = lint.lint(self.root, ["docs/a.md"])
+        findings, _, _ = lint.lint(self.root, ["design/a.md"])
         self.assertNotIn("orphaned", {f.check for f in findings})
 
 
@@ -168,7 +168,7 @@ class RoundTripTest(unittest.TestCase):
     def test_inject_then_restore(self):
         tmp, root = build_tree(CLEAN)
         self.addCleanup(tmp.cleanup)
-        good = root / "docs/good.md"
+        good = root / "design/good.md"
         original = good.read_text()
 
         self.assertEqual(lint.lint(root)[0], [], "clean baseline")

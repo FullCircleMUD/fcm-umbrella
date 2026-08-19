@@ -1,14 +1,14 @@
 ---
 name: doc-conventions-home
-description: Documentation conventions live in docs/doco-structure.md; the doc-convention-auditor enforces them
+description: Documentation conventions live in design/doco-structure.md; the doc-convention-auditor enforces them
 metadata: 
   node_type: memory
   type: project
   originSessionId: b3bba4c6-d5c8-403d-8943-4b214af2df80
 ---
 
-Documentation conventions for FCM are captured in **`docs/doco-structure.md`** (the
-"Conventions for `docs/` documents" section). When a new doc convention is agreed,
+Documentation conventions for FCM are captured in **`design/doco-structure.md`** (the
+"Conventions for `design/` documents" section). When a new doc convention is agreed,
 record it there — that file is the single source of truth for doc rules.
 
 The **`doc-convention-auditor`** agent enforces what `doco-structure.md` specifies:

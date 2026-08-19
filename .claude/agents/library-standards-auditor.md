@@ -23,7 +23,7 @@ human decides and applies. You do not edit.
 
 ## Rule sources — read these first, every run
 
-1. **`docs/library-standards.md`** — the standard: naming, src layout, pyproject shape, licensing, test
+1. **`design/library-standards.md`** — the standard: naming, src layout, pyproject shape, licensing, test
    framework, the reduced documentation set, the `CLAUDE.md` section structure, the `docs/` structure,
    and the bootstrap checklist. **The rules live there, not here.** Read them each run and build your
    checklist from them, so you enforce the *current* standard, not a stale copy baked into this agent.
@@ -34,7 +34,7 @@ human decides and applies. You do not edit.
 1. **Run the linter.** `python .claude/skills/library-standards-linter/lint_library.py <library-name> --json`
    (from the umbrella root). Its `error` findings are machine-certain structural breaches — take them as
    given. Its `warn` findings are *candidate* deviations that need your adjudication (step 3).
-2. **Load the spec.** Read `docs/library-standards.md` and assemble the checklist for steps 3–4.
+2. **Load the spec.** Read `design/library-standards.md` and assemble the checklist for steps 3–4.
 3. **Adjudicate divergences.** For each linter `warn`, read the library's `CLAUDE.md` and decide:
    - **Sanctioned divergence** — the gap is a *deliberate, documented, justified* divergence (e.g. a
      pure-Python library with no Evennia test infra, stated in `CLAUDE.md`). Acknowledge it; **not** a

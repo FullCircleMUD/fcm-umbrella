@@ -47,8 +47,8 @@ anyway. Chasing them turns marketing into a full-time job, and the time is neede
 
 ### How a new player connects
 
-This is settled. Details in [docs/connection-transport.md](../docs/connection-transport.md) and
-[docs/website.md](../docs/website.md). The short version, which is what a video has to explain:
+This is settled. Details in [design/connection-transport.md](../design/connection-transport.md) and
+[design/website.md](../design/website.md). The short version, which is what a video has to explain:
 
 1. The main game domain points to a holding site that says we are in pre-alpha, and carries a button
    through to the **staging** instance. The live instance is not playable yet.
@@ -148,7 +148,7 @@ There are three states, and each gets different words on camera:
 ## This is not a play-to-earn game
 
 The hardest rule on the channel. It is regulatory, not stylistic. Full detail in
-[docs/compliance.md](../docs/compliance.md) and `ops/COMPLIANCE_LEGAL.md` §18.1.1.
+[design/compliance.md](../design/compliance.md) and `ops/COMPLIANCE_LEGAL.md` §18.1.1.
 
 - **Never say** "play to earn", "play and earn", or "P2E" — except inside the disclaimer, where we name
   the category in order to deny it.
@@ -247,7 +247,7 @@ it survives someone listening rather than watching, but it costs time at the fro
 
 ## "Is this an investment?" — the on-camera answer
 
-**No.** The position is already set in [docs/compliance.md](../docs/compliance.md), with the full
+**No.** The position is already set in [design/compliance.md](../design/compliance.md), with the full
 strategy and language policy in `ops/COMPLIANCE_LEGAL.md`. Follow those. In video terms:
 
 - We do not sell tokens. We do not guarantee the value of tokens. It is not an investment.
@@ -371,7 +371,7 @@ preferences to be optimised against.
 
 This covers the play-to-earn position above and everything connected to it — no token sales, no
 redemption, no representation that a player can or will make money — along with anything else flowing
-from [docs/compliance.md](../docs/compliance.md) and `ops/COMPLIANCE_LEGAL.md`.
+from [design/compliance.md](../design/compliance.md) and `ops/COMPLIANCE_LEGAL.md`.
 
 Everything else on this channel stays a current working decision.
 

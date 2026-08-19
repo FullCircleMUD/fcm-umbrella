@@ -48,8 +48,8 @@ python .claude/skills/doc-convention-linter/lint.py --json
 
 # Scope the REPORT to an area — a directory or a single file (repo-relative).
 # The whole corpus is still analysed for context; only findings are narrowed.
-python .claude/skills/doc-convention-linter/lint.py docs libraries/evennia-shards
-python .claude/skills/doc-convention-linter/lint.py docs/world-deployment.md
+python .claude/skills/doc-convention-linter/lint.py design libraries/evennia-shards
+python .claude/skills/doc-convention-linter/lint.py design/world-deployment.md
 
 # Also fail on warnings (for a stricter gate):
 python .claude/skills/doc-convention-linter/lint.py --strict
@@ -69,7 +69,7 @@ python .claude/skills/doc-convention-linter/lint.py --strict
 
 ## Notes
 
-- **Corpus.** Full convention checks apply to `docs/` roots (the umbrella `docs/`
+- **Corpus.** Full convention checks apply to `docs/` roots (the umbrella `design/`
   and each library's self-documenting `docs/`). Loose surfaces (`README.md`,
   `CLAUDE.md`, `.claude/memory/`) get link + `was_phrasing` checks only — they are
   intentionally exempt from the kebab/H1/summary rules.

@@ -1,5 +1,6 @@
 # Nested working repos — version-controlled independently by their own remotes.
 /cosigner/
+/design/
 /fcm-mobs/
 /fcm-world/
 /fullcirclemud/

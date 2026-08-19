@@ -29,4 +29,4 @@ encrypted `secret_settings.local` and won't run locally until unlocked.
 
 **Security discipline:** never `git diff` the encrypted file before committing (exposes plaintext);
 just stage and commit. See the Security Rules in [[MEMORY]]. This is also documented in the umbrella's
-`docs/` new-machine setup guide.
+`design/` new-machine setup guide.

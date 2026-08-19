@@ -16,23 +16,23 @@ system-design documentation; each working repo stays version-controlled by its o
 **How it fits together:** the game runs on **Evennia** (Python/Django) in `src/game`; reusable,
 FCM-agnostic Evennia extensions live in `libraries/` (world-builder, mob-spawner, targeting, shards,
 yaml-reader); blockchain/XRPL integration spans `xrpl-tools`, `nft_api`, `cosigner`, and
-`transparency`. System design lives in `docs/`. Marketing and operational material is secondary and
+`transparency`. System design lives in `design/`. Marketing and operational material is secondary and
 kept in private repos (e.g. `ops/`).
 
 **Deliberately not:** a financial product — no redemption, peg, or backing. Blockchain is FCM's
 *database* for genuine ownership, not an investment; XRPL tokens are how the game implements items and
 currency.
 
-**Project status** is not tracked here (it would go stale) — see `docs/` and `MEMORY` for current state.
+**Project status** is not tracked here (it would go stale) — see `design/` and `MEMORY` for current state.
 
 ## Read first
-- **[docs/INDEX.md](docs/INDEX.md) — read this every session** (the docs catalogue; not auto-loaded
+- **[design/INDEX.md](design/INDEX.md) — read this every session** (the docs catalogue; not auto-loaded
   like `MEMORY`), and load the relevant doc before related work.
 - **MEMORY** (`.claude/memory/MEMORY.md`) — auto-loaded durable decisions/agreements; the index points
   to topic files pulled in on demand.
 - [README.md](README.md) — what this is and its layout.
-- [docs/new-machine-setup.md](docs/new-machine-setup.md) — re-clone manifest + git-crypt unlock.
-- [docs/doco-structure.md](docs/doco-structure.md) — what belongs in which doc surface.
+- [design/new-machine-setup.md](design/new-machine-setup.md) — re-clone manifest + git-crypt unlock.
+- [design/doco-structure.md](design/doco-structure.md) — what belongs in which doc surface.
 
 ## Sub-repo context
 
@@ -49,7 +49,7 @@ orientation links, not the trigger). Sub-repos with their own context today:
 - [libraries/evennia-yaml-reader](libraries/evennia-yaml-reader/CLAUDE.md)
 
 The **full** set of nested repos (including those without their own `CLAUDE.md` yet) is listed in
-[docs/new-machine-setup.md](docs/new-machine-setup.md).
+[design/new-machine-setup.md](design/new-machine-setup.md).
 
 > These are **plain markdown links, not `@imports`** — plain links keep each sub-repo's `CLAUDE.md`
 > lazy; an `@import` would load them all eagerly on every session.
@@ -75,7 +75,7 @@ rather than writing it as settled.
 **The one exception: regulatory and compliance rules.** These are written as hard rules — "never",
 "always", "no exceptions" — and that framing is approved. They are not preferences to be optimised
 against. The play-to-earn position and everything around it is the standing example; see
-[docs/compliance.md](docs/compliance.md) and `ops/COMPLIANCE_LEGAL.md`. Do not soften compliance wording
+[design/compliance.md](design/compliance.md) and `ops/COMPLIANCE_LEGAL.md`. Do not soften compliance wording
 to match the flexible tone used everywhere else, and do not borrow its absolute tone for a design,
 marketing, or engineering preference.
 - **Document what IS, not what WAS.** When something changes, record only the current state — drop

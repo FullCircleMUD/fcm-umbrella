@@ -30,7 +30,7 @@ from pathlib import Path
 # --- corpus definition (globs relative to repo root) -------------------------
 # Directories whose .md files get the FULL convention checks. doco-structure.md
 # scopes the kebab/H1/summary/INDEX rules to "docs/ documents", so only these.
-DOC_ROOT_GLOBS = ["docs", "libraries/*/docs"]
+DOC_ROOT_GLOBS = ["design", "libraries/*/docs"]
 
 # Loose doc surfaces: link + WAS checks only (NOT held to kebab/H1/summary —
 # memory files carry frontmatter and no H1; CLAUDE.md/README are free-form).

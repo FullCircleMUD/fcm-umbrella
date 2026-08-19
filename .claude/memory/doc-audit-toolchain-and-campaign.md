@@ -15,9 +15,9 @@ surface findings; a human or orchestrator applies fixes.** All are written gener
 specifics) so they port to other projects.
 
 - **Docs conventions:** `doc-convention-linter` skill + `doc-convention-auditor` agent; spec =
-  `docs/doco-structure.md`. (Full-repo run done; findings fixed.)
+  `design/doco-structure.md`. (Full-repo run done; findings fixed.)
 - **Library structure:** `library-standards-linter` skill + `library-standards-auditor` agent; spec =
-  `docs/library-standards.md`. (5 libraries lint clean; auditor validated.)
+  `design/library-standards.md`. (5 libraries lint clean; auditor validated.)
 - **Code-vs-doc drift:** `doc-consistency-auditor` agent (no linter yet — agent-first by design). Reads
   design docs + the code they cite, flags only **concrete, high-confidence contradictions**.
 
@@ -31,14 +31,14 @@ scope structurally cannot.
 **Campaign in progress — consistency sweep across the project, one target at a time (system scope):**
 - ✅ `evennia-shards` (3 drifts) · ✅ `evennia-world-builder` (5 drifts) · ✅ `evennia-mob-spawner`
   (7 drifts) · ✅ `evennia-yaml-reader` (CLEAN, 0 drift)
-- ⏳ in progress: **umbrella `docs/` ↔ `src/game`, audited by system** (too large for one pass).
+- ⏳ in progress: **the `design` repo ↔ `src/game`, audited by system** (too large for one pass).
   ✅ Combat cluster (`combat-system.md` + `weapon-damage-scaling.md`): 12 doc drifts fixed, pushed.
   Next game systems: effects, spells, npc/mob, items/rooms, economy/spawn, etc.
 - ⏸ `evennia-targeting` deferred — it's a scaffold (no library code yet), so its docs are all
   design-ahead with nothing to drift against until code lands
 
-**`src/game` is a game repo — board approval needed to change game code.** This phase fixes umbrella
-`docs/` only; anything that would edit `src/game` (incl. stale code docstrings/comments) is surfaced
+**`src/game` is a game repo — board approval needed to change game code.** This phase fixes
+`design/` only; anything that would edit `src/game` (incl. stale code docstrings/comments) is surfaced
 for the board, not committed. **Board-surface items from the combat-cluster audit (open):**
 - `world/damage_tables.py` comment groups Sai/Nunchaku under "d6 Base" but both are `base_damage="d4"`.
 - `combat/combat_utils.py` `force_drop_weapon` docstring claims mob floor-drop vs PC inventory; code

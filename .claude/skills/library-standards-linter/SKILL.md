@@ -2,7 +2,7 @@
 name: library-standards-linter
 description: |
   Deterministic linter that checks the reusable libraries under `libraries/` against
-  the mechanically-decidable parts of `docs/library-standards.md` — required files,
+  the mechanically-decidable parts of `design/library-standards.md` — required files,
   src layout, naming consistency, pyproject fields (license, requires-python,
   packages-where), the package __version__, SPDX headers, the required docs/ files,
   and absence of a per-repo documentation-structure.md or memory surface. Use to
@@ -21,7 +21,7 @@ script can decide with certainty about a library's structure, leaving judgment �
 chiefly *whether a deviation is a sanctioned divergence* — to a human or a future
 `library-standards-auditor` agent that consumes its output.
 
-## What it checks (against `docs/library-standards.md`)
+## What it checks (against `design/library-standards.md`)
 
 | Check | Severity |
 |---|---|
@@ -84,5 +84,5 @@ not bound by the standards.
   `CHECKS` list in `lint_library.py` (`check_root_files`, `check_docs`,
   `check_src_layout`, `check_naming`, `check_spdx`, `check_tests_dir`,
   `check_memory_surface`, `check_pyproject`). Add or remove a check by editing that
-  list; each has its own unit test. `docs/library-standards.md` is the
+  list; each has its own unit test. `design/library-standards.md` is the
   human-readable spec; this linter encodes its mechanical subset.
