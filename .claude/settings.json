@@ -49,6 +49,8 @@
       "Read(**/secret_settings.py)",
       "Read(**/secret_settings.py.bak)",
       "Read(**/secret_settings.local)",
+      "Read(**/secret_env.local)",
+      "Read(**/server/conf/*.local)",
       "Read(**/wallets.json)",
       "Read(**/xrpl-tools/manager/settings.js)",
       "Read(**/xrpl-tools/manager/shared/settings-common.js)",
