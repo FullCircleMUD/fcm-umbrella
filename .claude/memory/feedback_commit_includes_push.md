@@ -1,25 +1,25 @@
 ---
 name: feedback-commit-includes-push
-description: "In src/game, pushing is deploying — commit when approved, but never push until Tim says so."
-metadata: 
+description: "Pushing no longer deploys — EC2 deploys are manual. Pushing to main is fine again; still commit only what's approved."
+metadata:
   node_type: memory
   type: feedback
   originSessionId: 5c171053-81dc-40eb-a35d-b8d83ca4cc34
-  modified: 2026-08-18T15:34:41.533Z
+  modified: 2026-08-21T20:57:45.582Z
 ---
 
-**In the `src/game` repo, a push to `main` redeploys the live instance.** Pushes
-to other branches do not deploy. Regardless of branch: commit when a commit is
-approved, then stop and report. Never push until Tim explicitly says to push.
+**Pushing does not deploy.** The game runs on an EC2 staging instance with no CD
+set up. Tim deploys by hand: SSH in, shut everything down, `git pull`, start back
+up. So pushing to `main` is safe and can be done freely when a commit is approved.
 
-**Why:** stated 2026-08-18 after I committed the delayed-attack guard and pushed
-it in the same step — "it is the push that deploys... so commit, do not push
-until I say so". Tim also wants fixes proven on the dev instance before they
-reach the staging instance he is playtesting on, and an unrequested push can put
-them there ahead of that.
+**Why:** stated 2026-08-21, replacing the Railway-era rule where a push to `main`
+redeployed the live instance. The commit that moved the target is `88e4d12`
+"Railway is no longer the deployment target".
 
-**How to apply:** on approval, commit and report branch + short SHA + "not
-pushed". Wait for an explicit push instruction. This sits on top of the rules
-that gate the commit itself: game-repo changes need explicit board approval per
-change (see [[CLAUDE.md]]), and destructive git operations always need their own
-in-conversation approval. Related: [[feedback_terse_confirmations]].
+**How to apply:** still commit only what has been approved, and stage only the
+files belonging to that change — Tim usually has unrelated work in progress in the
+same tree. Report branch + short SHA. Ask before pushing only when the change is
+one he may want to sit on, not as a standing rule. Game-repo changes still need
+explicit board approval per change (see [[CLAUDE.md]]), and destructive git
+operations still need their own in-conversation approval.
+Related: [[feedback_terse_confirmations]].

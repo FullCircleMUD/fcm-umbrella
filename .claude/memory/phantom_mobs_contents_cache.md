@@ -1,11 +1,11 @@
 ---
 name: phantom-mobs-contents-cache
-description: Phantom/unkillable mobs — handler leak fixed and deployed; room-cache drift still unexplained; null shard_id found
+description: Phantom/unkillable mobs — handler leak fixed and deployed; null shard_id now blocked by a guard; room-cache drift still unexplained
 metadata: 
   node_type: memory
   type: project
   originSessionId: 5c171053-81dc-40eb-a35d-b8d83ca4cc34
-  modified: 2026-08-18T23:48:03.680Z
+  modified: 2026-08-19T02:07:24.095Z
 ---
 
 Investigated 2026-08-18.
@@ -20,12 +20,17 @@ caches by the pre-Django-2.0 name `_<field>_cache`; they live in
 `_state.fields_cache`. Reproduced in `test_flush_premise.py`. Overriding it
 changed nothing live. Worth reporting upstream.
 
-**Null `shard_id`** — `evennia-shards` only stamps it if a current tenant is set
-([tenancy.py:236](../../libraries/evennia-shards/src/evennia_shards/tenancy.py#L236)).
-Script ticks and `at_object_creation` have none, so rows save NULL and become
-invisible to every ORM query — cannot be found, moved or deleted, and their
-holder cannot be deleted either (FK violation). On Tim's backlog. May also explain
-the drift, since `filter(db_location=room)` is tenant-filtered. Unconfirmed.
+**Null `shard_id` — now impossible to create.** `evennia-shards` 0.1.3 refuses any
+`ObjectDB` INSERT that would land unstamped, on both `save()` and `bulk_create()`,
+and logs it at ERROR to `shards.log` before raising. Deliberate unstamped inserts
+opt in via `allow_unstamped_insert()` — the library's chargen, and FCM's account
+bank in `at_post_login`. See
+[tenancy.md](../../libraries/evennia-shards/docs/tenancy.md#the-unstamped-insert-guard).
+
+Whether NULL rows explain the cache drift is still **unconfirmed** — a NULL row is
+invisible to every tenant-filtered query, so `filter(db_location=room)` would miss
+it. The original intermittent case did not reproduce during the 2026-08-18 play
+test; it will now announce itself in `shards.log` if it recurs.
 
 **Unsolved.** Room caches disagree with the database, dozens of rooms, only for
 mobs that move. Ruled out: add/remove pairing, each verified on return; `init`

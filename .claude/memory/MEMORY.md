@@ -68,5 +68,5 @@
 - [Don't overinvest in tangents](feedback_dont_overinvest_tangents.md) — don't chain multiple tool calls chasing precise answers to side questions unrelated to the actual task outcome.
 - [Always include the imports](feedback_always_include_imports.md) — every in-game `py` snippet must be self-contained; Tim re-enters `py` constantly and each entry is a fresh namespace.
 - [Show code as links, not dumps](feedback_code_links_not_dumps.md) — when asked to see code, give a file link + line number; don't paste the code. Quote a line only when the exact wording is the point.
-- [Never push until told](feedback_commit_includes_push.md) — in `src/game` the push is what deploys; commit when approved, then stop and wait for an explicit push instruction.
+- [Pushing no longer deploys](feedback_commit_includes_push.md) — EC2 deploys are manual (SSH, pull, restart), so pushing to `main` is free again; still commit only what's approved.
 - [Ask in prose, not option dialogues](feedback_ask_in_prose_not_dialogues.md) — don't put decisions in a multiple-choice dialogue; there's no room for nuance. State the question in the reply and let the answer come back in Tim's own words.
