@@ -22,7 +22,7 @@
 ## Project Structure
 - Work happens in the **FCM umbrella** (`/Users/timbaird/Documents/FCM-umbrella/`) — the dev workspace that gitignores the nested repos. Full repo manifest + layout live in `design/new-machine-setup.md`; design docs live in the `design` repo (cloned into the umbrella root as `design/`).
 - `src/game` uses git-crypt — see [git-crypt setup for src/game secrets](gitcrypt_game_secrets.md).
-- `src/game` branches: `main` (default), `dev`, and the active working branch `shards-rework`.
+- [Work on dev, merge up to main](feedback_work_on_dev_branch.md) — `dev` is the working branch in `src/game`; `main` takes tested work from it.
 
 ## World content
 - [NPC placement: fcm-world vs fcm-mobs](npc_placement_world_vs_mob_spawner.md) — killable NPCs need a spawn rule in `fcm-mobs` (respawn); only unkillable ones (no-combat rooms) go statically in `fcm-world`.
