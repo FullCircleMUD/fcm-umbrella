@@ -29,6 +29,9 @@
 - [mob_area tag controls wandering](mob_area_tag_controls_wandering.md) — mobs only move into rooms sharing their `mob_area` tag; remove the tag to fence them out of a room.
 - [fcm-world test-branch strategy](fcm_world_test_branch_strategy.md) — `main` is live content only; the test world lives on the `test` branch, kept current by merging main → test (never the reverse). Dev/staging point at it via `WORLDBUILDER_REF`; a CI guard on main makes it structural.
 
+## Archive & recovery
+- [Archive exists for playtest continuity](archive_enables_playtest_continuity.md) — rebuild the world freely without playtesters losing their investment. `evennia.db3` is disposable; `archive.db3`, `xrpl.db3` and `subscriptions.db3` are permanent from alpha. Never wipe evennia+archive while keeping xrpl.
+
 ## Open bugs
 - [Phantom/unkillable mobs](phantom_mobs_contents_cache.md) — the combat-handler leak is fixed and on `main`; the room-cache drift is measured but unexplained. Includes the three measurement traps that cost hours.
 
@@ -53,9 +56,9 @@
 ## Working approach
 - [Cheap tests beat confident theory](feedback_cheap_tests_over_theory.md) — verify before asserting; and when I haven't verified, ask ("does this make sense to you?") rather than declaring it broken — or fine.
 - [Reason, don't reflexively gather](feedback_reason_dont_just_gather.md) — senior-dev role: before running a check, ask what result would change the recommendation. "Changes behaviour" ≠ "risky".
-- [Targeted tests during dev, full suite at end of day](feedback_targeted_tests_during_dev.md) — the full `src/game` suite runs ~2 hours and holds the test DBs, blocking all other test runs. Name the specific suites while working.
+- [One file while iterating, sweep at the end](feedback_targeted_tests_during_dev.md) — run only the test module just edited; broad sweeps cost ~4 min and belong at the end of a body of work. Full suite (~2 hours, holds the test DBs) is end-of-day only.
 - [Stop on each problem](feedback_stop_on_each_problem.md) — when auditing, surface one finding, stop, and let the user decide fix/leave/defer before editing or hunting the next one. Don't auto-fix or batch-enumerate.
-- [No legacy-data concerns during shards work](feedback_no_legacy_data_concerns.md) — pre-alpha, fresh DB every deploy, live deploy replaces the current one wholesale. Don't weigh existing-database impact until a sharded deployment is live and working.
+- [No legacy-data concerns, ever](feedback_no_legacy_data_concerns.md) — pre-alpha, fresh DB every deploy. Never propose a backfill or caveat a change with "objects created before this won't have it". Applies to all work, not just shards.
 - [Terse written records too](feedback_terse_written_records.md) — memory files and notes get the same treatment as replies: one line per fact, no prose scaffolding.
 - [Bottom line first](feedback_terse_confirmations.md) — lead with the one-line answer (yes/no *and* open questions), then any additional factors as short dot points. Stop there; mechanism, tables, and citations only when asked.
 - [A question is not an instruction](feedback_question_is_not_instruction.md) — answer questions in prose and stop; wait for an imperative before editing code.
