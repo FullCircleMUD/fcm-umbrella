@@ -2,8 +2,9 @@
 name: doc-convention-linter
 description: |
   Deterministic linter for the FCM documentation corpus. Run it to surface the
-  *mechanically decidable* documentation problems — broken relative links,
-  docs missing from their INDEX, orphaned docs, non-kebab-case filenames, missing
+  *mechanically decidable* documentation problems — a library with no docs/, a
+  docs root with no INDEX.md, broken relative links, docs missing from their
+  INDEX, orphaned docs, non-kebab-case filenames, missing
   H1 / summary blocks, and "document what WAS" trigger phrases. Use before
   committing documentation changes, when auditing the docs, or as the first step
   of the doc-convention-auditor (which applies judgment on top of this output).
@@ -22,6 +23,8 @@ script can decide with certainty, leaving every judgment call to the
 
 | Check | Severity | Scope |
 |---|---|---|
+| `missing_docs` — a library under `libraries/` has no `docs/` | error | per library |
+| `missing_index` — a docs/ root has no `INDEX.md` | error | per docs/ root |
 | `broken_link` — relative link target does not exist on disk | error | whole corpus |
 | `filename_not_kebab` — docs/ file is not kebab-case `.md` | error | docs/ roots |
 | `h1_missing` — no `# H1` as the first content line | error | docs/ roots |
@@ -50,9 +53,6 @@ python .claude/skills/doc-convention-linter/lint.py --json
 # The whole corpus is still analysed for context; only findings are narrowed.
 python .claude/skills/doc-convention-linter/lint.py design libraries/evennia-shards
 python .claude/skills/doc-convention-linter/lint.py design/world-deployment.md
-
-# Also fail on warnings (for a stricter gate):
-python .claude/skills/doc-convention-linter/lint.py --strict
 ```
 
 ## Reading the output
@@ -61,8 +61,11 @@ python .claude/skills/doc-convention-linter/lint.py --strict
   Note: a `broken_link` into `src/venv/…` or a private repo (`ops/…`) is *really*
   unresolved on disk, but may be an expected environmental absence rather than a
   doc bug — that distinction is the agent's call, not the linter's.
-- **`warn`** — a convention gap worth fixing; does not fail the default run.
+- **`warn`** — a convention gap worth fixing; does not fail the run.
 - **`advisory`** — a phrase to eyeball; almost always needs human/agent judgment.
+  Advisories never fail the run either: a legitimate one ("use X, not Y") states
+  the current rule and can never be cleared, so gating on it would only teach
+  people to suppress the check.
 
 `--json` emits `{ "findings": [...], "summary": {...} }`; each finding carries
 `check`, `severity`, `path`, `line`, `message`.
