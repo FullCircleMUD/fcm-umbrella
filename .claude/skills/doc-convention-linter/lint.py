@@ -7,6 +7,7 @@ doc-convention-auditor ingests `--json` and applies judgment on top), called
 directly from a Claude session, or wired into a git pre-commit / GitHub CI check.
 
 It reports only what is *decidable by a machine*:
+  - docs/ and INDEX.md presence                 (per library / docs root)
   - filename / H1 / summary-block conventions  (docs/ roots only)
   - INDEX completeness                          (per docs/ root)
   - broken relative links                       (corpus-wide)
@@ -158,7 +159,7 @@ def discover(root: Path):
     doc_roots = {}
     for g in DOC_ROOT_GLOBS:
         for d in sorted(root.glob(g)):
-            if d.is_dir() and (d / "INDEX.md").exists():
+            if d.is_dir():
                 doc_roots[d] = sorted(d.glob("*.md"))
 
     loose, seen = [], set()
@@ -207,6 +208,27 @@ def build_context(root: Path):
 
 
 # --- checks (each: Context -> list[Finding], independently unit-testable) ----
+def check_docs_present(ctx):
+    """A library must carry a docs/ directory. Structure is checked before its
+    contents: an absent docs/ is reported, not silently skipped."""
+    libs = ctx.root / "libraries"
+    if not libs.is_dir():
+        return []
+    return [Finding("missing_docs", "error", f"libraries/{d.name}", None,
+                    "library has no docs/ directory")
+            for d in sorted(libs.iterdir())
+            if d.is_dir() and (d / "pyproject.toml").is_file()
+            and not (d / "docs").is_dir()]
+
+
+def check_index_present(ctx):
+    """Every docs/ root carries an INDEX.md. Without one an un-indexed document is
+    invisible, so the absence is an error rather than a suppressed root."""
+    return [Finding("missing_index", "error", ctx.rel(d), None,
+                    "docs root has no INDEX.md")
+            for d in ctx.doc_roots if not (d / "INDEX.md").exists()]
+
+
 def check_filename_kebab(ctx):
     return [Finding("filename_not_kebab", "error", ctx.rel(p), None,
                     f"filename '{p.name}' is not kebab-case .md")
@@ -259,6 +281,8 @@ def check_not_indexed(ctx):
     out = []
     for d, files in ctx.doc_roots.items():
         index = d / "INDEX.md"
+        if not index.exists():
+            continue                    # check_index_present owns the absence
         indexed = {dest for _, t in links_in(ctx.cache[index], ctx.fences[index])
                    if (dest := resolve_link(index, t, ctx.root)) is not None}
         for p in files:
@@ -290,6 +314,7 @@ def check_was_phrasing(ctx):
 
 
 CHECKS = [
+    check_docs_present, check_index_present,
     check_filename_kebab, check_h1, check_summary, check_broken_links,
     check_not_indexed, check_orphaned, check_was_phrasing,
 ]
@@ -349,8 +374,6 @@ def main(argv=None):
     ap.add_argument("scope", nargs="*",
                     help="optional repo-relative path prefixes to restrict the scan")
     ap.add_argument("--json", action="store_true", help="emit JSON findings")
-    ap.add_argument("--strict", action="store_true",
-                    help="exit non-zero on warnings too (default: errors only)")
     args = ap.parse_args(argv)
 
     root = Path(args.root).resolve()
@@ -371,10 +394,7 @@ def main(argv=None):
     else:
         print(render_human(findings, n_files, n_roots))
 
-    fail = any(f.severity == "error" for f in findings)
-    if args.strict:
-        fail = fail or any(f.severity == "warn" for f in findings)
-    return 1 if fail else 0
+    return 1 if any(f.severity == "error" for f in findings) else 0
 
 
 if __name__ == "__main__":
