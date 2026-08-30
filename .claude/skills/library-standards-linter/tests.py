@@ -36,6 +36,21 @@ include = ["my_lib*"]
 """
 
 
+TEST_PLAN = """# Test plan
+
+| Prefix | Covers |
+|---|---|
+| `WC` | `walk_contents` |
+
+## WC — `walk_contents`
+
+| ID | Case | Test function |
+|---|---|---|
+| WC-01 | Filters by predicate | `test_wc_filters` |
+| WC-02 | Empty source returns [] | `WalkTests.test_wc_empty` |
+"""
+
+
 def compliant():
     """A fully-compliant synthetic library; tests/ and docs/archive/ via placeholders."""
     return {
@@ -47,9 +62,13 @@ def compliant():
         "libraries/my-lib/runtests.py": "# runner\n",
         "libraries/my-lib/docs/INDEX.md": "# Index\n",
         "libraries/my-lib/docs/progress.md": "# Progress\n",
+        "libraries/my-lib/docs/test-plan.md": TEST_PLAN,
         "libraries/my-lib/docs/archive/.gitkeep": "",
         "libraries/my-lib/src/my_lib/__init__.py": SPDX + '__version__ = "0.0.1"\n',
         "libraries/my-lib/src/my_lib/core.py": SPDX + "x = 1\n",
+        "libraries/my-lib/src/my_lib/tests.py": SPDX + (
+            "def test_wc_filters():\n    pass\n\n\n"
+            "class WalkTests:\n    def test_wc_empty(self):\n        pass\n"),
         "libraries/my-lib/tests/.gitkeep": "",
     }
 
@@ -111,6 +130,47 @@ class CheckDocs(ValidatorBase):
     def test_documentation_structure_md_forbidden(self):
         f = lib.check_docs(self.ctx(**{"libraries/my-lib/docs/documentation-structure.md": "# no\n"}))
         self.assertIn("forbidden_meta_doc", kinds(f, "error"))
+
+
+class CheckTestPlan(ValidatorBase):
+    PLAN = "libraries/my-lib/docs/test-plan.md"
+
+    def test_clean(self):
+        self.assertEqual(lib.check_test_plan(self.ctx()), [])
+
+    def test_missing_plan_is_warn(self):
+        f = lib.check_test_plan(self.ctx(drop=[self.PLAN]))
+        self.assertIn("missing_file", kinds(f, "warn"))
+        self.assertEqual(kinds(f, "error"), set())
+
+    def test_uncovered_case_is_warn(self):
+        plan = TEST_PLAN.replace("`test_wc_filters`", "")
+        f = lib.check_test_plan(self.ctx(**{self.PLAN: plan}))
+        self.assertIn("test_plan_uncovered", kinds(f, "warn"))
+        self.assertIn("WC-01", f[0].message)
+
+    def test_dangling_reference_is_error(self):
+        plan = TEST_PLAN.replace("`test_wc_filters`", "`test_gone`")
+        f = lib.check_test_plan(self.ctx(**{self.PLAN: plan}))
+        self.assertIn("test_plan_dangling_ref", kinds(f, "error"))
+        self.assertIn("test_gone", f[0].message)
+
+    def test_no_test_function_column_is_warn(self):
+        plan = TEST_PLAN.replace("| ID | Case | Test function |", "| ID | Case | Notes |")
+        f = lib.check_test_plan(self.ctx(**{self.PLAN: plan}))
+        self.assertIn("test_plan_no_column", kinds(f, "warn"))
+
+    def test_non_case_tables_are_ignored(self):
+        """The prefix-legend table has no Test function column and no case IDs."""
+        rows, saw = lib.scan_test_plan(TEST_PLAN)
+        self.assertEqual([r[0] for r in rows], ["WC-01", "WC-02"])
+        self.assertTrue(saw)
+
+    def test_qualified_reference_resolves_to_last_segment(self):
+        self.assertEqual(lib._ref_names("`WalkTests.test_wc_empty`"), ["test_wc_empty"])
+
+    def test_several_references_in_one_cell(self):
+        self.assertEqual(lib._ref_names("`test_a`, `test_b`"), ["test_a", "test_b"])
 
 
 class CheckSrcLayout(ValidatorBase):

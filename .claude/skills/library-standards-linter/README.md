@@ -31,6 +31,10 @@ have none and are skipped), runs the structural checks per library, and reports 
 placeholder satisfies them; `examples/` is optional. The linter surfaces a gap; resolving it (add the
 structure, placeholder OK, or document the divergence in `CLAUDE.md`) is the judgment layer's call.
 
+**Test plan:** `docs/test-plan.md` is parsed for its case tables. An uncovered case is a warn (the
+normal test-first in-progress state); a `Test function` name that exists nowhere in the library's
+sources is an error — the column is a coverage trail, and a dangling name is a false claim.
+
 ## Running the tests
 ```bash
 python .claude/skills/library-standards-linter/tests.py

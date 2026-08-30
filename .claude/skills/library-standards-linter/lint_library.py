@@ -19,6 +19,9 @@ contents. `examples/` is optional. Whether a gap is a sanctioned divergence (e.g
 a pure-Python library with no Evennia test infra) is left to the judgment layer:
 the linter surfaces the deviation; the accepted resolutions are "add the structure
 (placeholder OK)" or "document the divergence in the library's CLAUDE.md".
+`docs/test-plan.md` is read the same way: an uncovered case is the normal
+test-first in-progress state (warn), while a named test function that exists
+nowhere in the sources is a false coverage claim (error).
 
 Run from the umbrella root:  python .claude/skills/library-standards-linter/lint_library.py
 """
@@ -137,6 +140,111 @@ def check_docs(ctx):
     return out
 
 
+# --- test-plan parsing -------------------------------------------------------
+# A case ID is a short surface prefix and a number: WC-01, PL-5, NTC-07.
+CASE_ID = re.compile(r"^`?([A-Z]{1,5}-\d{1,3})`?$")
+IDENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+TEST_FUNCTION_HEADER = "test function"
+
+
+def _split_row(line):
+    s = line.strip().strip("|")
+    return [c.strip() for c in s.split("|")]
+
+
+def _is_separator(cells):
+    return bool(cells) and all(re.fullmatch(r":?-{2,}:?", c) for c in cells)
+
+
+def _ref_names(cell):
+    """Test-function names referenced by a `Test function` cell.
+
+    Tolerates backticks, markdown links, `Class.test_method` qualification and
+    several comma-separated references; the last dotted segment is the name.
+    """
+    names = []
+    for token in re.split(r"[,\s]+", cell.replace("`", "").replace("[", " ").replace("]", " ")):
+        seg = token.strip("().").split(".")[-1]
+        if seg and IDENT.fullmatch(seg):
+            names.append(seg)
+    return names
+
+
+def scan_test_plan(text):
+    """(rows, saw_column) — rows are (case_id, test_function_cell) from every
+    table carrying a `Test function` column. Tables without that column (the
+    prefix legend, the fixtures table) are ignored."""
+    rows, col, saw_column = [], None, False
+    for line in text.splitlines():
+        if not line.lstrip().startswith("|"):
+            col = None                              # table ended
+            continue
+        cells = _split_row(line)
+        if _is_separator(cells):
+            continue
+        if col is None:                             # header row
+            lower = [c.lower() for c in cells]
+            if TEST_FUNCTION_HEADER in lower:
+                col = lower.index(TEST_FUNCTION_HEADER)
+                saw_column = True
+            continue
+        m = CASE_ID.match(cells[0]) if cells else None
+        if m and col < len(cells):
+            rows.append((m.group(1), cells[col]))
+    return rows, saw_column
+
+
+def _defined_names(ctx):
+    """Every def / class name defined in the library's Python sources."""
+    names = set()
+    for r in (p for p in (ctx.pkg, ctx.libdir / "tests") if p and p.is_dir()):
+        for f in r.rglob("*.py"):
+            if SPDX_SKIP_DIRS & set(f.parts):
+                continue
+            text = f.read_text(encoding="utf-8", errors="replace")
+            names.update(re.findall(r"^\s*(?:async\s+)?def\s+(\w+)", text, re.M))
+            names.update(re.findall(r"^\s*class\s+(\w+)", text, re.M))
+    return names
+
+
+def _cap(items, n=8):
+    shown = ", ".join(items[:n])
+    return shown + (f" (+{len(items) - n} more)" if len(items) > n else "")
+
+
+def check_test_plan(ctx):
+    docs = ctx.libdir / "docs"
+    if not docs.is_dir():
+        return []                                   # already reported by check_docs
+    plan = docs / "test-plan.md"
+    if not plan.exists():
+        return [ctx.F("missing_file", "warn", plan,
+                      "missing docs/test-plan.md — libraries are built test-first, so the "
+                      "agreed cases are recorded before the tests are written")]
+    rows, saw_column = scan_test_plan(plan.read_text(encoding="utf-8", errors="replace"))
+    if not saw_column:
+        return [ctx.F("test_plan_no_column", "warn", plan,
+                      "no case table with a 'Test function' column — that column is the "
+                      "auditable coverage trail")]
+    out = []
+    uncovered = [cid for cid, cell in rows if not cell]
+    if uncovered:
+        out.append(ctx.F("test_plan_uncovered", "warn", plan,
+                         f"{len(uncovered)} of {len(rows)} case(s) have no test function yet: "
+                         f"{_cap(uncovered)}"))
+    refs = {}
+    for cid, cell in rows:
+        for name in _ref_names(cell):
+            refs.setdefault(name, []).append(cid)
+    dangling = sorted(n for n in refs if n not in _defined_names(ctx)) if refs else []
+    if dangling:
+        shown = ["{} ({})".format(n, ", ".join(refs[n])) for n in dangling]
+        out.append(ctx.F("test_plan_dangling_ref", "error", plan,
+                         f"{len(dangling)} test function(s) named in the plan do not exist in the "
+                         f"library's sources: {_cap(shown, 6)}"))
+    return out
+
+
 def check_src_layout(ctx):
     if not ctx.src.is_dir():
         return [ctx.F("missing_src", "error", ctx.src, "missing src/ directory")]
@@ -225,7 +333,7 @@ def check_pyproject(ctx):
 
 
 CHECKS = [
-    check_root_files, check_docs, check_src_layout, check_naming,
+    check_root_files, check_docs, check_test_plan, check_src_layout, check_naming,
     check_spdx, check_tests_dir, check_memory_surface, check_pyproject,
 ]
 
