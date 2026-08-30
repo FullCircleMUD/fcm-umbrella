@@ -5,8 +5,9 @@ description: |
   the mechanically-decidable parts of `design/library-standards.md` — required files,
   src layout, naming consistency, pyproject fields (license, requires-python,
   packages-where), the package __version__, SPDX headers, the required docs/ files,
-  the docs/test-plan.md coverage trail (uncovered cases, and named test functions
-  that do not exist), and absence of a per-repo documentation-structure.md or
+  the docs/test-plan.md coverage trail in both directions (uncovered cases, named
+  test functions that do not exist, tests no case claims, duplicate case IDs and
+  unresolved [TBD] cases), and absence of a per-repo documentation-structure.md or
   memory surface. Use to
   check a library meets the standard, before bootstrapping a new one, when auditing
   library structure, or as the first step of a library-standards-auditor (which
@@ -32,6 +33,9 @@ chiefly *whether a deviation is a sanctioned divergence* — to a human or a fut
 | `pyproject_name` / `license` — pyproject `name`≠dir, or license≠BSD-3-Clause | error |
 | `forbidden_meta_doc` — a `docs/documentation-structure.md` exists (reduced-set rule) | error |
 | `test_plan_dangling_ref` — a test function named in `docs/test-plan.md` doesn't exist | error |
+| `test_plan_ghost_test` — a test function no case in the plan names | error |
+| `test_plan_duplicate_id` — the same case ID used on two rows | error |
+| `test_plan_tbd` — a case still carrying an unresolved `[TBD]` | error |
 | `missing_dir` — no `tests/` or `docs/archive/` (a placeholder satisfies these) | warn |
 | `test_plan_uncovered` — cases in `docs/test-plan.md` with an empty `Test function` cell | warn |
 | `test_plan_no_column` — the test plan has no case table with a `Test function` column | warn |

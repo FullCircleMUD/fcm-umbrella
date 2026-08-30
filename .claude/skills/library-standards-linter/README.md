@@ -31,9 +31,12 @@ have none and are skipped), runs the structural checks per library, and reports 
 placeholder satisfies them; `examples/` is optional. The linter surfaces a gap; resolving it (add the
 structure, placeholder OK, or document the divergence in `CLAUDE.md`) is the judgment layer's call.
 
-**Test plan:** `docs/test-plan.md` is parsed for its case tables. An uncovered case is a warn (the
-normal test-first in-progress state); a `Test function` name that exists nowhere in the library's
-sources is an error — the column is a coverage trail, and a dangling name is a false claim.
+**Test plan:** `docs/test-plan.md` is parsed for its case tables and checked in both directions. An
+uncovered case is a warn (the normal test-first in-progress state). Errors are the ways the plan and
+the suite disagree: a `Test function` name matching no test in the library, a test function no case
+claims (a ghost test), a case ID used twice, or a case still carrying an unresolved `[TBD]`. A test
+function is a `test_*` def in a `tests.py` / `test_*.py` module; the standalone test infrastructure
+(`tests/test_settings.py`, `tests/urls.py`) is excluded.
 
 ## Running the tests
 ```bash
