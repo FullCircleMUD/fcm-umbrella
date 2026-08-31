@@ -20,6 +20,7 @@ All test functions live in `tests.py`, beside this plan. Run them with
 | `NM` | `check_naming` |
 | `SP` | `check_spdx` |
 | `TD` | `check_tests_dir` |
+| `LG` | `check_logging` |
 | `MS` | `check_memory_surface` |
 | `PP` | `check_pyproject` |
 | `DS` | `discover` / `lint` |
@@ -107,6 +108,25 @@ TP-03 to TP-18 are retired — those cases moved to that skill when the checks d
 |---|---|---|
 | TD-01 | A `tests/` holding only a placeholder passes | `CheckTestsDir.test_placeholder_passes` |
 | TD-02 | A missing `tests/` is a warn, not an error | `CheckTestsDir.test_missing_is_warn_not_error` |
+
+## LG — `check_logging`
+
+The mechanically decidable parts of the logging standard: that `log.py` exists, uses Evennia's
+`logger.log_file`, names a log file of its own, and degrades outside an Evennia engine — and that no
+other module has fallen back to stdlib `logging`, whose records reach nobody when the consumer has
+configured no handler. Whether a missing shim is a documented divergence is the judgment layer's call,
+so its absence is a warn.
+
+| ID | Case | Test function |
+|---|---|---|
+| LG-01 | A compliant shim produces no findings | `CheckLogging.test_clean` |
+| LG-02 | A missing `log.py` is a warn, not an error | `CheckLogging.test_missing_shim_is_warn_not_error` |
+| LG-03 | A shim that does not call `logger.log_file` is an error — it has one and it is the wrong mechanism | `CheckLogging.test_shim_not_using_log_file_is_error` |
+| LG-04 | A shim naming no `.log` file is a warn | `CheckLogging.test_shim_naming_no_log_file_is_warn` |
+| LG-05 | A shim that does not handle `ImportError` is a warn — it must no-op outside an Evennia engine | `CheckLogging.test_shim_without_importerror_handling_is_warn` |
+| LG-06 | `logging.getLogger` outside the shim is a warn, and the finding names the file | `CheckLogging.test_stdlib_logging_outside_the_shim_is_warn` |
+| LG-07 | The shim itself is exempt from the stdlib check | `CheckLogging.test_the_shim_itself_may_mention_logging` |
+| LG-08 | A library with no package produces no findings | `CheckLogging.test_no_package_is_silent` |
 
 ## MS — `check_memory_surface`
 

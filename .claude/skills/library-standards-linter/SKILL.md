@@ -37,6 +37,9 @@ chiefly *whether a deviation is a sanctioned divergence* — to a human or a fut
 | `test_plan_duplicate_id` — the same case ID used on two rows | error |
 | `test_plan_tbd` — a case still carrying an unresolved `[TBD]` | error |
 | `missing_dir` — no `tests/` or `docs/archive/` (a placeholder satisfies these) | warn |
+| `log_shim_mechanism` — a `log.py` that doesn't call Evennia's `logger.log_file` | error |
+| `missing_log_shim` / `log_shim_filename` / `log_shim_fallback` — no `log.py`, no `.log` filename, no `ImportError` no-op | warn |
+| `stdlib_logging` — `logging.getLogger` outside the shim; those records reach nobody | warn |
 | `test_plan_uncovered` — cases in `docs/test-plan.md` with an empty `Test function` cell | warn |
 | `test_plan_no_column` — the test plan has no case table with a `Test function` column | warn |
 | `missing_spdx` — source files lacking the SPDX header (migrations excluded) | warn |

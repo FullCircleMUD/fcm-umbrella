@@ -204,6 +204,52 @@ def check_tests_dir(ctx):
                   "divergence in CLAUDE.md (e.g. a pure-Python library)")]
 
 
+def check_logging(ctx):
+    """The logging shim — see design/library-standards.md § Logging.
+
+    Every library logs to a file of its own through ``log.py``, a lazy wrapper
+    over Evennia's ``logger.log_file``. Only the mechanically decidable parts
+    are checked here: that the shim exists, that it uses that mechanism, that
+    it degrades outside an Evennia engine, and that no other module has fallen
+    back to stdlib ``logging`` — records nobody sees, which is the failure the
+    shim exists to prevent.
+    """
+    if ctx.pkg is None:
+        return []
+    out = []
+    shim = ctx.pkg / "log.py"
+    if not shim.exists():
+        out.append(ctx.F("missing_log_shim", "warn", shim,
+                         "no log.py — a library logs to a file of its own through the shim "
+                         "(copy a sibling's and rename); or document a divergence in CLAUDE.md"))
+    else:
+        source = shim.read_text(encoding="utf-8", errors="replace")
+        if "log_file" not in source:
+            out.append(ctx.F("log_shim_mechanism", "error", shim,
+                             "log.py does not call Evennia's `logger.log_file` — that is the "
+                             "mechanism that puts lines in the instance's LOG_DIR"))
+        if not re.search(r"""["'][\w.-]+\.log["']""", source):
+            out.append(ctx.F("log_shim_filename", "warn", shim,
+                             "log.py names no `<library>.log` file — lines would land in the "
+                             "main server log rather than one of the library's own"))
+        if "ImportError" not in source:
+            out.append(ctx.F("log_shim_fallback", "warn", shim,
+                             "log.py does not handle ImportError — the shim must be a silent "
+                             "no-op outside an Evennia engine, so tests need no log directory"))
+
+    stdlib = [f for f in sorted(ctx.pkg.rglob("*.py"))
+              if f.name not in ("log.py", "tests.py")
+              and not (SPDX_SKIP_DIRS & set(f.parts))
+              and "logging.getLogger" in f.read_text(encoding="utf-8", errors="replace")]
+    if stdlib:
+        shown = ", ".join(rel(f, ctx.root) for f in stdlib[:6])
+        more = f" (+{len(stdlib) - 6} more)" if len(stdlib) > 6 else ""
+        out.append(ctx.F("stdlib_logging", "warn", ctx.pkg,
+                         f"stdlib logging.getLogger used outside the shim: {shown}{more} — "
+                         "with no handler configured those records reach nobody"))
+    return out
+
+
 def check_memory_surface(ctx):
     mem = ctx.libdir / ".claude" / "memory"
     if not mem.exists():
@@ -250,7 +296,7 @@ def check_pyproject(ctx):
 
 CHECKS = [
     check_root_files, check_docs, check_test_plan, check_src_layout, check_naming,
-    check_spdx, check_tests_dir, check_memory_surface, check_pyproject,
+    check_spdx, check_tests_dir, check_logging, check_memory_surface, check_pyproject,
 ]
 
 

@@ -63,6 +63,19 @@ LIB_TESTS = SPDX + (
     "class WalkTests:\n    def test_wc_empty(self):\n        pass\n")
 
 
+LOG_SHIM = '''\
+"""Logging shim."""
+
+
+def my_log(message, level="INFO", trace=False):
+    try:
+        from evennia.utils import logger
+    except ImportError:
+        return
+    logger.log_file(f"[{level}] {message}", filename="my_lib.log")
+'''
+
+
 def compliant():
     """A fully-compliant synthetic library; tests/ and docs/archive/ via placeholders."""
     return {
@@ -78,6 +91,7 @@ def compliant():
         "libraries/my-lib/docs/archive/.gitkeep": "",
         "libraries/my-lib/src/my_lib/__init__.py": SPDX + '__version__ = "0.0.1"\n',
         "libraries/my-lib/src/my_lib/core.py": SPDX + "x = 1\n",
+        "libraries/my-lib/src/my_lib/log.py": SPDX + LOG_SHIM,
         "libraries/my-lib/src/my_lib/tests.py": LIB_TESTS,
         "libraries/my-lib/tests/.gitkeep": "",
     }
@@ -85,6 +99,7 @@ def compliant():
 
 SRC_FILES = ["libraries/my-lib/src/my_lib/__init__.py",
              "libraries/my-lib/src/my_lib/core.py",
+             "libraries/my-lib/src/my_lib/log.py",
              "libraries/my-lib/src/my_lib/tests.py"]
 
 
@@ -285,6 +300,56 @@ class CheckTestsDir(ValidatorBase):
         f = lib.check_tests_dir(self.ctx(drop=["libraries/my-lib/tests/.gitkeep"]))
         self.assertIn("missing_dir", kinds(f, "warn"))
         self.assertEqual(kinds(f, "error"), set())
+
+
+class CheckLogging(ValidatorBase):
+    def test_clean(self):
+        """LG-01"""
+        self.assertEqual(lib.check_logging(self.ctx()), [])
+
+    def test_missing_shim_is_warn_not_error(self):
+        """LG-02"""
+        f = lib.check_logging(self.ctx(drop=["libraries/my-lib/src/my_lib/log.py"]))
+        self.assertIn("missing_log_shim", kinds(f, "warn"))
+        self.assertEqual(kinds(f, "error"), set())
+
+    def test_shim_not_using_log_file_is_error(self):
+        """LG-03"""
+        f = lib.check_logging(self.ctx(**{
+            "libraries/my-lib/src/my_lib/log.py":
+                SPDX + 'import logging\n\n\ndef my_log(m):\n    print("my.log", m)\n'}))
+        self.assertIn("log_shim_mechanism", kinds(f, "error"))
+
+    def test_shim_naming_no_log_file_is_warn(self):
+        """LG-04"""
+        f = lib.check_logging(self.ctx(**{
+            "libraries/my-lib/src/my_lib/log.py": SPDX + LOG_SHIM.replace('"my_lib.log"', '""')}))
+        self.assertIn("log_shim_filename", kinds(f, "warn"))
+
+    def test_shim_without_importerror_handling_is_warn(self):
+        """LG-05"""
+        stripped = LOG_SHIM.replace("    except ImportError:\n        return\n", "")
+        stripped = stripped.replace("    try:\n", "")
+        f = lib.check_logging(self.ctx(**{
+            "libraries/my-lib/src/my_lib/log.py": SPDX + stripped}))
+        self.assertIn("log_shim_fallback", kinds(f, "warn"))
+
+    def test_stdlib_logging_outside_the_shim_is_warn(self):
+        """LG-06"""
+        f = lib.check_logging(self.ctx(**{
+            "libraries/my-lib/src/my_lib/core.py":
+                SPDX + 'import logging\n\nlogger = logging.getLogger("my_lib")\n'}))
+        self.assertIn("stdlib_logging", kinds(f, "warn"))
+        self.assertIn("core.py", messages(f))
+
+    def test_the_shim_itself_may_mention_logging(self):
+        """LG-07"""
+        self.assertNotIn("stdlib_logging", kinds(lib.check_logging(self.ctx())))
+
+    def test_no_package_is_silent(self):
+        """LG-08"""
+        ctx = self.ctx(drop=SRC_FILES + ["libraries/my-lib/src/my_lib/log.py"])
+        self.assertEqual(lib.check_logging(ctx), [])
 
 
 class CheckMemorySurface(ValidatorBase):
