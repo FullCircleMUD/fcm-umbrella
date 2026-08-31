@@ -10,7 +10,10 @@
 /ops/
 /transparency/
 /xrpl-tools/
+/libraries/evennia-ai-memory/
 /libraries/evennia-archive/
+/libraries/evennia-llm-service/
+/libraries/evennia-message-bus/
 /libraries/evennia-mob-spawner/
 /libraries/evennia-mob-spawner-test-world/
 /libraries/evennia-mob-spawner-test-yaml/

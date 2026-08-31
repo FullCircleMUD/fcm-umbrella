@@ -50,6 +50,10 @@
 ## YAML porting conventions
 - [Mobs are spawn-script driven, not YAML entities](feedback_mobs_vs_npcs_yaml.md) — NPCs go in `npc_*.yaml`; mobs (incl. named bosses) get only a `mob_area` room tag and are spawned dynamically
 
+## Instance-to-instance messaging
+- [Shards v2 — independent instances, not shared Postgres](shards-v2-independent-instances.md) — standalone Evennia servers; archive+xrpl move the character, the bus coordinates. "Non-shards" means *not shards as it is today*.
+- [evennia-message-bus library](evennia-message-bus-library.md) — working, round trip proven between demo instances; no consumer game yet.
+
 ## Multi-shard dev setup
 - [Shards view gamedirs — fix at symlink layer, not settings](feedback_shards_view_gamedirs.md) — Windows runs all roles from `src/game/`; Unix needs view gamedirs (`game-router/`, `game-shard1/`) with symlinks back to `../game/`. Solve path errors with symlinks, not settings edits.
 

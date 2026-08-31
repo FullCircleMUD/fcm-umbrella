@@ -60,6 +60,19 @@ The **full** set of nested repos (including those without their own `CLAUDE.md` 
 work are fine, but committing/pushing changes to the game repositories requires board sign-off for that
 specific change. When unsure whether a repo counts, ask before changing it.
 
+## Test-first — the test plan comes first, everywhere
+
+**Never write code before the test plan says what it should do.** The order is fixed, and it applies to
+the umbrella, the libraries, `src/game`, and every other sub-repo:
+
+1. **Update the test plan** with the cases defining the behaviour — this is where behaviour is agreed.
+2. **Write the tests.** If a test needs something that doesn't exist yet, create the placeholder with
+   the real signature and a `raise NotImplementedError` body, so the test is writable.
+3. **Run them.** Failures at this point are expected and correct.
+4. **Write the code** until they pass.
+
+Full process and rationale: [design/test-first-process.md](design/test-first-process.md).
+
 ## Working discipline — assumptions & documentation
 
 Never record anything as *decided / agreed / canonical* unless it was actively discussed **and**
