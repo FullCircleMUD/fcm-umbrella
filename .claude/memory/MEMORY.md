@@ -22,6 +22,7 @@
 ## Project Structure
 - Work happens in the **FCM umbrella** (`/Users/timbaird/Documents/FCM-umbrella/`) — the dev workspace that gitignores the nested repos. Full repo manifest + layout live in `design/new-machine-setup.md`; design docs live in the `design` repo (cloned into the umbrella root as `design/`).
 - `src/game` uses git-crypt — see [git-crypt setup for src/game secrets](gitcrypt_game_secrets.md).
+- [Libraries commit straight to main](libraries_commit_straight_to_main.md) — no branches in `libraries/` repos until they stabilise into production; overrides the branch-first default there.
 - [Work on dev, merge up to main](feedback_work_on_dev_branch.md) — `dev` is the working branch in `src/game`; `main` takes tested work from it.
 
 ## World content
@@ -37,10 +38,13 @@
 
 ## Upcoming Work
 - [Upcoming FCM world build in YAML](upcoming_fcm_world_build.md) — starting 2026-05-08, rebuilding FCM world content via the `evennia-world-builder` library; real-world content expected to surface edge cases the synthetic fixtures didn't reach
+- [fcm-telemetry-spawn parked pending fcm-xrpl](telemetry-spawn-parked-pending-xrpl.md) — scaffolded 2026-08-31; extraction waits on the XRPL library's shape, which may become a hard dependency.
+- [fcm-telemetry-spawn is unlicensed](library-unlicensed-fcm-telemetry-spawn.md) — sanctioned divergence; the linter's 3 licence findings are expected, don't "fix" them.
 
 ## Documentation
 - **Document what IS, not what WAS** — see the always-on rule in [CLAUDE.md](../../CLAUDE.md). When something changes, record the current state only; no "used to be"/"migrated from"/"renamed from" framing unless a human agreed there's a direct need.
 - [Design docs live in the design repo](design-docs-in-design-repo.md) — FCM system design lives in the `design` repo, cloned into the umbrella root as `design/` (kebab-case). Libraries self-document in their own `docs/`.
+- [Docs short and plain](feedback_docs_short_and_plain.md) — what it is, how it works, how to use it; no hedging, no alternatives considered, no archaeology. Cut drafts to a third.
 - [Doc conventions live in doco-structure.md](doc-conventions-home.md) — record new doc conventions in `design/doco-structure.md` (the spec); the `doc-convention-auditor` enforces them, the `doc-convention-linter` checks the mechanical subset.
 - [Doc/library audit toolchain + consistency campaign](doc-audit-toolchain-and-campaign.md) — the spec→linter→auditor pairs (all read-only) and the in-flight code-vs-doc consistency sweep (shards + world-builder done; mob-spawner, yaml-reader, src/game next; targeting deferred).
 
@@ -58,11 +62,14 @@
 - [Shards view gamedirs — fix at symlink layer, not settings](feedback_shards_view_gamedirs.md) — Windows runs all roles from `src/game/`; Unix needs view gamedirs (`game-router/`, `game-shard1/`) with symlinks back to `../game/`. Solve path errors with symlinks, not settings edits.
 
 ## Working approach
+- [Confirm before crossing repos](confirm-before-crossing-repos.md) — tasked in one repo, ask before writing in another; reading across is always fine.
 - [Cheap tests beat confident theory](feedback_cheap_tests_over_theory.md) — verify before asserting; and when I haven't verified, ask ("does this make sense to you?") rather than declaring it broken — or fine.
 - [Reason, don't reflexively gather](feedback_reason_dont_just_gather.md) — senior-dev role: before running a check, ask what result would change the recommendation. "Changes behaviour" ≠ "risky".
 - [One file while iterating, sweep at the end](feedback_targeted_tests_during_dev.md) — run only the test module just edited; broad sweeps cost ~4 min and belong at the end of a body of work. Full suite (~2 hours, holds the test DBs) is end-of-day only.
+- [No troubleshooting relics](feedback_no_troubleshooting_relics.md) — only the code that solved it ships; spikes, debug logging and failed approaches are removed. Revert to a clean tree between attempts.
 - [Stop on each problem](feedback_stop_on_each_problem.md) — when auditing, surface one finding, stop, and let the user decide fix/leave/defer before editing or hunting the next one. Don't auto-fix or batch-enumerate.
 - [No legacy-data concerns, ever](feedback_no_legacy_data_concerns.md) — pre-alpha, fresh DB every deploy. Never propose a backfill or caveat a change with "objects created before this won't have it". Applies to all work, not just shards.
+- [No hardening language](feedback_no_hardening_language.md) — never write a decision up as settled/locked in/immutable; it's the *current* plan, always open to review. Hardened notes get quoted back as constraints that never existed. Externally-imposed constraints are the exception — record those as hard.
 - [Terse written records too](feedback_terse_written_records.md) — memory files and notes get the same treatment as replies: one line per fact, no prose scaffolding.
 - [Bottom line first](feedback_terse_confirmations.md) — lead with the one-line answer (yes/no *and* open questions), then any additional factors as short dot points. Stop there; mechanism, tables, and citations only when asked.
 - [A question is not an instruction](feedback_question_is_not_instruction.md) — answer questions in prose and stop; wait for an imperative before editing code.
