@@ -10,19 +10,14 @@
 /ops/
 /transparency/
 /xrpl-tools/
-/libraries/evennia-ai-memory/
-/libraries/evennia-archive/
-/libraries/evennia-llm-service/
-/libraries/evennia-message-bus/
-/libraries/evennia-mob-spawner/
-/libraries/evennia-mob-spawner-test-world/
-/libraries/evennia-mob-spawner-test-yaml/
-/libraries/evennia-shards/
-/libraries/evennia-targeting/
-/libraries/evennia-world-builder/
-/libraries/evennia-world-builder-test-yaml/
-/libraries/evennia-yaml-reader/
 /src/game/
+
+# Every library is its own repo. Ignored as a whole rather than named one by
+# one, so a new library is covered the day it appears — the per-repo list this
+# replaces went stale three times over, and a `git add -A` from the umbrella
+# root then commits them as bare gitlinks.
+/libraries/*
+!/libraries/README.md
 
 # Local-only, regenerable — not tracked.
 /src/venv/
