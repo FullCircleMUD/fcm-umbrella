@@ -376,6 +376,52 @@ def check_interoperability(ctx):
     return out
 
 
+INSTALLING_STEP = re.compile(r"^##\s+\d+\.", re.M)
+INSTALLING_PARTS = (
+    ("installing_no_required_settings", re.compile(r"required settings", re.I),
+     "names no required settings — name, what it does, and what happens without it"),
+    ("installing_no_optional_settings", re.compile(r"optional settings", re.I),
+     "names no optional settings — name, default, and why the default is what it is"),
+)
+# A library with no settings says so in one line rather than dropping the section.
+INSTALLING_NO_SETTINGS = re.compile(r"no settings", re.I)
+INSTALLING_UNCHECKED = re.compile(r"not checked for you", re.I)
+
+
+def check_installing(ctx):
+    """`docs/installing.md`'s contents — see § The installation document.
+
+    `check_docs` owns the file's absence; this owns what is in it. Without the
+    split, renaming an existing document to `installing.md` turns the linter
+    green while the document still fails the standard.
+    """
+    path = ctx.libdir / "docs" / "installing.md"
+    if not path.exists():
+        return []
+    text = path.read_text(encoding="utf-8", errors="replace")
+    out = []
+
+    if len(INSTALLING_STEP.findall(text)) < 3:
+        out.append(ctx.F(
+            "installing_no_steps", "warn", path,
+            "installing.md has no numbered step list. A consumer works down it in order — "
+            "install the package, add the app, declare the settings, mix in the typeclasses "
+            "— one step per heading, each carrying the code to paste"))
+
+    states_none = INSTALLING_NO_SETTINGS.search(text)
+    for check, pattern, complaint in INSTALLING_PARTS:
+        if not states_none and not pattern.search(text):
+            out.append(ctx.F(check, "warn", path, f"installing.md {complaint}"))
+
+    if not INSTALLING_UNCHECKED.search(text):
+        out.append(ctx.F(
+            "installing_no_unchecked_section", "warn", path,
+            "installing.md has no `what is not checked for you` section — the mistakes "
+            "check_settings() cannot catch, so a consumer knows where the safety net ends. "
+            "INSTALLED_APPS is always one of them"))
+    return out
+
+
 def check_docs(ctx):
     docs = ctx.libdir / "docs"
     if not docs.is_dir():
@@ -632,7 +678,7 @@ def check_pyproject(ctx):
 CHECKS = [
     check_root_files, check_docs, check_test_plan, check_src_layout, check_naming,
     check_spdx, check_tests_dir, check_logging, check_constants, check_claude_md,
-    check_interoperability, check_memory_surface, check_pyproject,
+    check_interoperability, check_installing, check_memory_surface, check_pyproject,
 ]
 
 

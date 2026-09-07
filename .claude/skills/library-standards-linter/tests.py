@@ -117,7 +117,7 @@ def compliant():
         "libraries/my-lib/.gitignore": "venv/\n",
         "libraries/my-lib/runtests.py": "# runner\n",
         "libraries/my-lib/docs/INDEX.md": "# Index\n",
-        "libraries/my-lib/docs/installing.md": "# Installing\n",
+        "libraries/my-lib/docs/installing.md": INSTALLING,
         "libraries/my-lib/docs/interoperability.md":
             "# Interoperability\n\nSummary.\n\n## my-lib\n\nThis library.\n",
         "libraries/my-lib/docs/progress.md": "# Progress\n",
@@ -266,6 +266,71 @@ class CheckConstants(ValidatorBase):
 
 _CLAUDE_PATH = "libraries/my-lib/CLAUDE.md"
 _INTEROP_PATH = "libraries/my-lib/docs/interoperability.md"
+_INSTALLING_PATH = "libraries/my-lib/docs/installing.md"
+
+INSTALLING = """# Installing
+
+## 1. Install the package
+
+## 2. Add the app
+
+## 3. Declare the settings
+
+### Required settings
+
+| Setting | Does | Without it |
+
+### Optional settings
+
+| Setting | Default | Why |
+
+## What is not checked for you
+
+INSTALLED_APPS — leave the library out and ready() never runs.
+"""
+
+
+class CheckInstalling(ValidatorBase):
+    def doc(self, text):
+        return lib.check_installing(self.ctx(**{_INSTALLING_PATH: text}))
+
+    def test_clean(self):
+        """IN-01"""
+        self.assertEqual(self.doc(INSTALLING), [])
+
+    def test_too_few_numbered_steps_is_warn(self):
+        """IN-02"""
+        f = self.doc(INSTALLING.replace("## 2. Add the app", "## Add the app")
+                               .replace("## 3. Declare the settings", "## Declare the settings"))
+        self.assertEqual(kinds(f, "error"), set())
+        self.assertIn("installing_no_steps", kinds(f, "warn"))
+
+    def test_no_required_settings_is_warn(self):
+        """IN-03"""
+        f = self.doc(INSTALLING.replace("### Required settings", "### Some settings"))
+        self.assertIn("installing_no_required_settings", kinds(f, "warn"))
+
+    def test_no_optional_settings_is_warn(self):
+        """IN-04"""
+        f = self.doc(INSTALLING.replace("### Optional settings", "### Other settings"))
+        self.assertIn("installing_no_optional_settings", kinds(f, "warn"))
+
+    def test_no_unchecked_section_is_warn(self):
+        """IN-05"""
+        f = self.doc(INSTALLING.replace("## What is not checked for you", "## Notes"))
+        self.assertIn("installing_no_unchecked_section", kinds(f, "warn"))
+
+    def test_stating_no_settings_satisfies_both(self):
+        """IN-06"""
+        f = self.doc(INSTALLING.replace("### Required settings", "### Settings")
+                               .replace("### Optional settings", "")
+                     + "\nThis library reads no settings.\n")
+        self.assertNotIn("installing_no_required_settings", kinds(f))
+        self.assertNotIn("installing_no_optional_settings", kinds(f))
+
+    def test_missing_doc_is_silent(self):
+        """IN-07"""
+        self.assertEqual(lib.check_installing(self.ctx(drop=[_INSTALLING_PATH])), [])
 
 
 def interop(entries):

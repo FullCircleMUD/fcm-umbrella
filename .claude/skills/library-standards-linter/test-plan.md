@@ -24,6 +24,7 @@ All test functions live in `tests.py`, beside this plan. Run them with
 | `CN` | `check_constants` |
 | `CM` | `check_claude_md` |
 | `IO` | `check_interoperability` |
+| `IN` | `check_installing` |
 | `MS` | `check_memory_surface` |
 | `PP` | `check_pyproject` |
 | `DS` | `discover` / `lint` |
@@ -229,6 +230,34 @@ The library's own section is exempt from the relationship check — the standard
 | IO-06 | The library's own section needs no relationship — `"This library."` is the whole entry | `CheckInteroperability.test_own_section_needs_no_relationship` |
 | IO-07 | Headings that name no library are ignored, so a preamble or a trailing note is not a finding | `CheckInteroperability.test_non_library_headings_are_ignored` |
 | IO-08 | No `docs/interoperability.md` produces no findings here — `DC-08` owns its absence | `CheckInteroperability.test_missing_doc_is_silent` |
+
+## IN — `check_installing`
+
+Covers *The installation document* in `library-standards.md`: `docs/installing.md` carries a numbered
+step list and three named parts — the required settings, the optional settings with their defaults,
+and what is not checked for you.
+
+`DC-07` owns the file's absence; this checks what is in it. Without that split, a rename turns the
+linter green while the document still fails the standard, which is exactly what happened when
+`archive-settings.md` became `installing.md`.
+
+All four findings are **warns**. Across the six libraries that have the document, three carry numbered
+steps, two name required settings, one names optional settings and three have the not-checked section
+— so this is a queue. `evennia-equipment` is the only one satisfying all four, and is the reference
+shape.
+
+A step list is three or more `## <n>.` headings. One or two numbered headings is a document that
+happens to have a number in it, not a consumer walking down a list.
+
+| ID | Case | Test function |
+|---|---|---|
+| IN-01 | A document with numbered steps and all three parts produces no findings | `CheckInstalling.test_clean` |
+| IN-02 | Fewer than three numbered step headings is a warn | `CheckInstalling.test_too_few_numbered_steps_is_warn` |
+| IN-03 | No required-settings section is a warn | `CheckInstalling.test_no_required_settings_is_warn` |
+| IN-04 | No optional-settings section is a warn | `CheckInstalling.test_no_optional_settings_is_warn` |
+| IN-05 | No "what is not checked for you" section is a warn | `CheckInstalling.test_no_unchecked_section_is_warn` |
+| IN-06 | A library stating it reads no settings satisfies both settings parts. The standard has it say so in one line rather than drop the section, and an absent section reads as an oversight where a sentence is an answer | `CheckInstalling.test_stating_no_settings_satisfies_both` |
+| IN-07 | No `docs/installing.md` produces no findings here — `DC-07` owns its absence | `CheckInstalling.test_missing_doc_is_silent` |
 
 ## MS — `check_memory_surface`
 

@@ -11,7 +11,8 @@ description: |
   function name, signature, levels, no timestamp of its own, trace handling, and that
   it stays internal), where module-level constants are declared, CLAUDE.md's nine
   standard sections and its section-4 principles, interoperability.md against the
-  live contents of libraries/, and absence of a
+  live contents of libraries/, installing.md's step list and its settings and
+  not-checked-for-you parts, and absence of a
   per-repo documentation-structure.md or memory surface. Use to
   check a library meets the standard, before bootstrapping a new one, when auditing
   library structure, or as the first step of a library-standards-auditor (which
@@ -46,6 +47,9 @@ chiefly *whether a deviation is a sanctioned divergence* — to a human or a fut
 | `claude_md_principle` — section 4 omits one of the principles its family carries | warn |
 | `interop_missing_sibling` / `interop_order` — `interoperability.md` omits a library under `libraries/`, or its sections are not alphabetical | warn |
 | `interop_no_relationship` — a sibling section naming none of hard dependency / optional integration / no coupling | warn |
+| `installing_no_steps` — `installing.md` has fewer than three `## <n>.` step headings | warn |
+| `installing_no_required_settings` / `installing_no_optional_settings` — neither settings part named, and the document does not state that the library reads none | warn |
+| `installing_no_unchecked_section` — no "what is not checked for you" section | warn |
 | `missing_dir` — no `tests/` or `docs/archive/` (a placeholder satisfies these) | warn |
 | `log_shim_mechanism` — a `log.py` that doesn't call Evennia's `logger.log_file` | error |
 | `missing_log_shim` / `log_shim_filename` / `log_shim_fallback` — no `log.py`, no `.log` filename, no `ImportError` no-op | warn |
