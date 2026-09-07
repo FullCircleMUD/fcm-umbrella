@@ -22,6 +22,7 @@ All test functions live in `tests.py`, beside this plan. Run them with
 | `TD` | `check_tests_dir` |
 | `LG` | `check_logging` |
 | `CN` | `check_constants` |
+| `CM` | `check_claude_md` |
 | `MS` | `check_memory_surface` |
 | `PP` | `check_pyproject` |
 | `DS` | `discover` / `lint` |
@@ -63,6 +64,7 @@ and calls one validator in isolation.
 | DC-05 | Missing `docs/archive/` is a warn; a `.gitkeep` satisfies it | `CheckDocs.test_missing_archive_is_warn` |
 | DC-06 | A `docs/documentation-structure.md` is a `forbidden_meta_doc` error | `CheckDocs.test_documentation_structure_md_forbidden` |
 | DC-07 | Missing `docs/installing.md` is an error. It is the page a consumer arrives at, and the standard names one filename so a consumer running several libraries looks in the same place each time — so a differently-named install doc must not satisfy it | `CheckDocs.test_missing_installing_is_error` |
+| DC-08 | Missing `docs/interoperability.md` is an error. The standard requires every library to carry it so a reader deciding whether two can be co-installed gets a definite statement from either side rather than inferring from silence | `CheckDocs.test_missing_interoperability_is_error` |
 
 ## TP — `check_test_plan`
 
@@ -114,10 +116,16 @@ TP-03 to TP-18 are retired — those cases moved to that skill when the checks d
 ## LG — `check_logging`
 
 The mechanically decidable parts of the logging standard: that `log.py` exists, uses Evennia's
-`logger.log_file`, names a log file of its own, and degrades outside an Evennia engine — and that no
-other module has fallen back to stdlib `logging`, whose records reach nobody when the consumer has
+`logger.log_file`, names a log file of its own, degrades outside an Evennia engine, carries the
+prescribed function name and signature, stamps no timestamp of its own, and stays internal — and that
+no other module has fallen back to stdlib `logging`, whose records reach nobody when the consumer has
 configured no handler. Whether a missing shim is a documented divergence is the judgment layer's call,
 so its absence is a warn.
+
+Every check here tests for the *presence of the mechanism* rather than proving the behaviour — the
+linter reads source, it does not execute it. `LG-03` asks whether `log_file` is called, not whether the
+line it writes is correct, and `LG-14` asks whether the `NoneType: None` suppression is there, not
+whether it fires. That is the ceiling of a mechanical linter, and the reason the judgment layer exists.
 
 | ID | Case | Test function |
 |---|---|---|
@@ -129,6 +137,16 @@ so its absence is a warn.
 | LG-06 | `logging.getLogger` outside the shim is a warn, and the finding names the file | `CheckLogging.test_stdlib_logging_outside_the_shim_is_warn` |
 | LG-07 | The shim itself is exempt from the stdlib check | `CheckLogging.test_the_shim_itself_may_mention_logging` |
 | LG-08 | A library with no package produces no findings | `CheckLogging.test_no_package_is_silent` |
+| LG-09 | The shim's public function is named for the library — `bus_log`, `ai_memory_log`. A warn. A consumer reading a stack trace uses that name to tell whose log line it is | `CheckLogging.test_function_not_named_for_the_library_is_warn` |
+| LG-10 | Its signature is `(message, level="INFO", trace=False)`. A warn. The shim is copied between libraries, so a changed signature means a copy was edited rather than adapted | `CheckLogging.test_wrong_signature_is_warn` |
+| LG-11 | `_VALID_LEVELS` holds exactly `INFO`, `WARN`, `ERROR`. A warn. `CN-04` checks the constant's name; nothing checks its value, so a shim could carry a fourth level and pass | `CheckLogging.test_wrong_levels_is_warn` |
+| LG-12 | `log.py` stamps no timestamp of its own — no `datetime`, `strftime` or `time.time()`. A warn. `log_file` already prefixes one in UTC, so a second stamps every line twice and the file stops reading against `server.log` | `CheckLogging.test_own_timestamp_is_warn` |
+| LG-13 | The shim is not re-exported from `__init__.py`. A warn. It is internal; a consumer who imports it is depending on something the standard does not offer them | `CheckLogging.test_shim_reexported_from_init_is_warn` |
+| LG-14 | The `trace` path is present — `format_exc` is called and the `NoneType: None` case is suppressed. A warn. Without the suppression every `trace=True` call outside an `except` block writes a line of noise | `CheckLogging.test_missing_trace_handling_is_warn` |
+
+`LG-09` to `LG-14` are all warns. `LG-03` is the section's only error, and it is reserved for a shim
+that logs through the wrong mechanism — the one failure where the lines go somewhere nobody reads.
+Everything else here is a shim that works and diverges.
 
 ## CN — `check_constants`
 
@@ -157,6 +175,31 @@ escape the main rule.
 `log.py` carries `from datetime import datetime, timezone` for its `security=True` dual-write. That is
 either a sanctioned divergence or a finding, and it has not been adjudicated — a warn reports it
 without pre-judging.
+
+## CM — `check_claude_md`
+
+Covers *CLAUDE.md structure* in `library-standards.md`: nine sections in a fixed order, and the
+principles section 4 must carry.
+
+Severity is split on what the corpus already satisfies. All fifteen libraries carry the nine sections,
+with identical wording and in order, so **a missing or misordered section is an error** — it costs
+nothing today and catches the first drift. Five of the fifteen have no test-first principle, so
+**principles are a warn**: a queue, not a gate.
+
+Extra sections are allowed and common — `The starting point`, `Sibling libraries to reference`,
+`Scope, in two phases`. Only the nine required ones are checked, and only their order relative to each
+other.
+
+| ID | Case | Test function |
+|---|---|---|
+| CM-01 | A compliant `CLAUDE.md` produces no findings | `CheckClaudeMd.test_clean` |
+| CM-02 | A missing required section is an error, and the finding names it | `CheckClaudeMd.test_missing_section_is_error` |
+| CM-03 | The nine sections out of order is an error | `CheckClaudeMd.test_sections_out_of_order_is_error` |
+| CM-04 | Extra sections interleaved between required ones are fine — the corpus has them and they are not drift | `CheckClaudeMd.test_extra_sections_are_fine` |
+| CM-05 | An `evennia-*` library whose principles omit one of the three is a warn naming it | `CheckClaudeMd.test_missing_principle_is_warn` |
+| CM-06 | An `fcm-*` library is not required to carry the two scope principles. The standard has it state that they deliberately do not apply, and a mention either way reads the same to a linter — so it does not check them | `CheckClaudeMd.test_fcm_library_needs_neither_scope_principle` |
+| CM-07 | An `fcm-*` library still needs test-first, and its absence is a warn | `CheckClaudeMd.test_fcm_library_still_needs_test_first` |
+| CM-08 | A library with no `CLAUDE.md` produces no findings here — `check_root_files` owns that, and two findings for one missing file is noise | `CheckClaudeMd.test_no_claude_md_is_silent` |
 
 ## MS — `check_memory_surface`
 
@@ -204,3 +247,4 @@ without pre-judging.
 | XC-01 | Every validator in `CHECKS` is named by at least one case in this plan | `CrossCutting.test_every_check_is_named_in_the_plan` |
 | XC-02 | Every test function in `tests.py` is named by a case in this plan — the linter's own ghost-test check, applied to itself | `CrossCutting.test_every_test_is_named_in_the_plan` |
 | XC-03 | Finding paths are repo-relative, never absolute | `CrossCutting.test_finding_paths_are_repo_relative` |
+| XC-04 | Every finding name the code emits is documented in `SKILL.md`. `XC-01` guards the plan; nothing guarded the skill's own check table, which is how three findings shipped undocumented | `CrossCutting.test_every_finding_is_documented_in_the_skill` |

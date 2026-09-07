@@ -58,6 +58,36 @@ CONSTANT_SKIP_FILES = {"tests.py"}
 CONSTANT_HOME = "config.py"
 # The bounded exemption: log.py may declare these two and nothing else.
 LOG_SHIM_CONSTANTS = ("_LOG_FILENAME", "_VALID_LEVELS")
+SHIM_ARGS = ("message", "level", "trace")
+SHIM_LEVELS = ("INFO", "WARN", "ERROR")
+# log_file already prefixes a UTC timestamp; a second stamps every line twice.
+SHIM_TIMESTAMP = re.compile(r"\bdatetime\b|\bstrftime\b|\btime\.time\b")
+
+
+def _library_words(name):
+    """The words in a library name — `evennia-message-bus` -> evennia, message, bus."""
+    return [w for w in re.split(r"[-_]", name.lower()) if w]
+
+
+def _names_the_library(token, words):
+    """True when `token` is one of `words`, or an unambiguous stem of one.
+
+    The stem rule is what lets `shard_log` stand for `evennia-shards` while
+    still refusing `ms_log` and `wb_log`. Four characters is the floor: below
+    it a "stem" is an abbreviation, which the standard bans because it reads
+    fine to whoever picked it and to nobody afterwards.
+    """
+    if token in words:
+        return True
+    return any((token.startswith(w) or w.startswith(token))
+               and min(len(token), len(w)) >= 4 for w in words)
+
+
+def _shim_function(tree):
+    """The shim's single public module-level function, or None if unclear."""
+    fns = [n for n in tree.body
+           if isinstance(n, ast.FunctionDef) and not n.name.startswith("_")]
+    return fns[0] if len(fns) == 1 else None
 
 
 class Finding:
@@ -229,6 +259,67 @@ def check_constants(ctx):
     return out
 
 
+# CLAUDE.md's nine standard sections, in the order the standard fixes. Extra
+# sections between them are allowed and common — only these are checked.
+CLAUDE_SECTIONS = ("What this project is", "Project status", "Where to read first",
+                   "Load-bearing architectural principles", "Out of scope",
+                   "Working conventions", "Documentation discipline (load-bearing)",
+                   "Repository layout", "Tools and environment")
+# (label, pattern) for the principles section 4 must carry. An `fcm-*` library
+# carries only the third: the standard has it state that the two scope
+# principles deliberately do not apply, and a mention either way reads the same
+# to a linter, so checking them would be guessing.
+CLAUDE_PRINCIPLES = (
+    ("does not own game concepts", re.compile(r"own game concepts", re.I), False),
+    ("No FCM-specific assumptions", re.compile(r"FCM-specific assumptions", re.I), False),
+    ("Test-first", re.compile(r"test-first|test-plan\.md", re.I), True),
+)
+SECTION_RE = re.compile(r"^##\s+(.+?)\s*$", re.M)
+
+
+def check_claude_md(ctx):
+    """CLAUDE.md's nine sections and its section-4 principles.
+
+    See design/library-standards.md § CLAUDE.md structure. A missing CLAUDE.md
+    is `check_root_files`' finding, not this one — two findings for one absent
+    file is noise.
+    """
+    path = ctx.libdir / "CLAUDE.md"
+    if not path.exists():
+        return []
+    text = path.read_text(encoding="utf-8", errors="replace")
+    found = SECTION_RE.findall(text)
+    out = []
+
+    missing = [s for s in CLAUDE_SECTIONS if s not in found]
+    if missing:
+        out.append(ctx.F("claude_md_section", "error", path,
+                         f"CLAUDE.md is missing section(s): {', '.join(missing)}. The nine "
+                         f"standard sections are what lets a session find the same thing in "
+                         f"the same place across the libraries"))
+
+    present = [s for s in CLAUDE_SECTIONS if s in found]
+    if present != sorted(present, key=lambda s: found.index(s)):
+        out.append(ctx.F("claude_md_order", "error", path,
+                         "CLAUDE.md's standard sections are out of order. Extra sections "
+                         "between them are fine; the required nine keep their sequence"))
+
+    body = text.split("## Load-bearing architectural principles", 1)
+    if len(body) == 2:
+        section = re.split(r"^## ", body[1], maxsplit=1, flags=re.M)[0]
+        fcm = ctx.name.startswith("fcm-")
+        for label, pattern, applies_to_fcm in CLAUDE_PRINCIPLES:
+            if fcm and not applies_to_fcm:
+                continue
+            if not pattern.search(section):
+                out.append(ctx.F(
+                    "claude_md_principle", "warn", path,
+                    f"the principles section does not state `{label}` — one of the "
+                    f"{'principle an `fcm-*` library carries' if fcm else 'three every '
+                    '`evennia-*` library carries'}"))
+    return out
+
+
 def check_docs(ctx):
     docs = ctx.libdir / "docs"
     if not docs.is_dir():
@@ -243,6 +334,12 @@ def check_docs(ctx):
         out.append(ctx.F("missing_file", "error", docs / "installing.md",
                           "missing docs/installing.md — the numbered install steps, the required "
                           "and optional settings, and what is not checked for you"))
+    # Required so a reader deciding whether two libraries can be co-installed gets
+    # a definite statement from either side rather than inferring from silence.
+    if not (docs / "interoperability.md").exists():
+        out.append(ctx.F("missing_file", "error", docs / "interoperability.md",
+                          "missing docs/interoperability.md — this library against every "
+                          "sibling, each either a stated consideration or an explicit clearance"))
     if not (docs / "progress.md").exists():
         out.append(ctx.F("missing_file", "warn", docs / "progress.md", "missing docs/progress.md"))
     if not (docs / "archive").is_dir():
@@ -314,6 +411,56 @@ def check_tests_dir(ctx):
                   "divergence in CLAUDE.md (e.g. a pure-Python library)")]
 
 
+def _parse(path: Path):
+    """The module's AST, or None where it cannot be read or parsed."""
+    try:
+        return ast.parse(path.read_text(encoding="utf-8", errors="replace"))
+    except (OSError, SyntaxError):
+        return None
+
+
+def _check_shim_interface(ctx, shim: Path, source: str):
+    """The shim's public function: named for the library, with the fixed signature."""
+    tree = _parse(shim)
+    if tree is None:
+        return []
+    out = []
+
+    fn = _shim_function(tree)
+    if fn is not None:
+        words = _library_words(ctx.name)
+        stem = fn.name[:-4] if fn.name.endswith("_log") else fn.name
+        if not fn.name.endswith("_log") or not all(
+                _names_the_library(part, words) for part in stem.split("_") if part):
+            out.append(ctx.F(
+                "log_shim_function_name", "warn", shim,
+                f"the shim's function is `{fn.name}` — it should be named for the library "
+                f"({'/'.join(words)}) plus `_log`, in full words. A reader tracing a log line "
+                f"back uses that name to tell whose it is, and an abbreviation reads fine only "
+                f"to whoever picked it"))
+        if tuple(a.arg for a in fn.args.args) != SHIM_ARGS:
+            out.append(ctx.F(
+                "log_shim_signature", "warn", shim,
+                f"`{fn.name}` takes {tuple(a.arg for a in fn.args.args)} — the shim's signature "
+                f"is {SHIM_ARGS}. It is copied between libraries, so a changed one means a copy "
+                f"was edited rather than adapted"))
+
+    for name, node in _module_constants(shim)[0]:
+        if name != "_VALID_LEVELS":
+            continue
+        try:
+            value = ast.literal_eval(node.value)
+        except ValueError:
+            break
+        if tuple(value) != SHIM_LEVELS:
+            out.append(ctx.F(
+                "log_shim_levels", "warn", shim,
+                f"_VALID_LEVELS is {tuple(value)} — the shim's levels are {SHIM_LEVELS}. A "
+                f"fourth level is one the rest of the corpus cannot be grepped for"))
+        break
+    return out
+
+
 def check_logging(ctx):
     """The logging shim — see design/library-standards.md § Logging.
 
@@ -346,6 +493,28 @@ def check_logging(ctx):
             out.append(ctx.F("log_shim_fallback", "warn", shim,
                              "log.py does not handle ImportError — the shim must be a silent "
                              "no-op outside an Evennia engine, so tests need no log directory"))
+        if not ("format_exc" in source and "NoneType: None" in source):
+            out.append(ctx.F("log_shim_trace", "warn", shim,
+                             "log.py does not both call `traceback.format_exc()` and suppress the "
+                             "`NoneType: None` it returns outside an except block — without the "
+                             "suppression every trace=True call from outside one logs noise"))
+        if SHIM_TIMESTAMP.search(source):
+            out.append(ctx.F("log_shim_timestamp", "warn", shim,
+                             "log.py stamps a time of its own — `logger.log_file` already "
+                             "prefixes one in UTC, so a second stamps every line twice and the "
+                             "file stops reading against server.log"))
+        out += _check_shim_interface(ctx, shim, source)
+
+    init = ctx.pkg / "__init__.py"
+    if init.exists():
+        tree = _parse(init)
+        if tree is not None and any(
+                isinstance(n, ast.ImportFrom) and n.module == "log" and n.level
+                for n in tree.body):
+            out.append(ctx.F("log_shim_exported", "warn", init,
+                             "__init__.py re-exports the log shim — it is internal, and a "
+                             "consumer importing it depends on something the standard does not "
+                             "offer them"))
 
     stdlib = [f for f in sorted(ctx.pkg.rglob("*.py"))
               if f.name not in ("log.py", "tests.py")
@@ -406,8 +575,8 @@ def check_pyproject(ctx):
 
 CHECKS = [
     check_root_files, check_docs, check_test_plan, check_src_layout, check_naming,
-    check_spdx, check_tests_dir, check_logging, check_constants, check_memory_surface,
-    check_pyproject,
+    check_spdx, check_tests_dir, check_logging, check_constants, check_claude_md,
+    check_memory_surface, check_pyproject,
 ]
 
 

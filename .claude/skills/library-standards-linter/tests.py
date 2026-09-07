@@ -7,6 +7,7 @@ Every case is agreed in test-plan.md first; each test names its case ID in its
 docstring, so the coverage trail reads in both directions. Each validator is
 exercised in isolation against a synthetic library, plus integration tests over
 lint(), the CLI, and the placeholder-satisfies-structure calibration."""
+import ast
 import contextlib
 import io
 import json
@@ -65,6 +66,10 @@ LIB_TESTS = SPDX + (
 
 LOG_SHIM = '''\
 """Logging shim."""
+import traceback
+
+_LOG_FILENAME = "my_lib.log"
+_VALID_LEVELS = ("INFO", "WARN", "ERROR")
 
 
 def my_log(message, level="INFO", trace=False):
@@ -72,8 +77,34 @@ def my_log(message, level="INFO", trace=False):
         from evennia.utils import logger
     except ImportError:
         return
-    logger.log_file(f"[{level}] {message}", filename="my_lib.log")
+    if level not in _VALID_LEVELS:
+        level = "INFO"
+    if trace:
+        formatted = traceback.format_exc()
+        if formatted and not formatted.startswith("NoneType: None"):
+            message = f"{message}\\n{formatted.rstrip()}"
+    logger.log_file(f"[{level}] {message}", filename=_LOG_FILENAME)
 '''
+
+
+CLAUDE_SECTIONS = ["What this project is", "Project status", "Where to read first",
+                   "Load-bearing architectural principles", "Out of scope",
+                   "Working conventions", "Documentation discipline (load-bearing)",
+                   "Repository layout", "Tools and environment"]
+
+CLAUDE_PRINCIPLES = (
+    "1. **The library does not own game concepts.**\n"
+    "2. **No FCM-specific assumptions.**\n"
+    "3. **Test-first** — a case lands in `docs/test-plan.md`, then the test, then the code.\n")
+
+
+def claude_md(sections=None, principles=CLAUDE_PRINCIPLES):
+    """A CLAUDE.md with the nine standard sections; principles under section 4."""
+    out = ["# my-lib\n"]
+    for s in (CLAUDE_SECTIONS if sections is None else sections):
+        out.append(f"## {s}\n")
+        out.append(principles if s.startswith("Load-bearing") else "Prose.\n")
+    return "\n".join(out)
 
 
 def compliant():
@@ -81,12 +112,13 @@ def compliant():
     return {
         "libraries/my-lib/pyproject.toml": PYPROJECT,
         "libraries/my-lib/README.md": "# my-lib\n\nA summary.\n",
-        "libraries/my-lib/CLAUDE.md": "# my-lib\n",
+        "libraries/my-lib/CLAUDE.md": claude_md(),
         "libraries/my-lib/LICENSE": "BSD 3-Clause License ...\n",
         "libraries/my-lib/.gitignore": "venv/\n",
         "libraries/my-lib/runtests.py": "# runner\n",
         "libraries/my-lib/docs/INDEX.md": "# Index\n",
         "libraries/my-lib/docs/installing.md": "# Installing\n",
+        "libraries/my-lib/docs/interoperability.md": "# Interoperability\n",
         "libraries/my-lib/docs/progress.md": "# Progress\n",
         "libraries/my-lib/docs/test-plan.md": TEST_PLAN,
         "libraries/my-lib/docs/archive/.gitkeep": "",
@@ -164,22 +196,6 @@ class CheckRootFiles(ValidatorBase):
                 self.assertIn(fn, f[0].message)
 
 
-LOG_SHIM_WITH_CONSTANTS = '''\
-"""Logging shim."""
-import traceback
-
-_LOG_FILENAME = "my_lib.log"
-_VALID_LEVELS = ("INFO", "WARN", "ERROR")
-
-
-def my_log(message, level="INFO", trace=False):
-    try:
-        from evennia.utils import logger
-    except ImportError:
-        return
-    logger.log_file(f"[{level}] {message}", filename=_LOG_FILENAME)
-'''
-
 _LOG_PATH = "libraries/my-lib/src/my_lib/log.py"
 
 
@@ -205,12 +221,12 @@ class CheckConstants(ValidatorBase):
 
     def test_log_shim_constants_are_exempt(self):
         """CN-04"""
-        f = lib.check_constants(self.ctx(**{_LOG_PATH: SPDX + LOG_SHIM_WITH_CONSTANTS}))
+        f = lib.check_constants(self.ctx(**{_LOG_PATH: SPDX + LOG_SHIM}))
         self.assertEqual(f, [])
 
     def test_a_third_log_constant_is_an_error(self):
         """CN-05"""
-        shim = LOG_SHIM_WITH_CONSTANTS.replace(
+        shim = LOG_SHIM.replace(
             '_VALID_LEVELS = ("INFO", "WARN", "ERROR")',
             '_VALID_LEVELS = ("INFO", "WARN", "ERROR")\n_RETRIES = 3')
         f = lib.check_constants(self.ctx(**{_LOG_PATH: SPDX + shim}))
@@ -233,7 +249,7 @@ class CheckConstants(ValidatorBase):
 
     def test_extra_import_above_log_constants_is_warn(self):
         """CN-08"""
-        shim = LOG_SHIM_WITH_CONSTANTS.replace(
+        shim = LOG_SHIM.replace(
             "import traceback\n",
             "import traceback\nfrom datetime import datetime\n")
         f = lib.check_constants(self.ctx(**{_LOG_PATH: SPDX + shim}))
@@ -247,6 +263,74 @@ class CheckConstants(ValidatorBase):
         self.assertEqual(f, [])
 
 
+_CLAUDE_PATH = "libraries/my-lib/CLAUDE.md"
+
+
+class CheckClaudeMd(ValidatorBase):
+    def fcm_ctx(self, **add):
+        """The same tree under an `fcm-` name, so family-specific rules apply."""
+        spec = compliant()
+        spec = {k.replace("libraries/my-lib/", "libraries/fcm-lib/"): v
+                for k, v in spec.items()}
+        spec["libraries/fcm-lib/pyproject.toml"] = PYPROJECT.replace(
+            'name = "my-lib"', 'name = "fcm-lib"')
+        spec.update({k.replace("libraries/my-lib/", "libraries/fcm-lib/"): v
+                     for k, v in add.items()})
+        tmp, root = build(spec)
+        self.addCleanup(tmp.cleanup)
+        return lib.LibContext(root / "libraries/fcm-lib", root)
+
+    def test_clean(self):
+        """CM-01"""
+        self.assertEqual(lib.check_claude_md(self.ctx()), [])
+
+    def test_missing_section_is_error(self):
+        """CM-02"""
+        short = [s for s in CLAUDE_SECTIONS if s != "Out of scope"]
+        f = lib.check_claude_md(self.ctx(**{_CLAUDE_PATH: claude_md(short)}))
+        self.assertIn("claude_md_section", kinds(f, "error"))
+        self.assertIn("Out of scope", messages(f))
+
+    def test_sections_out_of_order_is_error(self):
+        """CM-03"""
+        swapped = list(CLAUDE_SECTIONS)
+        swapped[1], swapped[4] = swapped[4], swapped[1]
+        f = lib.check_claude_md(self.ctx(**{_CLAUDE_PATH: claude_md(swapped)}))
+        self.assertIn("claude_md_order", kinds(f, "error"))
+
+    def test_extra_sections_are_fine(self):
+        """CM-04"""
+        padded = list(CLAUDE_SECTIONS)
+        padded.insert(3, "The starting point")
+        padded.append("Sibling libraries to reference")
+        self.assertEqual(lib.check_claude_md(self.ctx(**{_CLAUDE_PATH: claude_md(padded)})), [])
+
+    def test_missing_principle_is_warn(self):
+        """CM-05"""
+        f = lib.check_claude_md(self.ctx(**{
+            _CLAUDE_PATH: claude_md(principles="1. **No FCM-specific assumptions.**\n")}))
+        self.assertEqual(kinds(f, "error"), set())
+        self.assertIn("claude_md_principle", kinds(f, "warn"))
+        self.assertIn("game concepts", messages(f))
+
+    def test_fcm_library_needs_neither_scope_principle(self):
+        """CM-06"""
+        f = lib.check_claude_md(self.fcm_ctx(**{
+            _CLAUDE_PATH: claude_md(principles="1. **Test-first** — `docs/test-plan.md` first.\n")}))
+        self.assertEqual(f, [])
+
+    def test_fcm_library_still_needs_test_first(self):
+        """CM-07"""
+        f = lib.check_claude_md(self.fcm_ctx(**{
+            _CLAUDE_PATH: claude_md(principles="1. **FCM concepts belong here.**\n")}))
+        self.assertIn("claude_md_principle", kinds(f, "warn"))
+        self.assertIn("Test-first", messages(f))
+
+    def test_no_claude_md_is_silent(self):
+        """CM-08"""
+        self.assertEqual(lib.check_claude_md(self.ctx(drop=[_CLAUDE_PATH])), [])
+
+
 class CheckDocs(ValidatorBase):
     def test_clean(self):
         """DC-01"""
@@ -256,6 +340,7 @@ class CheckDocs(ValidatorBase):
         """DC-02"""
         f = lib.check_docs(self.ctx(drop=["libraries/my-lib/docs/INDEX.md",
                                           "libraries/my-lib/docs/installing.md",
+                                          "libraries/my-lib/docs/interoperability.md",
                                           "libraries/my-lib/docs/progress.md",
                                           "libraries/my-lib/docs/test-plan.md",
                                           "libraries/my-lib/docs/archive/.gitkeep"]))
@@ -282,6 +367,12 @@ class CheckDocs(ValidatorBase):
         """DC-06"""
         f = lib.check_docs(self.ctx(**{"libraries/my-lib/docs/documentation-structure.md": "# no\n"}))
         self.assertIn("forbidden_meta_doc", kinds(f, "error"))
+
+    def test_missing_interoperability_is_error(self):
+        """DC-08"""
+        f = lib.check_docs(self.ctx(drop=["libraries/my-lib/docs/interoperability.md"]))
+        self.assertIn("missing_file", kinds(f, "error"))
+        self.assertIn("interoperability.md", messages(f))
 
     def test_missing_installing_is_error(self):
         """DC-07"""
@@ -448,6 +539,48 @@ class CheckLogging(ValidatorBase):
         ctx = self.ctx(drop=SRC_FILES + ["libraries/my-lib/src/my_lib/log.py"])
         self.assertEqual(lib.check_logging(ctx), [])
 
+    def test_function_not_named_for_the_library_is_warn(self):
+        """LG-09"""
+        f = lib.check_logging(self.ctx(**{
+            _LOG_PATH: SPDX + LOG_SHIM.replace("def my_log(", "def zzz_log(")}))
+        self.assertEqual(kinds(f, "error"), set())
+        self.assertIn("log_shim_function_name", kinds(f, "warn"))
+
+    def test_wrong_signature_is_warn(self):
+        """LG-10"""
+        f = lib.check_logging(self.ctx(**{
+            _LOG_PATH: SPDX + LOG_SHIM.replace(
+                'def my_log(message, level="INFO", trace=False):',
+                'def my_log(msg, lvl="INFO"):')}))
+        self.assertIn("log_shim_signature", kinds(f, "warn"))
+
+    def test_wrong_levels_is_warn(self):
+        """LG-11"""
+        f = lib.check_logging(self.ctx(**{
+            _LOG_PATH: SPDX + LOG_SHIM.replace(
+                '("INFO", "WARN", "ERROR")', '("INFO", "WARN", "ERROR", "DEBUG")')}))
+        self.assertIn("log_shim_levels", kinds(f, "warn"))
+
+    def test_own_timestamp_is_warn(self):
+        """LG-12"""
+        shim = LOG_SHIM.replace(
+            "import traceback\n", "import traceback\nfrom datetime import datetime\n")
+        f = lib.check_logging(self.ctx(**{_LOG_PATH: SPDX + shim}))
+        self.assertIn("log_shim_timestamp", kinds(f, "warn"))
+
+    def test_shim_reexported_from_init_is_warn(self):
+        """LG-13"""
+        f = lib.check_logging(self.ctx(**{
+            "libraries/my-lib/src/my_lib/__init__.py":
+                SPDX + '__version__ = "0.0.1"\nfrom .log import my_log\n'}))
+        self.assertIn("log_shim_exported", kinds(f, "warn"))
+
+    def test_missing_trace_handling_is_warn(self):
+        """LG-14"""
+        f = lib.check_logging(self.ctx(**{
+            _LOG_PATH: SPDX + LOG_SHIM.replace("traceback.format_exc()", '""')}))
+        self.assertIn("log_shim_trace", kinds(f, "warn"))
+
 
 class CheckMemorySurface(ValidatorBase):
     def test_clean(self):
@@ -607,6 +740,23 @@ class CrossCutting(unittest.TestCase):
         """XC-02 — the reverse check, applied to this suite."""
         defined = set(lib.plan_linter.scan_test_functions([HERE], HERE))
         self.assertEqual(sorted(defined - self.plan_names()), [])
+
+    def emitted_findings(self, source=None):
+        """Every finding name the linter can emit, read off its `ctx.F(...)` calls."""
+        src = source or (HERE / "lint_library.py").read_text(encoding="utf-8")
+        return {n.args[0].value for n in ast.walk(ast.parse(src))
+                if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                and n.func.attr == "F" and n.args and isinstance(n.args[0], ast.Constant)}
+
+    def test_every_finding_is_documented_in_the_skill(self):
+        """XC-04"""
+        skill = (HERE / "SKILL.md").read_text(encoding="utf-8")
+        undocumented = sorted(n for n in self.emitted_findings() if n not in skill)
+        self.assertEqual(undocumented, [])
+        # Not vacuous: the same comparison against a SKILL.md missing one row fails.
+        gutted = skill.replace("`stdlib_logging`", "`x`")
+        self.assertIn("stdlib_logging",
+                      {n for n in self.emitted_findings() if n not in gutted})
 
     def test_finding_paths_are_repo_relative(self):
         """XC-03"""

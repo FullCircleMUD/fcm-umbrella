@@ -7,8 +7,11 @@ description: |
   packages-where), the package __version__, SPDX headers, the required docs/ files,
   the docs/test-plan.md coverage trail in both directions (uncovered cases, named
   test functions that do not exist, tests no case claims, duplicate case IDs and
-  unresolved [TBD] cases), and absence of a per-repo documentation-structure.md or
-  memory surface. Use to
+  unresolved [TBD] cases), the logging shim (mechanism, filename, ImportError no-op,
+  function name, signature, levels, no timestamp of its own, trace handling, and that
+  it stays internal), where module-level constants are declared, CLAUDE.md's nine
+  standard sections and its section-4 principles, and absence of a
+  per-repo documentation-structure.md or memory surface. Use to
   check a library meets the standard, before bootstrapping a new one, when auditing
   library structure, or as the first step of a library-standards-auditor (which
   applies judgment on top). Pure Python, no model in the loop: same input always
@@ -31,15 +34,24 @@ chiefly *whether a deviation is a sanctioned divergence* — to a human or a fut
 | `missing_file` / `missing_docs` / `missing_src` / `missing_package` — required structure | error |
 | `naming_mismatch` — src package name ≠ underscored repo name | error |
 | `pyproject_name` / `license` — pyproject `name`≠dir, or license≠BSD-3-Clause | error |
+| `pyproject_unparseable` — `pyproject.toml` is not valid TOML | error |
 | `forbidden_meta_doc` — a `docs/documentation-structure.md` exists (reduced-set rule) | error |
 | `test_plan_dangling_ref` — a test function named in `docs/test-plan.md` doesn't exist | error |
 | `test_plan_ghost_test` — a test function no case in the plan names | error |
 | `test_plan_duplicate_id` — the same case ID used on two rows | error |
 | `test_plan_tbd` — a case still carrying an unresolved `[TBD]` | error |
+| `log_shim_extra_constant` — a constant in `log.py` beyond the exempt two | error |
+| `claude_md_section` / `claude_md_order` — a missing or misordered `CLAUDE.md` standard section | error |
+| `claude_md_principle` — section 4 omits one of the principles its family carries | warn |
 | `missing_dir` — no `tests/` or `docs/archive/` (a placeholder satisfies these) | warn |
 | `log_shim_mechanism` — a `log.py` that doesn't call Evennia's `logger.log_file` | error |
 | `missing_log_shim` / `log_shim_filename` / `log_shim_fallback` — no `log.py`, no `.log` filename, no `ImportError` no-op | warn |
+| `log_shim_function_name` / `log_shim_signature` — shim not named for the library, or not `(message, level, trace)` | warn |
+| `log_shim_levels` / `log_shim_timestamp` / `log_shim_trace` — levels beyond `INFO`/`WARN`/`ERROR`, a timestamp of its own, or no `format_exc` + `NoneType: None` suppression | warn |
+| `log_shim_exported` — `__init__.py` re-exports the shim, which is internal | warn |
 | `stdlib_logging` — `logging.getLogger` outside the shim; those records reach nobody | warn |
+| `constant_outside_config` — a module-level constant declared outside `config.py` | warn |
+| `log_shim_constant_placement` — something above `log.py`'s constants beyond the docstring and `import traceback` | warn |
 | `test_plan_uncovered` — cases in `docs/test-plan.md` with an empty `Test function` cell | warn |
 | `test_plan_no_column` — the test plan has no case table with a `Test function` column | warn |
 | `missing_spdx` — source files lacking the SPDX header (migrations excluded) | warn |
@@ -61,6 +73,19 @@ structure (placeholder OK)" or "document the divergence in the library's
 `CLAUDE.md`". Adjudicating which applies is the judgment layer's job. `examples/`
 is optional (only meaningful once there's code to exercise) — its absence is never
 flagged.
+
+## Calibration — constants
+
+`constant_outside_config` is a **warn** because the corpus predates the rule: over
+two hundred constants across the libraries sit outside `config.py` today. It reads
+as a queue each library drains at its own pace, not a gate that fails every run.
+
+`log_shim_extra_constant` is an **error** because nothing violates it — `log.py`'s
+exemption is bounded to `_LOG_FILENAME` and `_VALID_LEVELS` precisely so it cannot
+become the escape hatch, and enforcing that costs nothing today.
+
+`tests.py` and `migrations/` are out of scope: the first is scaffolding that lives
+in the package by Django convention, the second is generated.
 
 ## Calibration — the test plan
 
@@ -110,7 +135,8 @@ not bound by the standards.
   the placeholder calibration). Run it after any change to `lint_library.py`.
 - Each check is a single-purpose `LibContext -> list[Finding]` validator in the
   `CHECKS` list in `lint_library.py` (`check_root_files`, `check_docs`,
-  `check_src_layout`, `check_naming`, `check_spdx`, `check_tests_dir`,
-  `check_memory_surface`, `check_pyproject`). Add or remove a check by editing that
-  list; each has its own unit test. `design/library-standards.md` is the
-  human-readable spec; this linter encodes its mechanical subset.
+  `check_test_plan`, `check_src_layout`, `check_naming`, `check_spdx`,
+  `check_tests_dir`, `check_logging`, `check_constants`, `check_memory_surface`,
+  `check_pyproject`). Add or remove a check by editing that list; each has its own
+  unit test. `design/library-standards.md` is the human-readable spec; this linter
+  encodes its mechanical subset.
