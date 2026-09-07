@@ -30,6 +30,9 @@ All test functions live in `tests.py`, beside this plan. Run them with
 | `EI` | `check_evennia_imports` |
 | `OS` | `check_object_state` |
 | `BS` | `check_boot_side_effects` |
+| `DB` | `check_database` |
+| `TG` | `check_targeting` |
+| `CT` | `check_contrib` |
 | `MS` | `check_memory_surface` |
 | `PP` | `check_pyproject` |
 | `DS` | `discover` / `lint` |
@@ -380,6 +383,66 @@ A **warn**; two libraries call `mkdir`/`makedirs` today.
 | BS-02 | An `os.makedirs` call is a warn naming the module | `CheckBootSideEffects.test_makedirs_is_warn` |
 | BS-03 | A `Path.mkdir` call is a warn — the same act through a different API | `CheckBootSideEffects.test_path_mkdir_is_warn` |
 | BS-04 | `tests.py` is exempt; a test builds its own scratch directories | `CheckBootSideEffects.test_tests_module_is_exempt` |
+
+## DB — `check_database`
+
+Covers *Database aliases and routers*: a library owning tables has a router, and the snippet a
+consumer pastes appends to `DATABASE_ROUTERS` rather than assigning it.
+
+Both **warns**. Two libraries have `models.py` and no `db_router.py`, and the append-form check reads
+`installing.md`, which most libraries have only just gained.
+
+The append form is checked as written prose rather than executed: `installing.md` must show the
+`list(globals().get("DATABASE_ROUTERS", []))` shape and must not show a bare assignment or `+=`. The
+standard has it copied verbatim between libraries precisely so it can be recognised.
+
+| ID | Case | Test function |
+|---|---|---|
+| DB-01 | A library with no `models.py` produces no findings | `CheckDatabase.test_no_models_is_silent` |
+| DB-02 | A `models.py` with no `db_router.py` is a warn. Owning tables and not steering them is how a library's rows end up in the game database | `CheckDatabase.test_models_without_router_is_warn` |
+| DB-03 | A `models.py` with a `db_router.py` produces no findings | `CheckDatabase.test_models_with_router_is_clean` |
+| DB-04 | An `installing.md` showing `DATABASE_ROUTERS = [` or `+=` is a warn. Evennia defines no `DATABASE_ROUTERS`, so a bare assignment works on a clean gamedir and silently drops another library's router on one that already has some | `CheckDatabase.test_assign_form_is_warn` |
+| DB-05 | An `installing.md` showing the append form produces no findings | `CheckDatabase.test_append_form_is_clean` |
+| DB-06 | The append-form check applies only where the library has a router — a library with none documents no routers | `CheckDatabase.test_append_check_needs_a_router` |
+
+## TG — `check_targeting`
+
+Covers *Targeting callables live in `targeting.py`*: a library depending on `evennia-targeting`
+declares its `p_`, `f_` and `op_` callables there and nowhere else.
+
+Both **warns**. Nothing depends on `evennia-targeting` today, so both are no-ops on the corpus — but
+`evennia-equipment` already carries a `targeting.py`, which is what the second rule binds to.
+
+The dependency is read from an unconditional import or a `pyproject.toml` dependency. `evennia-targeting`
+itself is excluded by construction: it does not depend on itself, and its own callables are its
+implementation rather than a consumer's.
+
+| ID | Case | Test function |
+|---|---|---|
+| TG-01 | A library not depending on targeting and carrying no `targeting.py` produces no findings | `CheckTargeting.test_no_dependency_is_silent` |
+| TG-02 | A library importing `evennia_targeting` with no `targeting.py` is a warn | `CheckTargeting.test_dependency_without_module_is_warn` |
+| TG-03 | A `p_`, `f_` or `op_` declared outside `targeting.py` is a warn naming it. One filename makes the corpus findable, so a session about to write `p_is_wielded` can discover somebody already did | `CheckTargeting.test_callable_outside_module_is_warn` |
+| TG-04 | The same callables inside `targeting.py` produce no findings | `CheckTargeting.test_callables_inside_module_are_clean` |
+| TG-05 | A library carrying a `targeting.py` is held to the rule even without an import — the file is the declaration of intent | `CheckTargeting.test_module_alone_binds_the_rule` |
+| TG-06 | `tests.py` is exempt | `CheckTargeting.test_tests_module_is_exempt` |
+| TG-07 | `evennia-targeting` itself is excluded. It re-exports its own callables from `__init__.py` by absolute import, which reads as depending on itself — and its callables are the implementation rather than a consumer's declaration | `CheckTargeting.test_targeting_library_itself_is_excluded` |
+
+## CT — `check_contrib`
+
+Covers *contrib/ — conditional*: the folder exists only when there are contrib modules in it, and
+nothing in it may be imported by core.
+
+**A warn for an empty scaffold, an error for a core import.** No library has a `contrib/` today, so
+both are free — and the second is the load-bearing one: if core needs it, it isn't contrib, and the
+separation exists only on paper the moment core reaches in.
+
+| ID | Case | Test function |
+|---|---|---|
+| CT-01 | A library with no `contrib/` produces no findings | `CheckContrib.test_no_contrib_is_silent` |
+| CT-02 | A `contrib/` holding only `__init__.py` is a warn — its presence is the signal that opt-in modules are available, so an empty one is a false signal | `CheckContrib.test_empty_contrib_is_warn` |
+| CT-03 | A `contrib/` holding a module produces no findings | `CheckContrib.test_populated_contrib_is_clean` |
+| CT-04 | A core module importing from `contrib` is an error. Core must remain fully functional with the directory absent | `CheckContrib.test_core_importing_contrib_is_error` |
+| CT-05 | A contrib module importing another contrib module is fine — the rule is about the direction, not the folder | `CheckContrib.test_contrib_importing_contrib_is_clean` |
 
 ## MS — `check_memory_surface`
 

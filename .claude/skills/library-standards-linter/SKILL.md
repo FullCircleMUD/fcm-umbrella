@@ -67,6 +67,11 @@ chiefly *whether a deviation is a sanctioned divergence* — to a human or a fut
 | `evennia_import_unexplained` — an Evennia import outside `log.py` with no comment saying why | warn |
 | `db_attribute_write` — a write through `.db`, which never reaches the descriptor's `at_set()` | warn |
 | `creates_directories` — library code calling `makedirs`/`mkdir` in the consumer's gamedir | warn |
+| `core_imports_contrib` — a core module importing from `contrib/` | error |
+| `models_without_router` — `models.py` with no `db_router.py` | warn |
+| `router_setup_not_append_form` — `installing.md` documents `DATABASE_ROUTERS` as an assignment or `+=` | warn |
+| `targeting_module_missing` / `targeting_callable_outside_module` — depends on targeting with no `targeting.py`, or a `p_`/`f_`/`op_` declared elsewhere | warn |
+| `contrib_empty` — a `contrib/` scaffolded with no modules in it | warn |
 | `constant_outside_config` — a module-level constant declared outside `config.py` | warn |
 | `settings_read_outside_config` — a `settings.X` or `getattr(settings, …)` read bypassing its accessor | warn |
 | `settings_validator_uncalled` / `settings_validator_outside_config` — `check_settings()` defined but never called from `ready()`, or defined outside `config.py` | error |

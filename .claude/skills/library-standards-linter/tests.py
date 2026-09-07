@@ -698,6 +698,145 @@ class CheckBootSideEffects(ValidatorBase):
         self.assertEqual(f, [])
 
 
+_MODELS_PATH = "libraries/evennia-lib/src/evennia_lib/models.py"
+_ROUTER_PATH = "libraries/evennia-lib/src/evennia_lib/db_router.py"
+_TARGETING_PATH = "libraries/evennia-lib/src/evennia_lib/targeting.py"
+_CONTRIB = "libraries/evennia-lib/src/evennia_lib/contrib"
+
+APPEND_FORM = INSTALLING + """
+```python
+_R = "evennia_lib.db_router.LibRouter"
+DATABASE_ROUTERS = list(globals().get("DATABASE_ROUTERS", []))
+```
+"""
+ASSIGN_FORM = INSTALLING + '\n```python\nDATABASE_ROUTERS = ["evennia_lib.db_router.LibRouter"]\n```\n'
+
+
+class CheckDatabase(ValidatorBase):
+    def test_no_models_is_silent(self):
+        """DB-01"""
+        self.assertEqual(lib.check_database(self.ctx()), [])
+
+    def test_models_without_router_is_warn(self):
+        """DB-02"""
+        f = lib.check_database(self.ctx(**{_MODELS_PATH: SPDX + "x = 1\n"}))
+        self.assertIn("models_without_router", kinds(f, "warn"))
+
+    def test_models_with_router_is_clean(self):
+        """DB-03"""
+        f = lib.check_database(self.ctx(**{
+            _MODELS_PATH: SPDX + "x = 1\n", _ROUTER_PATH: SPDX + "class R:\n    pass\n"}))
+        self.assertEqual(f, [])
+
+    def test_assign_form_is_warn(self):
+        """DB-04"""
+        f = lib.check_database(self.ctx(**{
+            _ROUTER_PATH: SPDX + "class R:\n    pass\n",
+            "libraries/evennia-lib/docs/installing.md": ASSIGN_FORM}))
+        self.assertIn("router_setup_not_append_form", kinds(f, "warn"))
+
+    def test_append_form_is_clean(self):
+        """DB-05"""
+        f = lib.check_database(self.ctx(**{
+            _ROUTER_PATH: SPDX + "class R:\n    pass\n",
+            "libraries/evennia-lib/docs/installing.md": APPEND_FORM}))
+        self.assertEqual(f, [])
+
+    def test_append_check_needs_a_router(self):
+        """DB-06"""
+        f = lib.check_database(self.ctx(**{
+            "libraries/evennia-lib/docs/installing.md": ASSIGN_FORM}))
+        self.assertNotIn("router_setup_not_append_form", kinds(f))
+
+
+class CheckTargeting(ValidatorBase):
+    def test_no_dependency_is_silent(self):
+        """TG-01"""
+        self.assertEqual(lib.check_targeting(self.ctx()), [])
+
+    def test_dependency_without_module_is_warn(self):
+        """TG-02"""
+        f = lib.check_targeting(self.ctx(**{
+            _CORE_PATH: SPDX + "from evennia_targeting import walk_contents\n"}))
+        self.assertIn("targeting_module_missing", kinds(f, "warn"))
+
+    def test_callable_outside_module_is_warn(self):
+        """TG-03"""
+        f = lib.check_targeting(self.ctx(**{
+            _TARGETING_PATH: SPDX + "def p_ok(obj, caller):\n    return True\n",
+            _CORE_PATH: SPDX + "def p_is_wielded(obj, caller):\n    return True\n"}))
+        self.assertIn("targeting_callable_outside_module", kinds(f, "warn"))
+        self.assertIn("core.py", messages(f))
+
+    def test_callables_inside_module_are_clean(self):
+        """TG-04"""
+        f = lib.check_targeting(self.ctx(**{
+            _TARGETING_PATH: SPDX + "def p_ok(obj, caller):\n    return True\n"
+                                    "def op_not(p):\n    return p\n"}))
+        self.assertEqual(f, [])
+
+    def test_module_alone_binds_the_rule(self):
+        """TG-05"""
+        f = lib.check_targeting(self.ctx(**{
+            _TARGETING_PATH: SPDX + "def p_ok(obj, caller):\n    return True\n",
+            _CORE_PATH: SPDX + "def f_by_lock(name):\n    return name\n"}))
+        self.assertIn("targeting_callable_outside_module", kinds(f, "warn"))
+
+    def test_tests_module_is_exempt(self):
+        """TG-06"""
+        f = lib.check_targeting(self.ctx(**{
+            _TARGETING_PATH: SPDX + "def p_ok(obj, caller):\n    return True\n",
+            "libraries/evennia-lib/src/evennia_lib/tests.py":
+                LIB_TESTS + "def p_fixture(obj, caller):\n    return True\n"}))
+        self.assertEqual(f, [])
+
+
+    def test_targeting_library_itself_is_excluded(self):
+        """TG-07"""
+        spec = {k.replace("libraries/evennia-lib/", "libraries/evennia-targeting/")
+                 .replace("/evennia_lib/", "/evennia_targeting/"): v
+                for k, v in compliant().items()}
+        spec["libraries/evennia-targeting/src/evennia_targeting/predicates.py"] = (
+            SPDX + "def p_not_exit(obj, caller):\n    return True\n")
+        spec["libraries/evennia-targeting/src/evennia_targeting/__init__.py"] = (
+            SPDX + "from evennia_targeting.predicates import p_not_exit\n")
+        tmp, root = build(spec)
+        self.addCleanup(tmp.cleanup)
+        ctx = lib.LibContext(root / "libraries/evennia-targeting", root)
+        self.assertEqual(lib.check_targeting(ctx), [])
+
+
+class CheckContrib(ValidatorBase):
+    def test_no_contrib_is_silent(self):
+        """CT-01"""
+        self.assertEqual(lib.check_contrib(self.ctx()), [])
+
+    def test_empty_contrib_is_warn(self):
+        """CT-02"""
+        f = lib.check_contrib(self.ctx(**{f"{_CONTRIB}/__init__.py": ""}))
+        self.assertIn("contrib_empty", kinds(f, "warn"))
+
+    def test_populated_contrib_is_clean(self):
+        """CT-03"""
+        f = lib.check_contrib(self.ctx(**{
+            f"{_CONTRIB}/__init__.py": "", f"{_CONTRIB}/exits.py": SPDX + "x = 1\n"}))
+        self.assertEqual(f, [])
+
+    def test_core_importing_contrib_is_error(self):
+        """CT-04"""
+        f = lib.check_contrib(self.ctx(**{
+            f"{_CONTRIB}/__init__.py": "", f"{_CONTRIB}/exits.py": SPDX + "x = 1\n",
+            _CORE_PATH: SPDX + "from .contrib.exits import x\n"}))
+        self.assertIn("core_imports_contrib", kinds(f, "error"))
+
+    def test_contrib_importing_contrib_is_clean(self):
+        """CT-05"""
+        f = lib.check_contrib(self.ctx(**{
+            f"{_CONTRIB}/__init__.py": "", f"{_CONTRIB}/exits.py": SPDX + "x = 1\n",
+            f"{_CONTRIB}/doors.py": SPDX + "from .exits import x\n"}))
+        self.assertEqual(f, [])
+
+
 class CheckDocs(ValidatorBase):
     def test_clean(self):
         """DC-01"""

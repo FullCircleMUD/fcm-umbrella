@@ -446,6 +446,126 @@ def check_installing(ctx):
     return out
 
 
+ROUTER_APPEND = re.compile(r"globals\(\)\.get\(\s*[\"']DATABASE_ROUTERS")
+ROUTER_ASSIGN = re.compile(r"^\s*DATABASE_ROUTERS\s*(=\s*\[|\+=)", re.M)
+TARGETING_CALLABLE = re.compile(r"^(p|f|op)_")
+TARGETING_PACKAGE = "evennia_targeting"
+TARGETING_DIST = "evennia-targeting"
+
+
+def check_database(ctx):
+    """A library owning tables has a router, documented in the append form.
+
+    See § Database aliases and routers. The append form is recognised as prose
+    rather than executed — the standard has it copied verbatim between libraries
+    precisely so it can be.
+    """
+    if ctx.pkg is None:
+        return []
+    out = []
+    has_router = (ctx.pkg / "db_router.py").exists()
+    if (ctx.pkg / "models.py").exists() and not has_router:
+        out.append(ctx.F(
+            "models_without_router", "warn", ctx.pkg / "db_router.py",
+            "the library declares models.py but ships no db_router.py. Without a router, "
+            "`evennia migrate` creates the library's tables in the game database too, and "
+            "the separation exists only on paper"))
+
+    installing = ctx.libdir / "docs" / "installing.md"
+    if has_router and installing.exists():
+        text = installing.read_text(encoding="utf-8", errors="replace")
+        if ROUTER_ASSIGN.search(text) and not ROUTER_APPEND.search(text):
+            out.append(ctx.F(
+                "router_setup_not_append_form", "warn", installing,
+                "installing.md documents DATABASE_ROUTERS as an assignment or `+=`. Evennia "
+                "defines no DATABASE_ROUTERS, so that works on a clean gamedir and silently "
+                "drops another library's router on one that already has some"))
+    return out
+
+
+def check_targeting(ctx):
+    """A library depending on evennia-targeting keeps its callables in targeting.py.
+
+    See § Targeting callables live in `targeting.py`. `evennia-targeting` itself
+    is excluded by construction — it does not depend on itself, and its own
+    callables are its implementation rather than a consumer's.
+    """
+    # evennia-targeting itself is excluded: its own callables are the
+    # implementation, not a consumer's declaration, and it re-exports them from
+    # __init__.py by absolute import — which would otherwise read as depending
+    # on itself.
+    if ctx.pkg is None or ctx.expected_pkg == TARGETING_PACKAGE:
+        return []
+    targeting = ctx.pkg / "targeting.py"
+    deps = ((ctx.pyproject or {}).get("project") or {}).get("dependencies") or []
+    depends = any(TARGETING_DIST in str(d) for d in deps)
+    if not depends:
+        for f, tree in _package_modules(ctx):
+            for node in ast.walk(tree):
+                module = (node.module if isinstance(node, ast.ImportFrom)
+                          else node.names[0].name if isinstance(node, ast.Import) and node.names
+                          else None)
+                if module and module.split(".")[0] == TARGETING_PACKAGE:
+                    depends = True
+                    break
+    if not (depends or targeting.exists()):
+        return []
+
+    out = []
+    if depends and not targeting.exists():
+        out.append(ctx.F(
+            "targeting_module_missing", "warn", targeting,
+            "the library depends on evennia-targeting but declares no targeting.py. One "
+            "filename makes the corpus findable — open every targeting.py and you have the "
+            "set, which is what stops two predicates answering the same question"))
+
+    sites = []
+    for f, tree in _package_modules(ctx):
+        if f.name == "targeting.py":
+            continue
+        for node in tree.body:
+            if isinstance(node, ast.FunctionDef) and TARGETING_CALLABLE.match(node.name):
+                sites.append((f, node.lineno))
+    out += _aggregate(
+        ctx, "targeting_callable_outside_module", sites,
+        "targeting callable(s) declared outside targeting.py. Two predicates answering the "
+        "same question slightly differently is a behavioural problem, not just a duplicate")
+    return out
+
+
+def check_contrib(ctx):
+    """`contrib/` exists only when populated, and core never imports it.
+
+    See § contrib/ — conditional.
+    """
+    if ctx.pkg is None:
+        return []
+    contrib = ctx.pkg / "contrib"
+    if not contrib.is_dir():
+        return []
+    out = []
+    if not [f for f in contrib.rglob("*.py") if f.name != "__init__.py"]:
+        out.append(ctx.F(
+            "contrib_empty", "warn", contrib,
+            "contrib/ holds no modules. Its presence is the signal that opt-in modules are "
+            "available, so an empty one is a false signal — do not scaffold it for later"))
+
+    for f, tree in _package_modules(ctx):
+        if contrib in f.parents:
+            continue
+        for node in ast.walk(tree):
+            module = (node.module if isinstance(node, ast.ImportFrom)
+                      else node.names[0].name if isinstance(node, ast.Import) and node.names
+                      else None)
+            if module and "contrib" in module.split("."):
+                out.append(ctx.F(
+                    "core_imports_contrib", "error", f,
+                    f"{f.name} imports from contrib/. Core must remain fully functional with "
+                    f"the directory absent — if core needs it, it isn't contrib"))
+                break
+    return out
+
+
 def _package_modules(ctx, extra_skip=()):
     """Every library source file a code rule applies to, with its AST.
 
@@ -981,7 +1101,8 @@ CHECKS = [
     check_root_files, check_docs, check_test_plan, check_src_layout, check_naming,
     check_spdx, check_tests_dir, check_logging, check_constants, check_claude_md,
     check_interoperability, check_installing, check_settings_access, check_boot_validation, check_evennia_imports,
-    check_object_state, check_boot_side_effects, check_memory_surface, check_pyproject,
+    check_object_state, check_boot_side_effects, check_database, check_targeting,
+    check_contrib, check_memory_surface, check_pyproject,
 ]
 
 
