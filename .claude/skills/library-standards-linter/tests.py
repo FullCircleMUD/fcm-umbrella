@@ -118,7 +118,8 @@ def compliant():
         "libraries/my-lib/runtests.py": "# runner\n",
         "libraries/my-lib/docs/INDEX.md": "# Index\n",
         "libraries/my-lib/docs/installing.md": "# Installing\n",
-        "libraries/my-lib/docs/interoperability.md": "# Interoperability\n",
+        "libraries/my-lib/docs/interoperability.md":
+            "# Interoperability\n\nSummary.\n\n## my-lib\n\nThis library.\n",
         "libraries/my-lib/docs/progress.md": "# Progress\n",
         "libraries/my-lib/docs/test-plan.md": TEST_PLAN,
         "libraries/my-lib/docs/archive/.gitkeep": "",
@@ -264,6 +265,79 @@ class CheckConstants(ValidatorBase):
 
 
 _CLAUDE_PATH = "libraries/my-lib/CLAUDE.md"
+_INTEROP_PATH = "libraries/my-lib/docs/interoperability.md"
+
+
+def interop(entries):
+    """An interoperability.md from `[(heading, body), …]`, in the order given."""
+    return "# Interoperability\n\nPreamble.\n\n" + "\n".join(
+        f"## {h}\n\n{b}\n" for h, b in entries)
+
+
+class CheckInteroperability(ValidatorBase):
+    def sibling_ctx(self, doc, siblings=("zz-other",)):
+        """my-lib plus sibling library directories, so the corpus has more than one."""
+        spec = compliant()
+        spec[_INTEROP_PATH] = doc
+        for s in siblings:
+            spec[f"libraries/{s}/pyproject.toml"] = PYPROJECT.replace(
+                'name = "my-lib"', f'name = "{s}"')
+        tmp, root = build(spec)
+        self.addCleanup(tmp.cleanup)
+        return lib.LibContext(root / "libraries/my-lib", root)
+
+    def test_clean(self):
+        """IO-01"""
+        doc = interop([("my-lib", "This library."),
+                       ("zz-other", "**No coupling.** Neither imports the other.")])
+        self.assertEqual(lib.check_interoperability(self.sibling_ctx(doc)), [])
+
+    def test_missing_sibling_is_warn(self):
+        """IO-02"""
+        doc = interop([("my-lib", "This library.")])
+        f = lib.check_interoperability(self.sibling_ctx(doc))
+        self.assertIn("interop_missing_sibling", kinds(f, "warn"))
+        self.assertIn("zz-other", messages(f))
+
+    def test_own_section_is_required(self):
+        """IO-03"""
+        doc = interop([("zz-other", "**No coupling.** Neither imports the other.")])
+        f = lib.check_interoperability(self.sibling_ctx(doc))
+        self.assertIn("interop_missing_sibling", kinds(f, "warn"))
+        self.assertIn("my-lib", messages(f))
+
+    def test_out_of_order_is_warn(self):
+        """IO-04"""
+        doc = interop([("zz-other", "**No coupling.** Neither imports the other."),
+                       ("my-lib", "This library.")])
+        f = lib.check_interoperability(self.sibling_ctx(doc))
+        self.assertIn("interop_order", kinds(f, "warn"))
+
+    def test_section_without_a_relationship_is_warn(self):
+        """IO-05"""
+        doc = interop([("my-lib", "This library."), ("zz-other", "")])
+        f = lib.check_interoperability(self.sibling_ctx(doc))
+        self.assertIn("interop_no_relationship", kinds(f, "warn"))
+        self.assertIn("zz-other", messages(f))
+
+    def test_own_section_needs_no_relationship(self):
+        """IO-06"""
+        doc = interop([("my-lib", "This library."),
+                       ("zz-other", "**Hard dependency.** Imported unconditionally.")])
+        f = lib.check_interoperability(self.sibling_ctx(doc))
+        self.assertNotIn("interop_no_relationship", kinds(f))
+
+    def test_non_library_headings_are_ignored(self):
+        """IO-07"""
+        doc = interop([("my-lib", "This library."),
+                       ("zz-other", "**No coupling.** Neither imports the other."),
+                       ("A note on threading", "Prose with no relationship in it.")])
+        self.assertEqual(lib.check_interoperability(self.sibling_ctx(doc)), [])
+
+    def test_missing_doc_is_silent(self):
+        """IO-08"""
+        ctx = self.ctx(drop=[_INTEROP_PATH])
+        self.assertEqual(lib.check_interoperability(ctx), [])
 
 
 class CheckClaudeMd(ValidatorBase):

@@ -23,6 +23,7 @@ All test functions live in `tests.py`, beside this plan. Run them with
 | `LG` | `check_logging` |
 | `CN` | `check_constants` |
 | `CM` | `check_claude_md` |
+| `IO` | `check_interoperability` |
 | `MS` | `check_memory_surface` |
 | `PP` | `check_pyproject` |
 | `DS` | `discover` / `lint` |
@@ -200,6 +201,34 @@ other.
 | CM-06 | An `fcm-*` library is not required to carry the two scope principles. The standard has it state that they deliberately do not apply, and a mention either way reads the same to a linter — so it does not check them | `CheckClaudeMd.test_fcm_library_needs_neither_scope_principle` |
 | CM-07 | An `fcm-*` library still needs test-first, and its absence is a warn | `CheckClaudeMd.test_fcm_library_still_needs_test_first` |
 | CM-08 | A library with no `CLAUDE.md` produces no findings here — `check_root_files` owns that, and two findings for one missing file is noise | `CheckClaudeMd.test_no_claude_md_is_silent` |
+
+## IO — `check_interoperability`
+
+Covers *Library interoperability* in `library-standards.md`: `docs/interoperability.md` carries a
+section for **every** library under `libraries/` — including itself — in alphabetical order, and each
+sibling section names a relationship.
+
+This is the one check that reads the corpus rather than the library alone, and it has to: "every
+sibling" is a fact about the directory, not about the file. The library list comes from the same
+`discover` rule the CLI uses, so a new library appears in every sibling's queue the moment it has a
+`pyproject.toml`.
+
+All three findings are **warns**. Section counts across the corpus run from 6 to 15 against 15
+libraries, so every library has a gap here; this is a queue, not a gate.
+
+The library's own section is exempt from the relationship check — the standard has it say
+*"This library."* and nothing else, so demanding a relationship there would flag every compliant file.
+
+| ID | Case | Test function |
+|---|---|---|
+| IO-01 | A doc covering every library in alphabetical order produces no findings | `CheckInteroperability.test_clean` |
+| IO-02 | A library under `libraries/` with no section is a warn naming it | `CheckInteroperability.test_missing_sibling_is_warn` |
+| IO-03 | The library's own section is required too — a doc covering every sibling but itself is a warn | `CheckInteroperability.test_own_section_is_required` |
+| IO-04 | Sections out of alphabetical order is a warn | `CheckInteroperability.test_out_of_order_is_warn` |
+| IO-05 | A sibling section naming none of the three relationships is a warn. An empty section is the common form of this | `CheckInteroperability.test_section_without_a_relationship_is_warn` |
+| IO-06 | The library's own section needs no relationship — `"This library."` is the whole entry | `CheckInteroperability.test_own_section_needs_no_relationship` |
+| IO-07 | Headings that name no library are ignored, so a preamble or a trailing note is not a finding | `CheckInteroperability.test_non_library_headings_are_ignored` |
+| IO-08 | No `docs/interoperability.md` produces no findings here — `DC-08` owns its absence | `CheckInteroperability.test_missing_doc_is_silent` |
 
 ## MS — `check_memory_surface`
 

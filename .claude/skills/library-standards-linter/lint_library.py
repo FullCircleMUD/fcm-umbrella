@@ -320,6 +320,62 @@ def check_claude_md(ctx):
     return out
 
 
+# The three relationships a sibling section may declare. "No known issues" on its
+# own is not one of them — that is the void the document exists to remove.
+INTEROP_RELATIONSHIPS = re.compile(
+    r"hard dependency|optional integration|no coupling", re.I)
+
+
+def check_interoperability(ctx):
+    """`docs/interoperability.md` against the actual contents of `libraries/`.
+
+    The one check that reads the corpus rather than the library alone, because
+    "every sibling" is a fact about the directory. Its absence is
+    `check_docs`' finding, not this one.
+    """
+    path = ctx.libdir / "docs" / "interoperability.md"
+    if not path.exists():
+        return []
+
+    expected = [d.name for d in discover(ctx.root, None)]
+    if not expected:
+        return []
+    text = path.read_text(encoding="utf-8", errors="replace")
+    sections = SECTION_RE.findall(text)
+    covered = [s for s in sections if s in expected]
+    out = []
+
+    missing = [name for name in expected if name not in covered]
+    if missing:
+        out.append(ctx.F(
+            "interop_missing_sibling", "warn", path,
+            f"interoperability.md has no section for {', '.join(missing)}. It covers every "
+            f"library in libraries/ including itself, so a reader gets a definite statement "
+            f"from either side rather than inferring from silence"))
+
+    if covered != sorted(covered):
+        out.append(ctx.F(
+            "interop_order", "warn", path,
+            "interoperability.md's sibling sections are not in alphabetical order. One "
+            "template, no permutations — the copies are meant to be readable side by side"))
+
+    # Split on every heading, so each section's body is what follows its own.
+    bodies = dict(zip(sections, re.split(r"^##\s+.+?\s*$", text, flags=re.M)[1:]))
+    for name in covered:
+        # The library's own entry says "This library." and nothing else, so it
+        # has no relationship to declare.
+        if name == ctx.name:
+            continue
+        if not INTEROP_RELATIONSHIPS.search(bodies.get(name, "")):
+            out.append(ctx.F(
+                "interop_no_relationship", "warn", path,
+                f"the {name} section names no relationship. It opens with one of hard "
+                f"dependency, optional integration or no coupling, then the considerations "
+                f"or an explicit clearance — an empty section is the void the document "
+                f"exists to remove"))
+    return out
+
+
 def check_docs(ctx):
     docs = ctx.libdir / "docs"
     if not docs.is_dir():
@@ -576,7 +632,7 @@ def check_pyproject(ctx):
 CHECKS = [
     check_root_files, check_docs, check_test_plan, check_src_layout, check_naming,
     check_spdx, check_tests_dir, check_logging, check_constants, check_claude_md,
-    check_memory_surface, check_pyproject,
+    check_interoperability, check_memory_surface, check_pyproject,
 ]
 
 

@@ -10,7 +10,8 @@ description: |
   unresolved [TBD] cases), the logging shim (mechanism, filename, ImportError no-op,
   function name, signature, levels, no timestamp of its own, trace handling, and that
   it stays internal), where module-level constants are declared, CLAUDE.md's nine
-  standard sections and its section-4 principles, and absence of a
+  standard sections and its section-4 principles, interoperability.md against the
+  live contents of libraries/, and absence of a
   per-repo documentation-structure.md or memory surface. Use to
   check a library meets the standard, before bootstrapping a new one, when auditing
   library structure, or as the first step of a library-standards-auditor (which
@@ -43,6 +44,8 @@ chiefly *whether a deviation is a sanctioned divergence* — to a human or a fut
 | `log_shim_extra_constant` — a constant in `log.py` beyond the exempt two | error |
 | `claude_md_section` / `claude_md_order` — a missing or misordered `CLAUDE.md` standard section | error |
 | `claude_md_principle` — section 4 omits one of the principles its family carries | warn |
+| `interop_missing_sibling` / `interop_order` — `interoperability.md` omits a library under `libraries/`, or its sections are not alphabetical | warn |
+| `interop_no_relationship` — a sibling section naming none of hard dependency / optional integration / no coupling | warn |
 | `missing_dir` — no `tests/` or `docs/archive/` (a placeholder satisfies these) | warn |
 | `log_shim_mechanism` — a `log.py` that doesn't call Evennia's `logger.log_file` | error |
 | `missing_log_shim` / `log_shim_filename` / `log_shim_fallback` — no `log.py`, no `.log` filename, no `ImportError` no-op | warn |
