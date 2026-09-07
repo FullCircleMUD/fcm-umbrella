@@ -427,6 +427,72 @@ def check_installing(ctx):
     return out
 
 
+SETTINGS_VALIDATOR = "check_settings"
+# Two libraries call theirs validate_settings; the standard names one function so
+# every library's boot check is found in the same place under the same name.
+SETTINGS_VALIDATOR_ALIASES = ("check_settings", "validate_settings")
+
+
+def check_boot_validation(ctx):
+    """`check_settings()` lives in config.py and is called from `ready()`.
+
+    See § Reading settings. The inverse — a library with required settings and no
+    validator at all — is not decidable here: the linter cannot know which of a
+    library's settings are required.
+    """
+    if ctx.pkg is None:
+        return []
+    out, found = [], []
+    for f in sorted(ctx.pkg.rglob("*.py")):
+        if CONSTANT_SKIP_DIRS & set(f.parts) or f.name in CONSTANT_SKIP_FILES:
+            continue
+        tree = _parse(f)
+        if tree is None:
+            continue
+        for node in tree.body:
+            if isinstance(node, ast.FunctionDef) and node.name in SETTINGS_VALIDATOR_ALIASES:
+                found.append((f, node.name))
+    if not found:
+        return []
+
+    for f, name in found:
+        if f.name != CONSTANT_HOME:
+            out.append(ctx.F(
+                "settings_validator_outside_config", "error", f,
+                f"`{name}` is defined in {f.name}, not {CONSTANT_HOME}. One function, one "
+                f"place, in every library — four guard clauses in a row beat four one-line "
+                f"checks scattered across modules"))
+        if name != SETTINGS_VALIDATOR:
+            out.append(ctx.F(
+                "settings_validator_name", "warn", f,
+                f"the boot validator is `{name}`; the standard names it "
+                f"`{SETTINGS_VALIDATOR}`, so it is found under one name in every library"))
+
+    apps = ctx.pkg / "apps.py"
+    tree = _parse(apps) if apps.exists() else None
+    called = False
+    if tree is not None:
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef) and node.name == "ready":
+                called = any(
+                    isinstance(c, ast.Call) and (
+                        (isinstance(c.func, ast.Name) and c.func.id in SETTINGS_VALIDATOR_ALIASES)
+                        or (isinstance(c.func, ast.Attribute)
+                            and c.func.attr in SETTINGS_VALIDATOR_ALIASES))
+                    for c in ast.walk(node))
+                if called:
+                    break
+    if not called:
+        names = ", ".join(sorted({n for _, n in found}))
+        out.append(ctx.F(
+            "settings_validator_uncalled", "error", apps,
+            f"`{names}` is defined but never called from AppConfig.ready(). A validator "
+            f"nothing calls looks like validation and performs none — the misconfigured "
+            f"instance starts cleanly and fails later, somewhere that says nothing about "
+            f"the setting"))
+    return out
+
+
 def _is_settings_read(node):
     """`settings.NAME` or `getattr(settings, …)` — both bypass an accessor."""
     if isinstance(node, ast.Attribute):
@@ -756,7 +822,7 @@ def check_pyproject(ctx):
 CHECKS = [
     check_root_files, check_docs, check_test_plan, check_src_layout, check_naming,
     check_spdx, check_tests_dir, check_logging, check_constants, check_claude_md,
-    check_interoperability, check_installing, check_settings_access, check_memory_surface, check_pyproject,
+    check_interoperability, check_installing, check_settings_access, check_boot_validation, check_memory_surface, check_pyproject,
 ]
 
 

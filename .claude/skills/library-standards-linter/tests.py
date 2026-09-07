@@ -534,6 +534,67 @@ class CheckSettingsAccess(ValidatorBase):
         self.assertEqual(lib.check_settings_access(self.ctx(drop=SRC_FILES)), [])
 
 
+_APPS_PATH = "libraries/evennia-lib/src/evennia_lib/apps.py"
+
+VALIDATOR = SPDX + "\n\ndef check_settings():\n    pass\n"
+APPS = SPDX + '''
+from django.apps import AppConfig
+
+
+class LibConfig(AppConfig):
+    name = "evennia_lib"
+
+    def ready(self):
+        from .config import check_settings
+
+        check_settings()
+'''
+
+
+class CheckBootValidation(ValidatorBase):
+    def test_clean(self):
+        """BV-01"""
+        f = lib.check_boot_validation(self.ctx(**{
+            _CONFIG_PATH: VALIDATOR, _APPS_PATH: APPS}))
+        self.assertEqual(f, [])
+
+    def test_uncalled_validator_is_error(self):
+        """BV-02"""
+        f = lib.check_boot_validation(self.ctx(**{
+            _CONFIG_PATH: VALIDATOR,
+            _APPS_PATH: APPS.replace("        check_settings()\n", "        pass\n")}))
+        self.assertIn("settings_validator_uncalled", kinds(f, "error"))
+
+    def test_no_validator_is_silent(self):
+        """BV-03"""
+        self.assertEqual(lib.check_boot_validation(self.ctx(**{_APPS_PATH: APPS})), [])
+
+    def test_validator_outside_config_is_error(self):
+        """BV-04"""
+        f = lib.check_boot_validation(self.ctx(**{
+            _CORE_PATH: VALIDATOR, _APPS_PATH: APPS}))
+        self.assertIn("settings_validator_outside_config", kinds(f, "error"))
+
+    def test_nonstandard_validator_name_is_warn(self):
+        """BV-05"""
+        f = lib.check_boot_validation(self.ctx(**{
+            _CONFIG_PATH: VALIDATOR.replace("check_settings", "validate_settings"),
+            _APPS_PATH: APPS.replace("check_settings", "validate_settings")}))
+        self.assertEqual(kinds(f, "error"), set())
+        self.assertIn("settings_validator_name", kinds(f, "warn"))
+
+    def test_call_outside_ready_does_not_count(self):
+        """BV-06"""
+        f = lib.check_boot_validation(self.ctx(**{
+            _CONFIG_PATH: VALIDATOR,
+            _APPS_PATH: SPDX + "from .config import check_settings\n\ncheck_settings()\n"}))
+        self.assertIn("settings_validator_uncalled", kinds(f, "error"))
+
+    def test_no_package_is_silent(self):
+        """BV-07"""
+        self.assertEqual(lib.check_boot_validation(self.ctx(drop=SRC_FILES)), [])
+
+
 class CheckDocs(ValidatorBase):
     def test_clean(self):
         """DC-01"""

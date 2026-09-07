@@ -62,6 +62,8 @@ chiefly *whether a deviation is a sanctioned divergence* — to a human or a fut
 | `stdlib_logging` — `logging.getLogger` outside the shim; those records reach nobody | warn |
 | `constant_outside_config` — a module-level constant declared outside `config.py` | warn |
 | `settings_read_outside_config` — a `settings.X` or `getattr(settings, …)` read bypassing its accessor | warn |
+| `settings_validator_uncalled` / `settings_validator_outside_config` — `check_settings()` defined but never called from `ready()`, or defined outside `config.py` | error |
+| `settings_validator_name` — the boot validator is not named `check_settings` | warn |
 | `settings_read_at_module_scope` / `settings_import_at_module_scope` — a read or the `django.conf` import evaluated at import time rather than inside the accessor | warn |
 | `log_shim_constant_placement` — something above `log.py`'s constants beyond the docstring and `import traceback` | warn |
 | `test_plan_uncovered` — cases in `docs/test-plan.md` with an empty `Test function` cell | warn |

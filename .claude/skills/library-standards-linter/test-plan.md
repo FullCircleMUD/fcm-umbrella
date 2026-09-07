@@ -26,6 +26,7 @@ All test functions live in `tests.py`, beside this plan. Run them with
 | `IO` | `check_interoperability` |
 | `IN` | `check_installing` |
 | `SA` | `check_settings_access` |
+| `BV` | `check_boot_validation` |
 | `MS` | `check_memory_surface` |
 | `PP` | `check_pyproject` |
 | `DS` | `discover` / `lint` |
@@ -292,6 +293,30 @@ exist, not the ones a library ought to have. That is the judgment layer's.
 | SA-07 | The same import inside a function produces no findings | `CheckSettingsAccess.test_import_inside_a_function_is_clean` |
 | SA-08 | `tests.py` is exempt — a test legitimately reaches for settings directly | `CheckSettingsAccess.test_tests_module_is_exempt` |
 | SA-09 | A library with no package produces no findings | `CheckSettingsAccess.test_no_package_is_silent` |
+
+## BV — `check_boot_validation`
+
+Covers the boot half of *Reading settings*: required settings are validated once in `check_settings()`,
+which lives in `config.py` and is called from `AppConfig.ready()`.
+
+Five libraries define a validator and all five call it, so **an uncalled or misplaced validator is an
+error** — free today, and it catches the one failure that is otherwise silent: a validator nothing
+calls, which looks like validation and performs none. Two of the five name it `validate_settings`,
+so **the name is a warn**.
+
+The inverse is not decidable. A library with required settings and no validator at all is invisible
+here, because the linter cannot know which of a library's settings are required. That is the judgment
+layer's.
+
+| ID | Case | Test function |
+|---|---|---|
+| BV-01 | A `check_settings` in `config.py` called from `ready()` produces no findings | `CheckBootValidation.test_clean` |
+| BV-02 | A validator defined but not called from `ready()` is an error. It looks like validation and performs none | `CheckBootValidation.test_uncalled_validator_is_error` |
+| BV-03 | A library defining no validator produces no findings — the linter cannot know which settings are required | `CheckBootValidation.test_no_validator_is_silent` |
+| BV-04 | A validator defined outside `config.py` is an error. One function, one place, in every library | `CheckBootValidation.test_validator_outside_config_is_error` |
+| BV-05 | A validator named `validate_settings` rather than `check_settings` is a warn | `CheckBootValidation.test_nonstandard_validator_name_is_warn` |
+| BV-06 | A call somewhere in `apps.py` but outside `ready()` does not satisfy it — boot is the point | `CheckBootValidation.test_call_outside_ready_does_not_count` |
+| BV-07 | A library with no package produces no findings | `CheckBootValidation.test_no_package_is_silent` |
 
 ## MS — `check_memory_surface`
 
