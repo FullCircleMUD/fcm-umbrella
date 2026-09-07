@@ -25,6 +25,7 @@ All test functions live in `tests.py`, beside this plan. Run them with
 | `CM` | `check_claude_md` |
 | `IO` | `check_interoperability` |
 | `IN` | `check_installing` |
+| `SA` | `check_settings_access` |
 | `MS` | `check_memory_surface` |
 | `PP` | `check_pyproject` |
 | `DS` | `discover` / `lint` |
@@ -264,6 +265,33 @@ happens to have a number in it, not a consumer walking down a list.
 | IN-05 | No "what is not checked for you" section is a warn | `CheckInstalling.test_no_unchecked_section_is_warn` |
 | IN-06 | A library stating it reads no settings satisfies both settings parts. The standard has it say so in one line rather than drop the section, and an absent section reads as an oversight where a sentence is an answer | `CheckInstalling.test_stating_no_settings_satisfies_both` |
 | IN-07 | No `docs/installing.md` produces no findings here — `DC-07` owns its absence | `CheckInstalling.test_missing_doc_is_silent` |
+
+## SA — `check_settings_access`
+
+Covers *Reading settings* in `library-standards.md`: every setting is read through a named accessor in
+`config.py`, and both the read and the `from django.conf import settings` sit inside the function
+rather than at module scope.
+
+Three findings, all **warns**. Seven of the fifteen libraries read settings outside `config.py`, four
+import `settings` at module scope, and one reads one there — so this is a queue.
+
+The module-scope *read* check applies to `config.py` only. Everywhere else the read is already
+reported as outside its accessor, and two findings for one line is noise.
+
+What this cannot see is an accessor that is *missing* — the linter only knows about the reads that
+exist, not the ones a library ought to have. That is the judgment layer's.
+
+| ID | Case | Test function |
+|---|---|---|
+| SA-01 | A library reading no settings produces no findings | `CheckSettingsAccess.test_clean` |
+| SA-02 | A `settings.X` read outside `config.py` is a warn naming the module | `CheckSettingsAccess.test_direct_read_outside_config_is_warn` |
+| SA-03 | A `getattr(settings, …)` read outside `config.py` is a warn — the defaulted form bypasses the accessor just as the direct one does | `CheckSettingsAccess.test_getattr_read_outside_config_is_warn` |
+| SA-04 | Reads inside a function in `config.py` produce no findings. That is the accessor the rule asks for | `CheckSettingsAccess.test_reads_inside_config_are_clean` |
+| SA-05 | A settings read at module scope in `config.py` is a warn. It is in the right file and still evaluates at import time, which is the failure the rule exists to prevent | `CheckSettingsAccess.test_module_scope_read_in_config_is_warn` |
+| SA-06 | `from django.conf import settings` at module scope is a warn, wherever it appears | `CheckSettingsAccess.test_module_scope_import_is_warn` |
+| SA-07 | The same import inside a function produces no findings | `CheckSettingsAccess.test_import_inside_a_function_is_clean` |
+| SA-08 | `tests.py` is exempt — a test legitimately reaches for settings directly | `CheckSettingsAccess.test_tests_module_is_exempt` |
+| SA-09 | A library with no package produces no findings | `CheckSettingsAccess.test_no_package_is_silent` |
 
 ## MS — `check_memory_surface`
 

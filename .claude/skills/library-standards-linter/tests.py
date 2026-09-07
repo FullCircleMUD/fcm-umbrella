@@ -470,6 +470,70 @@ class CheckClaudeMd(ValidatorBase):
         self.assertEqual(lib.check_claude_md(self.ctx(drop=[_CLAUDE_PATH])), [])
 
 
+_CORE_PATH = "libraries/evennia-lib/src/evennia_lib/core.py"
+_CONFIG_PATH = "libraries/evennia-lib/src/evennia_lib/config.py"
+
+ACCESSOR = SPDX + '''
+def get_tick_seconds():
+    from django.conf import settings
+
+    return getattr(settings, "LIB_TICK_SECONDS", 60)
+'''
+
+
+class CheckSettingsAccess(ValidatorBase):
+    def test_clean(self):
+        """SA-01"""
+        self.assertEqual(lib.check_settings_access(self.ctx()), [])
+
+    def test_direct_read_outside_config_is_warn(self):
+        """SA-02"""
+        f = lib.check_settings_access(self.ctx(**{
+            _CORE_PATH: SPDX + "def f():\n    return settings.LIB_TICK_SECONDS\n"}))
+        self.assertEqual(kinds(f, "error"), set())
+        self.assertIn("settings_read_outside_config", kinds(f, "warn"))
+        self.assertIn("core.py", messages(f))
+
+    def test_getattr_read_outside_config_is_warn(self):
+        """SA-03"""
+        f = lib.check_settings_access(self.ctx(**{
+            _CORE_PATH: SPDX + 'def f():\n    return getattr(settings, "LIB_X", 1)\n'}))
+        self.assertIn("settings_read_outside_config", kinds(f, "warn"))
+
+    def test_reads_inside_config_are_clean(self):
+        """SA-04"""
+        self.assertEqual(lib.check_settings_access(self.ctx(**{_CONFIG_PATH: ACCESSOR})), [])
+
+    def test_module_scope_read_in_config_is_warn(self):
+        """SA-05"""
+        f = lib.check_settings_access(self.ctx(**{
+            _CONFIG_PATH: SPDX + "TICK = settings.LIB_TICK_SECONDS\n"}))
+        self.assertIn("settings_read_at_module_scope", kinds(f, "warn"))
+
+    def test_module_scope_import_is_warn(self):
+        """SA-06"""
+        f = lib.check_settings_access(self.ctx(**{
+            _CONFIG_PATH: SPDX + "from django.conf import settings\n\n\ndef get_x():\n"
+                                 '    return getattr(settings, "LIB_X", 1)\n'}))
+        self.assertIn("settings_import_at_module_scope", kinds(f, "warn"))
+
+    def test_import_inside_a_function_is_clean(self):
+        """SA-07"""
+        f = lib.check_settings_access(self.ctx(**{_CONFIG_PATH: ACCESSOR}))
+        self.assertNotIn("settings_import_at_module_scope", kinds(f))
+
+    def test_tests_module_is_exempt(self):
+        """SA-08"""
+        f = lib.check_settings_access(self.ctx(**{
+            "libraries/evennia-lib/src/evennia_lib/tests.py":
+                LIB_TESTS + "from django.conf import settings\n\nX = settings.ANYTHING\n"}))
+        self.assertEqual(f, [])
+
+    def test_no_package_is_silent(self):
+        """SA-09"""
+        self.assertEqual(lib.check_settings_access(self.ctx(drop=SRC_FILES)), [])
+
+
 class CheckDocs(ValidatorBase):
     def test_clean(self):
         """DC-01"""

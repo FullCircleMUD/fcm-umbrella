@@ -12,7 +12,8 @@ description: |
   it stays internal), where module-level constants are declared, CLAUDE.md's nine
   standard sections and its section-4 principles, interoperability.md against the
   live contents of libraries/, installing.md's step list and its settings and
-  not-checked-for-you parts, and absence of a
+  not-checked-for-you parts, that settings are read through an accessor in
+  config.py rather than directly, and absence of a
   per-repo documentation-structure.md or memory surface. Use to
   check a library meets the standard, before bootstrapping a new one, when auditing
   library structure, or as the first step of a library-standards-auditor (which
@@ -60,6 +61,8 @@ chiefly *whether a deviation is a sanctioned divergence* — to a human or a fut
 | `log_shim_exported` — `__init__.py` re-exports the shim, which is internal | warn |
 | `stdlib_logging` — `logging.getLogger` outside the shim; those records reach nobody | warn |
 | `constant_outside_config` — a module-level constant declared outside `config.py` | warn |
+| `settings_read_outside_config` — a `settings.X` or `getattr(settings, …)` read bypassing its accessor | warn |
+| `settings_read_at_module_scope` / `settings_import_at_module_scope` — a read or the `django.conf` import evaluated at import time rather than inside the accessor | warn |
 | `log_shim_constant_placement` — something above `log.py`'s constants beyond the docstring and `import traceback` | warn |
 | `test_plan_uncovered` — cases in `docs/test-plan.md` with an empty `Test function` cell | warn |
 | `test_plan_no_column` — the test plan has no case table with a `Test function` column | warn |

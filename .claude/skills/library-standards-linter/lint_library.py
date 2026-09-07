@@ -427,6 +427,67 @@ def check_installing(ctx):
     return out
 
 
+def _is_settings_read(node):
+    """`settings.NAME` or `getattr(settings, …)` — both bypass an accessor."""
+    if isinstance(node, ast.Attribute):
+        return isinstance(node.value, ast.Name) and node.value.id == "settings"
+    return (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+            and node.func.id == "getattr" and node.args
+            and isinstance(node.args[0], ast.Name) and node.args[0].id == "settings")
+
+
+def check_settings_access(ctx):
+    """Settings are read through a named accessor in config.py, and read late.
+
+    See § Reading settings. The linter sees only the reads that exist, so an
+    accessor that is *missing* for a setting the library ought to read is the
+    judgment layer's to spot.
+    """
+    if ctx.pkg is None:
+        return []
+    out, stray = [], []
+    for f in sorted(ctx.pkg.rglob("*.py")):
+        if CONSTANT_SKIP_DIRS & set(f.parts) or f.name in CONSTANT_SKIP_FILES:
+            continue
+        tree = _parse(f)
+        if tree is None:
+            continue
+
+        if f.name != CONSTANT_HOME:
+            reads = sum(1 for n in ast.walk(tree) if _is_settings_read(n))
+            if reads:
+                stray.append((f, reads))
+        else:
+            # In the right file and still evaluated at import time, which is the
+            # failure the rule exists to prevent. Elsewhere the read is already
+            # reported as outside its accessor.
+            if any(_is_settings_read(n) for node in tree.body
+                   if isinstance(node, (ast.Assign, ast.AnnAssign))
+                   for n in ast.walk(node)):
+                out.append(ctx.F(
+                    "settings_read_at_module_scope", "warn", f,
+                    "config.py reads a setting at module scope. The read belongs inside the "
+                    "accessor — at module scope it runs when the library is first imported, "
+                    "which can be while the consumer's settings module is still executing"))
+
+        if any(isinstance(n, ast.ImportFrom) and n.module == "django.conf"
+               and any(a.name == "settings" for a in n.names) for n in tree.body):
+            out.append(ctx.F(
+                "settings_import_at_module_scope", "warn", f,
+                "`from django.conf import settings` at module scope. The standard puts it "
+                "inside the function, for the same import-timing reason the read is deferred"))
+
+    if stray:
+        shown = ", ".join(f"{rel(f, ctx.root)}({n})" for f, n in stray[:6])
+        more = f" (+{len(stray) - 6} more)" if len(stray) > 6 else ""
+        out.append(ctx.F(
+            "settings_read_outside_config", "warn", ctx.pkg,
+            f"{sum(n for _, n in stray)} settings read(s) outside {CONSTANT_HOME}: {shown}"
+            f"{more}. Each setting gets a named accessor there, and a direct read is what "
+            f"raises AttributeError for the consumer who declared nothing"))
+    return out
+
+
 def check_docs(ctx):
     docs = ctx.libdir / "docs"
     if not docs.is_dir():
@@ -695,7 +756,7 @@ def check_pyproject(ctx):
 CHECKS = [
     check_root_files, check_docs, check_test_plan, check_src_layout, check_naming,
     check_spdx, check_tests_dir, check_logging, check_constants, check_claude_md,
-    check_interoperability, check_installing, check_memory_surface, check_pyproject,
+    check_interoperability, check_installing, check_settings_access, check_memory_surface, check_pyproject,
 ]
 
 
