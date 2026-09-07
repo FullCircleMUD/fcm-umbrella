@@ -328,6 +328,16 @@ def check_claude_md(ctx):
                          "CLAUDE.md's standard sections are out of order. Extra sections "
                          "between them are fine; the required nine keep their sequence"))
 
+    reading = text.split("## Where to read first", 1)
+    if len(reading) == 2:
+        section = re.split(r"^## ", reading[1], maxsplit=1, flags=re.M)[0]
+        if "test-plan" not in section:
+            out.append(ctx.F(
+                "claude_md_reading_order", "warn", path,
+                "`Where to read first` does not name docs/test-plan.md. The standard puts it "
+                "in that list, high, marked as where a behavioural change starts — it is the "
+                "first thing a session changing behaviour has to open"))
+
     body = text.split("## Load-bearing architectural principles", 1)
     if len(body) == 2:
         section = re.split(r"^## ", body[1], maxsplit=1, flags=re.M)[0]
@@ -470,6 +480,19 @@ def check_database(ctx):
             "the library declares models.py but ships no db_router.py. Without a router, "
             "`evennia migrate` creates the library's tables in the game database too, and "
             "the separation exists only on paper"))
+
+    if has_router:
+        config = ctx.pkg / CONSTANT_HOME
+        source = config.read_text(encoding="utf-8", errors="replace") if config.exists() else ""
+        if not (re.search(r"^def \w*_database\b", source, re.M)
+                and re.search(r"^def describe_\w*_database\b", source, re.M)):
+            out.append(ctx.F(
+                "database_helper_missing", "warn", config,
+                f"the library owns an alias but {CONSTANT_HOME} ships no "
+                f"`<name>_database()` / `describe_*_database()` pair. The helper resolves the "
+                f"alias through its rungs so a consumer writes one line instead of a DATABASES "
+                f"dict, and the companion names which rung won — two instances that should "
+                f"share a database are then confirmed by reading two log lines"))
 
     installing = ctx.libdir / "docs" / "installing.md"
     if has_router and installing.exists():
@@ -1028,6 +1051,22 @@ def check_logging(ctx):
                              "prefixes one in UTC, so a second stamps every line twice and the "
                              "file stops reading against server.log"))
         out += _check_shim_interface(ctx, shim, source)
+
+        # A shim nothing calls means the library emits nothing, so the log file
+        # the standard asks for never exists. Worth a look rather than a defect
+        # — what a library should log is a decision, not a default.
+        tree = _parse(shim)
+        fn = _shim_function(tree) if tree is not None else None
+        if fn is not None and not any(
+                re.search(rf"\b{re.escape(fn.name)}\b",
+                          f.read_text(encoding="utf-8", errors="replace"))
+                for f, _ in _package_modules(ctx, extra_skip=("log.py",))):
+            out.append(ctx.F(
+                "log_shim_unused", "warn", shim,
+                f"`{fn.name}` is never called, so the library emits no lines and "
+                f"{rel(shim, ctx.root).rsplit('/', 1)[0]}'s log file never appears. Worth "
+                f"deciding what it should log — the operations a reader goes to a log for "
+                f"are usually the public calls and the refusal paths"))
 
     init = ctx.pkg / "__init__.py"
     if init.exists():

@@ -166,6 +166,7 @@ whether it fires. That is the ceiling of a mechanical linter, and the reason the
 | LG-12 | `log.py` stamps no timestamp of its own — no `datetime`, `strftime` or `time.time()`. A warn. `log_file` already prefixes one in UTC, so a second stamps every line twice and the file stops reading against `server.log` | `CheckLogging.test_own_timestamp_is_warn` |
 | LG-13 | The shim is not re-exported from `__init__.py`. A warn. It is internal; a consumer who imports it is depending on something the standard does not offer them | `CheckLogging.test_shim_reexported_from_init_is_warn` |
 | LG-14 | The `trace` path is present — `format_exc` is called and the `NoneType: None` case is suppressed. A warn. Without the suppression every `trace=True` call outside an `except` block writes a line of noise | `CheckLogging.test_missing_trace_handling_is_warn` |
+| LG-15 | A shim no module calls is a warn. The library emits nothing, so the log file the standard asks for never exists — which is worth a look rather than a defect, since what to log is a decision | `CheckLogging.test_unused_shim_is_warn` |
 
 `LG-09` to `LG-14` are all warns. `LG-03` is the section's only error, and it is reserved for a shim
 that logs through the wrong mechanism — the one failure where the lines go somewhere nobody reads.
@@ -223,6 +224,7 @@ other.
 | CM-06 | An `fcm-*` library is not required to carry the two scope principles. The standard has it state that they deliberately do not apply, and a mention either way reads the same to a linter — so it does not check them | `CheckClaudeMd.test_fcm_library_needs_neither_scope_principle` |
 | CM-07 | An `fcm-*` library still needs test-first, and its absence is a warn | `CheckClaudeMd.test_fcm_library_still_needs_test_first` |
 | CM-08 | A library with no `CLAUDE.md` produces no findings here — `check_root_files` owns that, and two findings for one missing file is noise | `CheckClaudeMd.test_no_claude_md_is_silent` |
+| CM-09 | A `Where to read first` section not naming `docs/test-plan.md` is a warn. The standard puts it in that list, high, marked as where a behavioural change starts — it is the first thing a session changing behaviour has to open | `CheckClaudeMd.test_reading_order_without_test_plan_is_warn` |
 
 ## IO — `check_interoperability`
 
@@ -404,6 +406,7 @@ standard has it copied verbatim between libraries precisely so it can be recogni
 | DB-04 | An `installing.md` showing `DATABASE_ROUTERS = [` or `+=` is a warn. Evennia defines no `DATABASE_ROUTERS`, so a bare assignment works on a clean gamedir and silently drops another library's router on one that already has some | `CheckDatabase.test_assign_form_is_warn` |
 | DB-05 | An `installing.md` showing the append form produces no findings | `CheckDatabase.test_append_form_is_clean` |
 | DB-06 | The append-form check applies only where the library has a router — a library with none documents no routers | `CheckDatabase.test_append_check_needs_a_router` |
+| DB-07 | A library with a router but no `<name>_database()` / `describe_*_database()` pair in `config.py` is a warn. The helper resolves the alias through its rungs and the companion names which one won, so two instances that should share a database are confirmed by reading two log lines | `CheckDatabase.test_router_without_database_helper_is_warn` |
 
 ## TG — `check_targeting`
 

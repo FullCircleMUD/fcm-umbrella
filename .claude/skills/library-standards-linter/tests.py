@@ -103,7 +103,9 @@ def claude_md(sections=None, principles=CLAUDE_PRINCIPLES):
     out = ["# evennia-lib\n"]
     for s in (CLAUDE_SECTIONS if sections is None else sections):
         out.append(f"## {s}\n")
-        out.append(principles if s.startswith("Load-bearing") else "Prose.\n")
+        out.append(principles if s.startswith("Load-bearing")
+                   else "1. `docs/test-plan.md`\n" if s.startswith("Where to read first")
+                   else "Prose.\n")
     return "\n".join(out)
 
 
@@ -124,7 +126,8 @@ def compliant():
         "libraries/evennia-lib/docs/test-plan.md": TEST_PLAN,
         "libraries/evennia-lib/docs/archive/.gitkeep": "",
         "libraries/evennia-lib/src/evennia_lib/__init__.py": SPDX + '__version__ = "0.0.1"\n',
-        "libraries/evennia-lib/src/evennia_lib/core.py": SPDX + "x = 1\n",
+        "libraries/evennia-lib/src/evennia_lib/core.py":
+            SPDX + "from .log import lib_log\n\n\ndef run():\n    lib_log('x')\n",
         "libraries/evennia-lib/src/evennia_lib/log.py": SPDX + LOG_SHIM,
         "libraries/evennia-lib/src/evennia_lib/tests.py": LIB_TESTS,
         "libraries/evennia-lib/tests/.gitkeep": "",
@@ -478,6 +481,12 @@ class CheckClaudeMd(ValidatorBase):
         self.assertIn("claude_md_principle", kinds(f, "warn"))
         self.assertIn("Test-first", messages(f))
 
+    def test_reading_order_without_test_plan_is_warn(self):
+        """CM-09"""
+        f = lib.check_claude_md(self.ctx(**{_CLAUDE_PATH: claude_md().replace("1. `docs/test-plan.md`", "1. README.md")}))
+        self.assertEqual(kinds(f, "error"), set())
+        self.assertIn("claude_md_reading_order", kinds(f, "warn"))
+
     def test_no_claude_md_is_silent(self):
         """CM-08"""
         self.assertEqual(lib.check_claude_md(self.ctx(drop=[_CLAUDE_PATH])), [])
@@ -725,8 +734,21 @@ class CheckDatabase(ValidatorBase):
     def test_models_with_router_is_clean(self):
         """DB-03"""
         f = lib.check_database(self.ctx(**{
-            _MODELS_PATH: SPDX + "x = 1\n", _ROUTER_PATH: SPDX + "class R:\n    pass\n"}))
+            _MODELS_PATH: SPDX + "x = 1\n", _ROUTER_PATH: SPDX + "class R:\n    pass\n",
+            _CONFIG_PATH: SPDX + "def lib_database(p):\n    return {}\n\n\n"
+                                 "def describe_lib_database():\n    return ''\n",
+            }))
         self.assertEqual(f, [])
+
+    def test_router_without_database_helper_is_warn(self):
+        """DB-07"""
+        f = lib.check_database(self.ctx(**{_ROUTER_PATH: SPDX + "class R:\n    pass\n"}))
+        self.assertIn("database_helper_missing", kinds(f, "warn"))
+        f = lib.check_database(self.ctx(**{
+            _ROUTER_PATH: SPDX + "class R:\n    pass\n",
+            _CONFIG_PATH: SPDX + "def lib_database(p):\n    return {}\n\n\n"
+                                 "def describe_lib_database():\n    return ''\n"}))
+        self.assertNotIn("database_helper_missing", kinds(f))
 
     def test_assign_form_is_warn(self):
         """DB-04"""
@@ -739,6 +761,8 @@ class CheckDatabase(ValidatorBase):
         """DB-05"""
         f = lib.check_database(self.ctx(**{
             _ROUTER_PATH: SPDX + "class R:\n    pass\n",
+            _CONFIG_PATH: SPDX + "def lib_database(p):\n    return {}\n\n\n"
+                                 "def describe_lib_database():\n    return ''\n",
             "libraries/evennia-lib/docs/installing.md": APPEND_FORM}))
         self.assertEqual(f, [])
 
@@ -1122,6 +1146,16 @@ class CheckLogging(ValidatorBase):
             "libraries/evennia-lib/src/evennia_lib/__init__.py":
                 SPDX + '__version__ = "0.0.1"\nfrom .log import lib_log\n'}))
         self.assertIn("log_shim_exported", kinds(f, "warn"))
+
+    def test_unused_shim_is_warn(self):
+        """LG-15"""
+        f = lib.check_logging(self.ctx(**{_CORE_PATH: SPDX + "x = 1\n"}))
+        self.assertEqual(kinds(f, "error"), set())
+        self.assertIn("log_shim_unused", kinds(f, "warn"))
+        # A module calling it clears the finding.
+        f = lib.check_logging(self.ctx(**{
+            _CORE_PATH: SPDX + "from .log import lib_log\n\n\ndef f():\n    lib_log('x')\n"}))
+        self.assertNotIn("log_shim_unused", kinds(f))
 
     def test_missing_trace_handling_is_warn(self):
         """LG-14"""

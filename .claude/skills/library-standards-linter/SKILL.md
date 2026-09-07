@@ -13,7 +13,7 @@ description: |
   standard sections and its section-4 principles, interoperability.md against the
   live contents of libraries/, installing.md's step list and its settings and
   not-checked-for-you parts, that settings are read through an accessor in
-  config.py rather than directly, and absence of a
+  config.py rather than directly, that a shim is actually used, and absence of a
   per-repo documentation-structure.md or memory surface. Use to
   check a library meets the standard, before bootstrapping a new one, when auditing
   library structure, or as the first step of a library-standards-auditor (which
@@ -63,6 +63,9 @@ chiefly *whether a deviation is a sanctioned divergence* — to a human or a fut
 | `log_shim_function_name` / `log_shim_signature` — shim not named for the library, or not `(message, level, trace)` | warn |
 | `log_shim_levels` / `log_shim_timestamp` / `log_shim_trace` — levels beyond `INFO`/`WARN`/`ERROR`, a timestamp of its own, or no `format_exc` + `NoneType: None` suppression | warn |
 | `log_shim_exported` — `__init__.py` re-exports the shim, which is internal | warn |
+| `log_shim_unused` — a `log.py` no module calls, so the library emits nothing | warn |
+| `claude_md_reading_order` — `Where to read first` does not name `docs/test-plan.md` | warn |
+| `database_helper_missing` — a library owning an alias with no `<name>_database()` / `describe_*_database()` in `config.py` | warn |
 | `stdlib_logging` — `logging.getLogger` outside the shim; those records reach nobody | warn |
 | `evennia_import_unexplained` — an Evennia import outside `log.py` with no comment saying why | warn |
 | `db_attribute_write` — a write through `.db`, which never reaches the descriptor's `at_set()` | warn |
