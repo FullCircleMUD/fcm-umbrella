@@ -21,6 +21,7 @@ All test functions live in `tests.py`, beside this plan. Run them with
 | `SP` | `check_spdx` |
 | `TD` | `check_tests_dir` |
 | `LG` | `check_logging` |
+| `CN` | `check_constants` |
 | `MS` | `check_memory_surface` |
 | `PP` | `check_pyproject` |
 | `DS` | `discover` / `lint` |
@@ -128,6 +129,34 @@ so its absence is a warn.
 | LG-06 | `logging.getLogger` outside the shim is a warn, and the finding names the file | `CheckLogging.test_stdlib_logging_outside_the_shim_is_warn` |
 | LG-07 | The shim itself is exempt from the stdlib check | `CheckLogging.test_the_shim_itself_may_mention_logging` |
 | LG-08 | A library with no package produces no findings | `CheckLogging.test_no_package_is_silent` |
+
+## CN — `check_constants`
+
+Covers *Where constants are declared* in `library-standards.md`: every module-level constant lives in
+`config.py`, with `log.py` exempt for exactly two names.
+
+Severity is deliberately split. The main rule is a **warn**, because 224 constants across the fifteen
+libraries currently sit outside `config.py` — it is a work queue a library drains at its own pace, not
+a gate that fails every run. The bounded-exemption rule is an **error**, because no library violates it
+today, so it costs nothing now and catches the first attempt to smuggle a constant into `log.py` to
+escape the main rule.
+
+| ID | Case | Test function |
+|---|---|---|
+| CN-01 | A compliant library produces no findings | `CheckConstants.test_clean` |
+| CN-02 | A module-level constant in any module other than `config.py` is a warn, and the finding names the module and the constant | `test_constant_outside_config_is_warn` |
+| CN-03 | Constants in `config.py` produce nothing — it is the declared home | `test_constants_in_config_are_clean` |
+| CN-04 | `log.py` declaring exactly `_LOG_FILENAME` and `_VALID_LEVELS` produces nothing. The standard's one exemption | `test_log_shim_constants_are_exempt` |
+| CN-05 | A third constant in `log.py` is an error. The exemption is bounded by name, so it cannot be widened into an escape hatch | `test_a_third_log_constant_is_an_error` |
+| CN-06 | `tests.py` is excluded. It lives inside the package by Django convention, but its constants are test scaffolding rather than library surface | `test_constants_in_tests_are_ignored` |
+| CN-07 | `migrations/` is excluded — Django generates those files and nobody hand-places their constants | `test_constants_in_migrations_are_ignored` |
+| CN-08 | An import other than `traceback` above `log.py`'s constants is a warn. The standard puts the two names at the top with `import traceback` alone above them | `test_extra_import_above_log_constants_is_warn` |
+| CN-09 | A lowercase or mixed-case module-level assignment is not a constant and is ignored — otherwise every module-level variable would be a finding | `test_lowercase_assignment_is_not_a_constant` |
+
+`CN-08` is a warn rather than an error because one library already breaches it: `evennia-shards`'
+`log.py` carries `from datetime import datetime, timezone` for its `security=True` dual-write. That is
+either a sanctioned divergence or a finding, and it has not been adjudicated — a warn reports it
+without pre-judging.
 
 ## MS — `check_memory_surface`
 

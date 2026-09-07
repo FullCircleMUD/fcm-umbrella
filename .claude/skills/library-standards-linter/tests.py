@@ -164,6 +164,89 @@ class CheckRootFiles(ValidatorBase):
                 self.assertIn(fn, f[0].message)
 
 
+LOG_SHIM_WITH_CONSTANTS = '''\
+"""Logging shim."""
+import traceback
+
+_LOG_FILENAME = "my_lib.log"
+_VALID_LEVELS = ("INFO", "WARN", "ERROR")
+
+
+def my_log(message, level="INFO", trace=False):
+    try:
+        from evennia.utils import logger
+    except ImportError:
+        return
+    logger.log_file(f"[{level}] {message}", filename=_LOG_FILENAME)
+'''
+
+_LOG_PATH = "libraries/my-lib/src/my_lib/log.py"
+
+
+class CheckConstants(ValidatorBase):
+    def test_clean(self):
+        """CN-01"""
+        self.assertEqual(lib.check_constants(self.ctx()), [])
+
+    def test_constant_outside_config_is_warn(self):
+        """CN-02"""
+        f = lib.check_constants(self.ctx(**{
+            "libraries/my-lib/src/my_lib/core.py": SPDX + 'ARCHIVE_ALIAS = "archive"\n'}))
+        self.assertEqual(kinds(f, "error"), set())
+        self.assertIn("constant_outside_config", kinds(f, "warn"))
+        self.assertIn("ARCHIVE_ALIAS", messages(f))
+        self.assertIn("core.py", messages(f))
+
+    def test_constants_in_config_are_clean(self):
+        """CN-03"""
+        f = lib.check_constants(self.ctx(**{
+            "libraries/my-lib/src/my_lib/config.py": SPDX + 'ARCHIVE_ALIAS = "archive"\n'}))
+        self.assertEqual(f, [])
+
+    def test_log_shim_constants_are_exempt(self):
+        """CN-04"""
+        f = lib.check_constants(self.ctx(**{_LOG_PATH: SPDX + LOG_SHIM_WITH_CONSTANTS}))
+        self.assertEqual(f, [])
+
+    def test_a_third_log_constant_is_an_error(self):
+        """CN-05"""
+        shim = LOG_SHIM_WITH_CONSTANTS.replace(
+            '_VALID_LEVELS = ("INFO", "WARN", "ERROR")',
+            '_VALID_LEVELS = ("INFO", "WARN", "ERROR")\n_RETRIES = 3')
+        f = lib.check_constants(self.ctx(**{_LOG_PATH: SPDX + shim}))
+        self.assertIn("log_shim_extra_constant", kinds(f, "error"))
+        self.assertIn("_RETRIES", messages(f))
+
+    def test_constants_in_tests_are_ignored(self):
+        """CN-06"""
+        f = lib.check_constants(self.ctx(**{
+            "libraries/my-lib/src/my_lib/tests.py": LIB_TESTS + 'FIXTURE_KEY = "x"\n'}))
+        self.assertEqual(f, [])
+
+    def test_constants_in_migrations_are_ignored(self):
+        """CN-07"""
+        f = lib.check_constants(self.ctx(**{
+            "libraries/my-lib/src/my_lib/migrations/__init__.py": "",
+            "libraries/my-lib/src/my_lib/migrations/0001_initial.py":
+                'DEPENDENCIES = ["evennia"]\n'}))
+        self.assertEqual(f, [])
+
+    def test_extra_import_above_log_constants_is_warn(self):
+        """CN-08"""
+        shim = LOG_SHIM_WITH_CONSTANTS.replace(
+            "import traceback\n",
+            "import traceback\nfrom datetime import datetime\n")
+        f = lib.check_constants(self.ctx(**{_LOG_PATH: SPDX + shim}))
+        self.assertEqual(kinds(f, "error"), set())
+        self.assertIn("log_shim_constant_placement", kinds(f, "warn"))
+
+    def test_lowercase_assignment_is_not_a_constant(self):
+        """CN-09"""
+        f = lib.check_constants(self.ctx(**{
+            "libraries/my-lib/src/my_lib/core.py": SPDX + 'alias = "archive"\nMixedCase = 1\n'}))
+        self.assertEqual(f, [])
+
+
 class CheckDocs(ValidatorBase):
     def test_clean(self):
         """DC-01"""

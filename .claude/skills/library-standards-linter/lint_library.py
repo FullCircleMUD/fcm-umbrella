@@ -28,6 +28,7 @@ Run from the umbrella root:  python .claude/skills/library-standards-linter/lint
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import re
 import sys
@@ -46,6 +47,17 @@ LIBRARIES_DIR = "libraries"
 
 SPDX = "SPDX-License-Identifier: BSD-3-Clause"
 SPDX_SKIP_DIRS = {"migrations", "__pycache__"}
+
+# A constant is an UPPER_SNAKE module-level name, optionally private. This is
+# what excludes `__version__` and any ordinary lower-case module variable.
+CONSTANT_NAME = re.compile(r"^_?[A-Z][A-Z0-9_]*$")
+CONSTANT_SKIP_DIRS = {"migrations", "__pycache__"}
+# tests.py lives inside the package by Django convention, but its constants are
+# scaffolding rather than library surface.
+CONSTANT_SKIP_FILES = {"tests.py"}
+CONSTANT_HOME = "config.py"
+# The bounded exemption: log.py may declare these two and nothing else.
+LOG_SHIM_CONSTANTS = ("_LOG_FILENAME", "_VALID_LEVELS")
 
 
 class Finding:
@@ -123,6 +135,97 @@ def check_root_files(ctx):
                     (".gitignore", "warn"), ("runtests.py", "warn")]:
         if not (ctx.libdir / fn).exists():
             out.append(ctx.F("missing_file", sev, ctx.libdir / fn, f"missing {fn}"))
+    return out
+
+
+def _module_constants(path: Path):
+    """`([(name, node)], tree)` for a module's top-level constants, in file order.
+
+    Parsed rather than grepped: `tree.body` is *only* module scope, so a
+    constant-looking name inside a function or a docstring cannot match. An
+    unparseable file yields nothing — a syntax error is not this check's to
+    report.
+    """
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
+    except (OSError, SyntaxError):
+        return [], None
+    found = []
+    for node in tree.body:
+        if isinstance(node, ast.Assign):
+            targets = node.targets
+        elif isinstance(node, ast.AnnAssign):
+            targets = [node.target]
+        else:
+            continue
+        for t in targets:
+            if isinstance(t, ast.Name) and CONSTANT_NAME.match(t.id):
+                found.append((t.id, node))
+    return found, tree
+
+
+def _check_log_shim(ctx, path, constants, tree):
+    """The bounded exemption: exactly the two names, at the top of the file."""
+    out = []
+    extra = [name for name, _ in constants if name not in LOG_SHIM_CONSTANTS]
+    if extra:
+        out.append(ctx.F(
+            "log_shim_extra_constant", "error", path,
+            f"log.py declares {', '.join(extra)} — its exemption is exactly "
+            f"{' and '.join(LOG_SHIM_CONSTANTS)}. Everything else belongs in "
+            f"{CONSTANT_HOME}"))
+    if not constants or tree is None:
+        return out
+    # Only the module docstring and `import traceback` may precede them.
+    for node in tree.body[:tree.body.index(constants[0][1])]:
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) \
+                and isinstance(node.value.value, str):
+            continue
+        if isinstance(node, ast.Import) and [a.name for a in node.names] == ["traceback"]:
+            continue
+        out.append(ctx.F(
+            "log_shim_constant_placement", "warn", path,
+            "log.py has something above its constants other than the module "
+            "docstring and `import traceback`. The two names sit at the top so "
+            "anyone looking for them finds them without reading the file"))
+        break
+    return out
+
+
+def check_constants(ctx):
+    """Every module-level constant lives in config.py; log.py is bounded-exempt.
+
+    Encodes *Where constants are declared* in library-standards.md. Reports
+    `constant_outside_config` (warn) for a constant declared anywhere but
+    `config.py`, `log_shim_extra_constant` (error) for a name in `log.py`
+    outside `{_LOG_FILENAME, _VALID_LEVELS}`, and `log_shim_constant_placement`
+    (warn) where anything but `import traceback` sits above them.
+
+    `tests.py` and `migrations/` are out of scope — the first is scaffolding
+    that lives in the package by Django convention, the second is generated.
+    """
+    if ctx.pkg is None:
+        return []
+    out, stray = [], []
+    for f in sorted(ctx.pkg.rglob("*.py")):
+        if CONSTANT_SKIP_DIRS & set(f.parts) or f.name in CONSTANT_SKIP_FILES:
+            continue
+        if f.name == CONSTANT_HOME:
+            continue
+        constants, tree = _module_constants(f)
+        if f.name == "log.py":
+            out += _check_log_shim(ctx, f, constants, tree)
+            continue
+        stray += [(f, name) for name, _ in constants]
+
+    if stray:
+        shown = ", ".join(f"{rel(f, ctx.root)}:{name}" for f, name in stray[:6])
+        more = f" (+{len(stray) - 6} more)" if len(stray) > 6 else ""
+        out.append(ctx.F(
+            "constant_outside_config", "warn", ctx.pkg,
+            f"{len(stray)} module-level constant(s) declared outside "
+            f"{CONSTANT_HOME}: {shown}{more}. One file holds them all, so a "
+            f"session about to declare one finds the existing name first"))
     return out
 
 
@@ -303,7 +406,8 @@ def check_pyproject(ctx):
 
 CHECKS = [
     check_root_files, check_docs, check_test_plan, check_src_layout, check_naming,
-    check_spdx, check_tests_dir, check_logging, check_memory_surface, check_pyproject,
+    check_spdx, check_tests_dir, check_logging, check_constants, check_memory_surface,
+    check_pyproject,
 ]
 
 
