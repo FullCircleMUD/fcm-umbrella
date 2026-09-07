@@ -38,9 +38,9 @@ and calls one validator in isolation.
 
 | Fixture | Purpose |
 |---|---|
-| `compliant()` | Spec dict for a fully-compliant `libraries/my-lib`, with `tests/` and `docs/archive/` satisfied by placeholders |
+| `compliant()` | Spec dict for a fully-compliant `libraries/evennia-lib`, with `tests/` and `docs/archive/` satisfied by placeholders |
 | `build(spec)` | Writes a spec dict to a `TemporaryDirectory` and returns `(tmp, root)` |
-| `ValidatorBase.ctx(drop=…, **add)` | Builds a mutated tree and returns the `LibContext` for `my-lib` |
+| `ValidatorBase.ctx(drop=…, **add)` | Builds a mutated tree and returns the `LibContext` for `evennia-lib` |
 | `kinds(findings, severity)` | The set of `check` names at a severity — assertions name the check, not the message |
 | `PYPROJECT` | Compliant `pyproject.toml` text; cases mutate one field at a time |
 | `TEST_PLAN` | Compliant `docs/test-plan.md` text — a prefix legend table plus one case table |
@@ -98,6 +98,12 @@ TP-03 to TP-18 are retired — those cases moved to that skill when the checks d
 |---|---|---|
 | NM-01 | A package matching the underscored repo name produces no findings | `CheckNaming.test_clean` |
 | NM-02 | A package name that does not match is an error | `CheckNaming.test_mismatch_is_error` |
+| NM-03 | A library name carrying neither family prefix is an error. The prefix states what the code is allowed to know, so a library without one has not answered the question | `CheckNaming.test_no_family_prefix_is_error` |
+| NM-04 | `fcm-` is a valid prefix as well as `evennia-` | `CheckNaming.test_fcm_prefix_is_accepted` |
+| NM-05 | A name that is not hyphenated lowercase — an underscore or a capital — is an error. The repo name and the PyPI distribution name are the same string | `CheckNaming.test_name_must_be_hyphenated_lowercase` |
+
+`NM-03` to `NM-05` are errors: all fifteen libraries already satisfy them, so enforcing costs nothing
+now and catches the first library bootstrapped without a family decision.
 
 ## SP — `check_spdx`
 

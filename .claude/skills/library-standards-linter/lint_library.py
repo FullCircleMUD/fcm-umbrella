@@ -48,6 +48,11 @@ LIBRARIES_DIR = "libraries"
 SPDX = "SPDX-License-Identifier: BSD-3-Clause"
 SPDX_SKIP_DIRS = {"migrations", "__pycache__"}
 
+# The two families. `evennia-*` is game-agnostic; `fcm-*` embeds FCM's concepts
+# deliberately. The prefix is a claim about who can use the library.
+FAMILY_PREFIXES = ("evennia-", "fcm-")
+LIBRARY_NAME = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+
 # A constant is an UPPER_SNAKE module-level name, optionally private. This is
 # what excludes `__version__` and any ordinary lower-case module variable.
 CONSTANT_NAME = re.compile(r"^_?[A-Z][A-Z0-9_]*$")
@@ -484,11 +489,23 @@ def check_src_layout(ctx):
 
 
 def check_naming(ctx):
-    if ctx.pkg is None or ctx.pkg.name == ctx.expected_pkg:
-        return []
-    return [ctx.F("naming_mismatch", "error", ctx.pkg,
-                  f"src package '{ctx.pkg.name}' should be '{ctx.expected_pkg}' "
-                  "(underscored form of the repo name)")]
+    out = []
+    if not ctx.name.startswith(FAMILY_PREFIXES):
+        out.append(ctx.F(
+            "family_prefix", "error", ctx.libdir,
+            f"'{ctx.name}' carries neither family prefix. The prefix states what the code "
+            f"is allowed to know — {' or '.join(p.rstrip('-') for p in FAMILY_PREFIXES)} — "
+            f"and a library without one has not answered the question"))
+    if not LIBRARY_NAME.match(ctx.name):
+        out.append(ctx.F(
+            "library_name_form", "error", ctx.libdir,
+            f"'{ctx.name}' is not hyphenated lowercase. The repo name and the PyPI "
+            f"distribution name are the same string, so it carries the constraints of both"))
+    if ctx.pkg is not None and ctx.pkg.name != ctx.expected_pkg:
+        out.append(ctx.F("naming_mismatch", "error", ctx.pkg,
+                         f"src package '{ctx.pkg.name}' should be '{ctx.expected_pkg}' "
+                         "(underscored form of the repo name)"))
+    return out
 
 
 def check_spdx(ctx):

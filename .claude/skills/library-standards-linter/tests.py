@@ -31,7 +31,7 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "my-lib"
+name = "evennia-lib"
 version = "0.0.1"
 description = "x"
 readme = "README.md"
@@ -41,7 +41,7 @@ dependencies = ["evennia"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["my_lib*"]
+include = ["evennia_lib*"]
 """
 
 
@@ -68,11 +68,11 @@ LOG_SHIM = '''\
 """Logging shim."""
 import traceback
 
-_LOG_FILENAME = "my_lib.log"
+_LOG_FILENAME = "evennia_lib.log"
 _VALID_LEVELS = ("INFO", "WARN", "ERROR")
 
 
-def my_log(message, level="INFO", trace=False):
+def lib_log(message, level="INFO", trace=False):
     try:
         from evennia.utils import logger
     except ImportError:
@@ -100,7 +100,7 @@ CLAUDE_PRINCIPLES = (
 
 def claude_md(sections=None, principles=CLAUDE_PRINCIPLES):
     """A CLAUDE.md with the nine standard sections; principles under section 4."""
-    out = ["# my-lib\n"]
+    out = ["# evennia-lib\n"]
     for s in (CLAUDE_SECTIONS if sections is None else sections):
         out.append(f"## {s}\n")
         out.append(principles if s.startswith("Load-bearing") else "Prose.\n")
@@ -110,31 +110,31 @@ def claude_md(sections=None, principles=CLAUDE_PRINCIPLES):
 def compliant():
     """A fully-compliant synthetic library; tests/ and docs/archive/ via placeholders."""
     return {
-        "libraries/my-lib/pyproject.toml": PYPROJECT,
-        "libraries/my-lib/README.md": "# my-lib\n\nA summary.\n",
-        "libraries/my-lib/CLAUDE.md": claude_md(),
-        "libraries/my-lib/LICENSE": "BSD 3-Clause License ...\n",
-        "libraries/my-lib/.gitignore": "venv/\n",
-        "libraries/my-lib/runtests.py": "# runner\n",
-        "libraries/my-lib/docs/INDEX.md": "# Index\n",
-        "libraries/my-lib/docs/installing.md": INSTALLING,
-        "libraries/my-lib/docs/interoperability.md":
-            "# Interoperability\n\nSummary.\n\n## my-lib\n\nThis library.\n",
-        "libraries/my-lib/docs/progress.md": "# Progress\n",
-        "libraries/my-lib/docs/test-plan.md": TEST_PLAN,
-        "libraries/my-lib/docs/archive/.gitkeep": "",
-        "libraries/my-lib/src/my_lib/__init__.py": SPDX + '__version__ = "0.0.1"\n',
-        "libraries/my-lib/src/my_lib/core.py": SPDX + "x = 1\n",
-        "libraries/my-lib/src/my_lib/log.py": SPDX + LOG_SHIM,
-        "libraries/my-lib/src/my_lib/tests.py": LIB_TESTS,
-        "libraries/my-lib/tests/.gitkeep": "",
+        "libraries/evennia-lib/pyproject.toml": PYPROJECT,
+        "libraries/evennia-lib/README.md": "# evennia-lib\n\nA summary.\n",
+        "libraries/evennia-lib/CLAUDE.md": claude_md(),
+        "libraries/evennia-lib/LICENSE": "BSD 3-Clause License ...\n",
+        "libraries/evennia-lib/.gitignore": "venv/\n",
+        "libraries/evennia-lib/runtests.py": "# runner\n",
+        "libraries/evennia-lib/docs/INDEX.md": "# Index\n",
+        "libraries/evennia-lib/docs/installing.md": INSTALLING,
+        "libraries/evennia-lib/docs/interoperability.md":
+            "# Interoperability\n\nSummary.\n\n## evennia-lib\n\nThis library.\n",
+        "libraries/evennia-lib/docs/progress.md": "# Progress\n",
+        "libraries/evennia-lib/docs/test-plan.md": TEST_PLAN,
+        "libraries/evennia-lib/docs/archive/.gitkeep": "",
+        "libraries/evennia-lib/src/evennia_lib/__init__.py": SPDX + '__version__ = "0.0.1"\n',
+        "libraries/evennia-lib/src/evennia_lib/core.py": SPDX + "x = 1\n",
+        "libraries/evennia-lib/src/evennia_lib/log.py": SPDX + LOG_SHIM,
+        "libraries/evennia-lib/src/evennia_lib/tests.py": LIB_TESTS,
+        "libraries/evennia-lib/tests/.gitkeep": "",
     }
 
 
-SRC_FILES = ["libraries/my-lib/src/my_lib/__init__.py",
-             "libraries/my-lib/src/my_lib/core.py",
-             "libraries/my-lib/src/my_lib/log.py",
-             "libraries/my-lib/src/my_lib/tests.py"]
+SRC_FILES = ["libraries/evennia-lib/src/evennia_lib/__init__.py",
+             "libraries/evennia-lib/src/evennia_lib/core.py",
+             "libraries/evennia-lib/src/evennia_lib/log.py",
+             "libraries/evennia-lib/src/evennia_lib/tests.py"]
 
 
 def build(spec):
@@ -157,7 +157,7 @@ def messages(findings):
 
 class ValidatorBase(unittest.TestCase):
     """Builds a tree (compliant by default, mutated by **changes) and returns a
-    LibContext for my-lib, so each validator can be called in isolation."""
+    LibContext for evennia-lib, so each validator can be called in isolation."""
 
     def ctx(self, drop=(), **add):
         spec = compliant()
@@ -166,7 +166,7 @@ class ValidatorBase(unittest.TestCase):
         spec.update(add)
         tmp, root = build(spec)
         self.addCleanup(tmp.cleanup)
-        return lib.LibContext(root / "libraries/my-lib", root)
+        return lib.LibContext(root / "libraries/evennia-lib", root)
 
 
 class CheckRootFiles(ValidatorBase):
@@ -176,12 +176,12 @@ class CheckRootFiles(ValidatorBase):
 
     def test_missing_license_is_error(self):
         """RF-02"""
-        f = lib.check_root_files(self.ctx(drop=["libraries/my-lib/LICENSE"]))
+        f = lib.check_root_files(self.ctx(drop=["libraries/evennia-lib/LICENSE"]))
         self.assertIn("missing_file", kinds(f, "error"))
 
     def test_missing_gitignore_is_warn(self):
         """RF-03"""
-        f = lib.check_root_files(self.ctx(drop=["libraries/my-lib/.gitignore"]))
+        f = lib.check_root_files(self.ctx(drop=["libraries/evennia-lib/.gitignore"]))
         self.assertEqual(kinds(f, "error"), set())
         self.assertIn("missing_file", kinds(f, "warn"))
 
@@ -191,13 +191,13 @@ class CheckRootFiles(ValidatorBase):
                     "LICENSE": "error", ".gitignore": "warn", "runtests.py": "warn"}
         for fn, severity in expected.items():
             with self.subTest(file=fn):
-                f = lib.check_root_files(self.ctx(drop=[f"libraries/my-lib/{fn}"]))
+                f = lib.check_root_files(self.ctx(drop=[f"libraries/evennia-lib/{fn}"]))
                 self.assertEqual(len(f), 1)
                 self.assertEqual(f[0].severity, severity)
                 self.assertIn(fn, f[0].message)
 
 
-_LOG_PATH = "libraries/my-lib/src/my_lib/log.py"
+_LOG_PATH = "libraries/evennia-lib/src/evennia_lib/log.py"
 
 
 class CheckConstants(ValidatorBase):
@@ -208,7 +208,7 @@ class CheckConstants(ValidatorBase):
     def test_constant_outside_config_is_warn(self):
         """CN-02"""
         f = lib.check_constants(self.ctx(**{
-            "libraries/my-lib/src/my_lib/core.py": SPDX + 'ARCHIVE_ALIAS = "archive"\n'}))
+            "libraries/evennia-lib/src/evennia_lib/core.py": SPDX + 'ARCHIVE_ALIAS = "archive"\n'}))
         self.assertEqual(kinds(f, "error"), set())
         self.assertIn("constant_outside_config", kinds(f, "warn"))
         self.assertIn("ARCHIVE_ALIAS", messages(f))
@@ -217,7 +217,7 @@ class CheckConstants(ValidatorBase):
     def test_constants_in_config_are_clean(self):
         """CN-03"""
         f = lib.check_constants(self.ctx(**{
-            "libraries/my-lib/src/my_lib/config.py": SPDX + 'ARCHIVE_ALIAS = "archive"\n'}))
+            "libraries/evennia-lib/src/evennia_lib/config.py": SPDX + 'ARCHIVE_ALIAS = "archive"\n'}))
         self.assertEqual(f, [])
 
     def test_log_shim_constants_are_exempt(self):
@@ -237,14 +237,14 @@ class CheckConstants(ValidatorBase):
     def test_constants_in_tests_are_ignored(self):
         """CN-06"""
         f = lib.check_constants(self.ctx(**{
-            "libraries/my-lib/src/my_lib/tests.py": LIB_TESTS + 'FIXTURE_KEY = "x"\n'}))
+            "libraries/evennia-lib/src/evennia_lib/tests.py": LIB_TESTS + 'FIXTURE_KEY = "x"\n'}))
         self.assertEqual(f, [])
 
     def test_constants_in_migrations_are_ignored(self):
         """CN-07"""
         f = lib.check_constants(self.ctx(**{
-            "libraries/my-lib/src/my_lib/migrations/__init__.py": "",
-            "libraries/my-lib/src/my_lib/migrations/0001_initial.py":
+            "libraries/evennia-lib/src/evennia_lib/migrations/__init__.py": "",
+            "libraries/evennia-lib/src/evennia_lib/migrations/0001_initial.py":
                 'DEPENDENCIES = ["evennia"]\n'}))
         self.assertEqual(f, [])
 
@@ -260,13 +260,13 @@ class CheckConstants(ValidatorBase):
     def test_lowercase_assignment_is_not_a_constant(self):
         """CN-09"""
         f = lib.check_constants(self.ctx(**{
-            "libraries/my-lib/src/my_lib/core.py": SPDX + 'alias = "archive"\nMixedCase = 1\n'}))
+            "libraries/evennia-lib/src/evennia_lib/core.py": SPDX + 'alias = "archive"\nMixedCase = 1\n'}))
         self.assertEqual(f, [])
 
 
-_CLAUDE_PATH = "libraries/my-lib/CLAUDE.md"
-_INTEROP_PATH = "libraries/my-lib/docs/interoperability.md"
-_INSTALLING_PATH = "libraries/my-lib/docs/installing.md"
+_CLAUDE_PATH = "libraries/evennia-lib/CLAUDE.md"
+_INTEROP_PATH = "libraries/evennia-lib/docs/interoperability.md"
+_INSTALLING_PATH = "libraries/evennia-lib/docs/installing.md"
 
 INSTALLING = """# Installing
 
@@ -341,25 +341,25 @@ def interop(entries):
 
 class CheckInteroperability(ValidatorBase):
     def sibling_ctx(self, doc, siblings=("zz-other",)):
-        """my-lib plus sibling library directories, so the corpus has more than one."""
+        """evennia-lib plus sibling library directories, so the corpus has more than one."""
         spec = compliant()
         spec[_INTEROP_PATH] = doc
         for s in siblings:
             spec[f"libraries/{s}/pyproject.toml"] = PYPROJECT.replace(
-                'name = "my-lib"', f'name = "{s}"')
+                'name = "evennia-lib"', f'name = "{s}"')
         tmp, root = build(spec)
         self.addCleanup(tmp.cleanup)
-        return lib.LibContext(root / "libraries/my-lib", root)
+        return lib.LibContext(root / "libraries/evennia-lib", root)
 
     def test_clean(self):
         """IO-01"""
-        doc = interop([("my-lib", "This library."),
+        doc = interop([("evennia-lib", "This library."),
                        ("zz-other", "**No coupling.** Neither imports the other.")])
         self.assertEqual(lib.check_interoperability(self.sibling_ctx(doc)), [])
 
     def test_missing_sibling_is_warn(self):
         """IO-02"""
-        doc = interop([("my-lib", "This library.")])
+        doc = interop([("evennia-lib", "This library.")])
         f = lib.check_interoperability(self.sibling_ctx(doc))
         self.assertIn("interop_missing_sibling", kinds(f, "warn"))
         self.assertIn("zz-other", messages(f))
@@ -369,32 +369,32 @@ class CheckInteroperability(ValidatorBase):
         doc = interop([("zz-other", "**No coupling.** Neither imports the other.")])
         f = lib.check_interoperability(self.sibling_ctx(doc))
         self.assertIn("interop_missing_sibling", kinds(f, "warn"))
-        self.assertIn("my-lib", messages(f))
+        self.assertIn("evennia-lib", messages(f))
 
     def test_out_of_order_is_warn(self):
         """IO-04"""
         doc = interop([("zz-other", "**No coupling.** Neither imports the other."),
-                       ("my-lib", "This library.")])
+                       ("evennia-lib", "This library.")])
         f = lib.check_interoperability(self.sibling_ctx(doc))
         self.assertIn("interop_order", kinds(f, "warn"))
 
     def test_section_without_a_relationship_is_warn(self):
         """IO-05"""
-        doc = interop([("my-lib", "This library."), ("zz-other", "")])
+        doc = interop([("evennia-lib", "This library."), ("zz-other", "")])
         f = lib.check_interoperability(self.sibling_ctx(doc))
         self.assertIn("interop_no_relationship", kinds(f, "warn"))
         self.assertIn("zz-other", messages(f))
 
     def test_own_section_needs_no_relationship(self):
         """IO-06"""
-        doc = interop([("my-lib", "This library."),
+        doc = interop([("evennia-lib", "This library."),
                        ("zz-other", "**Hard dependency.** Imported unconditionally.")])
         f = lib.check_interoperability(self.sibling_ctx(doc))
         self.assertNotIn("interop_no_relationship", kinds(f))
 
     def test_non_library_headings_are_ignored(self):
         """IO-07"""
-        doc = interop([("my-lib", "This library."),
+        doc = interop([("evennia-lib", "This library."),
                        ("zz-other", "**No coupling.** Neither imports the other."),
                        ("A note on threading", "Prose with no relationship in it.")])
         self.assertEqual(lib.check_interoperability(self.sibling_ctx(doc)), [])
@@ -409,11 +409,11 @@ class CheckClaudeMd(ValidatorBase):
     def fcm_ctx(self, **add):
         """The same tree under an `fcm-` name, so family-specific rules apply."""
         spec = compliant()
-        spec = {k.replace("libraries/my-lib/", "libraries/fcm-lib/"): v
+        spec = {k.replace("libraries/evennia-lib/", "libraries/fcm-lib/"): v
                 for k, v in spec.items()}
         spec["libraries/fcm-lib/pyproject.toml"] = PYPROJECT.replace(
-            'name = "my-lib"', 'name = "fcm-lib"')
-        spec.update({k.replace("libraries/my-lib/", "libraries/fcm-lib/"): v
+            'name = "evennia-lib"', 'name = "fcm-lib"')
+        spec.update({k.replace("libraries/evennia-lib/", "libraries/fcm-lib/"): v
                      for k, v in add.items()})
         tmp, root = build(spec)
         self.addCleanup(tmp.cleanup)
@@ -477,52 +477,52 @@ class CheckDocs(ValidatorBase):
 
     def test_missing_docs_dir_is_single_error(self):
         """DC-02"""
-        f = lib.check_docs(self.ctx(drop=["libraries/my-lib/docs/INDEX.md",
-                                          "libraries/my-lib/docs/installing.md",
-                                          "libraries/my-lib/docs/interoperability.md",
-                                          "libraries/my-lib/docs/progress.md",
-                                          "libraries/my-lib/docs/test-plan.md",
-                                          "libraries/my-lib/docs/archive/.gitkeep"]))
+        f = lib.check_docs(self.ctx(drop=["libraries/evennia-lib/docs/INDEX.md",
+                                          "libraries/evennia-lib/docs/installing.md",
+                                          "libraries/evennia-lib/docs/interoperability.md",
+                                          "libraries/evennia-lib/docs/progress.md",
+                                          "libraries/evennia-lib/docs/test-plan.md",
+                                          "libraries/evennia-lib/docs/archive/.gitkeep"]))
         self.assertEqual(len(f), 1)
         self.assertEqual(kinds(f, "error"), {"missing_docs"})
 
     def test_missing_index_is_error(self):
         """DC-03"""
-        f = lib.check_docs(self.ctx(drop=["libraries/my-lib/docs/INDEX.md"]))
+        f = lib.check_docs(self.ctx(drop=["libraries/evennia-lib/docs/INDEX.md"]))
         self.assertIn("missing_file", kinds(f, "error"))
 
     def test_missing_progress_is_warn(self):
         """DC-04"""
-        f = lib.check_docs(self.ctx(drop=["libraries/my-lib/docs/progress.md"]))
+        f = lib.check_docs(self.ctx(drop=["libraries/evennia-lib/docs/progress.md"]))
         self.assertEqual(kinds(f, "error"), set())
         self.assertIn("missing_file", kinds(f, "warn"))
 
     def test_missing_archive_is_warn(self):
         """DC-05"""
-        f = lib.check_docs(self.ctx(drop=["libraries/my-lib/docs/archive/.gitkeep"]))
+        f = lib.check_docs(self.ctx(drop=["libraries/evennia-lib/docs/archive/.gitkeep"]))
         self.assertIn("missing_dir", kinds(f, "warn"))
 
     def test_documentation_structure_md_forbidden(self):
         """DC-06"""
-        f = lib.check_docs(self.ctx(**{"libraries/my-lib/docs/documentation-structure.md": "# no\n"}))
+        f = lib.check_docs(self.ctx(**{"libraries/evennia-lib/docs/documentation-structure.md": "# no\n"}))
         self.assertIn("forbidden_meta_doc", kinds(f, "error"))
 
     def test_missing_interoperability_is_error(self):
         """DC-08"""
-        f = lib.check_docs(self.ctx(drop=["libraries/my-lib/docs/interoperability.md"]))
+        f = lib.check_docs(self.ctx(drop=["libraries/evennia-lib/docs/interoperability.md"]))
         self.assertIn("missing_file", kinds(f, "error"))
         self.assertIn("interoperability.md", messages(f))
 
     def test_missing_installing_is_error(self):
         """DC-07"""
-        f = lib.check_docs(self.ctx(drop=["libraries/my-lib/docs/installing.md"]))
+        f = lib.check_docs(self.ctx(drop=["libraries/evennia-lib/docs/installing.md"]))
         self.assertIn("missing_file", kinds(f, "error"))
         self.assertIn("installing.md", messages(f))
         # A differently-named install doc does not satisfy it: the standard names
         # one filename so a consumer running several libraries looks in the same
         # place each time.
-        f = lib.check_docs(self.ctx(drop=["libraries/my-lib/docs/installing.md"],
-                                    **{"libraries/my-lib/docs/installation.md": "# Installation\n"}))
+        f = lib.check_docs(self.ctx(drop=["libraries/evennia-lib/docs/installing.md"],
+                                    **{"libraries/evennia-lib/docs/installation.md": "# Installation\n"}))
         self.assertIn("missing_file", kinds(f, "error"))
 
 
@@ -530,8 +530,8 @@ class CheckTestPlan(ValidatorBase):
     """The adapter onto the test-plan-linter skill. The plan-vs-suite cases
     themselves live in that skill's own plan and suite."""
 
-    PLAN = "libraries/my-lib/docs/test-plan.md"
-    LIB_TESTS = "libraries/my-lib/src/my_lib/tests.py"
+    PLAN = "libraries/evennia-lib/docs/test-plan.md"
+    LIB_TESTS = "libraries/evennia-lib/src/evennia_lib/tests.py"
 
     def test_clean(self):
         """TP-01"""
@@ -549,7 +549,7 @@ class CheckTestPlan(ValidatorBase):
         f = lib.check_test_plan(self.ctx(**{self.PLAN: plan}))
         self.assertIn("test_plan_dangling_ref", kinds(f, "error"))
         for x in f:
-            self.assertEqual(x.library, "my-lib")
+            self.assertEqual(x.library, "evennia-lib")
             self.assertFalse(Path(x.path).is_absolute())
 
     def test_ghost_test_surfaces_as_an_error(self):
@@ -573,12 +573,12 @@ class CheckSrcLayout(ValidatorBase):
     def test_no_package_under_src_is_error(self):
         """SL-03"""
         f = lib.check_src_layout(self.ctx(
-            drop=SRC_FILES, **{"libraries/my-lib/src/notes.txt": "not a package\n"}))
+            drop=SRC_FILES, **{"libraries/evennia-lib/src/notes.txt": "not a package\n"}))
         self.assertIn("missing_package", kinds(f, "error"))
 
     def test_missing_version_is_warn(self):
         """SL-04"""
-        f = lib.check_src_layout(self.ctx(**{"libraries/my-lib/src/my_lib/__init__.py": SPDX}))
+        f = lib.check_src_layout(self.ctx(**{"libraries/evennia-lib/src/evennia_lib/__init__.py": SPDX}))
         self.assertIn("missing_version", kinds(f, "warn"))
 
 
@@ -587,11 +587,36 @@ class CheckNaming(ValidatorBase):
         """NM-01"""
         self.assertEqual(lib.check_naming(self.ctx()), [])
 
+    def renamed(self, name):
+        """The compliant tree under a different library directory name."""
+        spec = {k.replace("libraries/evennia-lib/", f"libraries/{name}/"): v
+                for k, v in compliant().items()}
+        tmp, root = build(spec)
+        self.addCleanup(tmp.cleanup)
+        return lib.LibContext(root / "libraries" / name, root)
+
+    def test_no_family_prefix_is_error(self):
+        """NM-03"""
+        f = lib.check_naming(self.renamed("some-lib"))
+        self.assertIn("family_prefix", kinds(f, "error"))
+
+    def test_fcm_prefix_is_accepted(self):
+        """NM-04"""
+        f = lib.check_naming(self.renamed("fcm-lib"))
+        self.assertNotIn("family_prefix", kinds(f))
+
+    def test_name_must_be_hyphenated_lowercase(self):
+        """NM-05"""
+        for name in ("evennia_lib", "evennia-Lib"):
+            with self.subTest(name=name):
+                f = lib.check_naming(self.renamed(name))
+                self.assertIn("library_name_form", kinds(f, "error"))
+
     def test_mismatch_is_error(self):
         """NM-02"""
-        ctx = self.ctx(drop=["libraries/my-lib/src/my_lib/__init__.py",
-                             "libraries/my-lib/src/my_lib/core.py"],
-                       **{"libraries/my-lib/src/wrong_name/__init__.py": SPDX})
+        ctx = self.ctx(drop=["libraries/evennia-lib/src/evennia_lib/__init__.py",
+                             "libraries/evennia-lib/src/evennia_lib/core.py"],
+                       **{"libraries/evennia-lib/src/wrong_name/__init__.py": SPDX})
         self.assertIn("naming_mismatch", kinds(lib.check_naming(ctx), "error"))
 
 
@@ -602,18 +627,18 @@ class CheckSpdx(ValidatorBase):
 
     def test_missing_is_warn(self):
         """SP-02"""
-        f = lib.check_spdx(self.ctx(**{"libraries/my-lib/src/my_lib/core.py": "x = 1\n"}))
+        f = lib.check_spdx(self.ctx(**{"libraries/evennia-lib/src/evennia_lib/core.py": "x = 1\n"}))
         self.assertIn("missing_spdx", kinds(f, "warn"))
 
     def test_migrations_excluded(self):
         """SP-03"""
-        f = lib.check_spdx(self.ctx(**{"libraries/my-lib/src/my_lib/migrations/0001.py": "x=1\n"}))
+        f = lib.check_spdx(self.ctx(**{"libraries/evennia-lib/src/evennia_lib/migrations/0001.py": "x=1\n"}))
         self.assertEqual(f, [])
 
     def test_header_below_first_five_lines_is_missing(self):
         """SP-04"""
         buried = '"""doc"""\n' + "\n" * 8 + SPDX + "x = 1\n"
-        f = lib.check_spdx(self.ctx(**{"libraries/my-lib/src/my_lib/core.py": buried}))
+        f = lib.check_spdx(self.ctx(**{"libraries/evennia-lib/src/evennia_lib/core.py": buried}))
         self.assertIn("missing_spdx", kinds(f, "warn"))
 
 
@@ -624,7 +649,7 @@ class CheckTestsDir(ValidatorBase):
 
     def test_missing_is_warn_not_error(self):
         """TD-02"""
-        f = lib.check_tests_dir(self.ctx(drop=["libraries/my-lib/tests/.gitkeep"]))
+        f = lib.check_tests_dir(self.ctx(drop=["libraries/evennia-lib/tests/.gitkeep"]))
         self.assertIn("missing_dir", kinds(f, "warn"))
         self.assertEqual(kinds(f, "error"), set())
 
@@ -636,21 +661,21 @@ class CheckLogging(ValidatorBase):
 
     def test_missing_shim_is_warn_not_error(self):
         """LG-02"""
-        f = lib.check_logging(self.ctx(drop=["libraries/my-lib/src/my_lib/log.py"]))
+        f = lib.check_logging(self.ctx(drop=["libraries/evennia-lib/src/evennia_lib/log.py"]))
         self.assertIn("missing_log_shim", kinds(f, "warn"))
         self.assertEqual(kinds(f, "error"), set())
 
     def test_shim_not_using_log_file_is_error(self):
         """LG-03"""
         f = lib.check_logging(self.ctx(**{
-            "libraries/my-lib/src/my_lib/log.py":
-                SPDX + 'import logging\n\n\ndef my_log(m):\n    print("my.log", m)\n'}))
+            "libraries/evennia-lib/src/evennia_lib/log.py":
+                SPDX + 'import logging\n\n\ndef lib_log(m):\n    print("my.log", m)\n'}))
         self.assertIn("log_shim_mechanism", kinds(f, "error"))
 
     def test_shim_naming_no_log_file_is_warn(self):
         """LG-04"""
         f = lib.check_logging(self.ctx(**{
-            "libraries/my-lib/src/my_lib/log.py": SPDX + LOG_SHIM.replace('"my_lib.log"', '""')}))
+            "libraries/evennia-lib/src/evennia_lib/log.py": SPDX + LOG_SHIM.replace('"evennia_lib.log"', '""')}))
         self.assertIn("log_shim_filename", kinds(f, "warn"))
 
     def test_shim_without_importerror_handling_is_warn(self):
@@ -658,14 +683,14 @@ class CheckLogging(ValidatorBase):
         stripped = LOG_SHIM.replace("    except ImportError:\n        return\n", "")
         stripped = stripped.replace("    try:\n", "")
         f = lib.check_logging(self.ctx(**{
-            "libraries/my-lib/src/my_lib/log.py": SPDX + stripped}))
+            "libraries/evennia-lib/src/evennia_lib/log.py": SPDX + stripped}))
         self.assertIn("log_shim_fallback", kinds(f, "warn"))
 
     def test_stdlib_logging_outside_the_shim_is_warn(self):
         """LG-06"""
         f = lib.check_logging(self.ctx(**{
-            "libraries/my-lib/src/my_lib/core.py":
-                SPDX + 'import logging\n\nlogger = logging.getLogger("my_lib")\n'}))
+            "libraries/evennia-lib/src/evennia_lib/core.py":
+                SPDX + 'import logging\n\nlogger = logging.getLogger("evennia_lib")\n'}))
         self.assertIn("stdlib_logging", kinds(f, "warn"))
         self.assertIn("core.py", messages(f))
 
@@ -675,13 +700,13 @@ class CheckLogging(ValidatorBase):
 
     def test_no_package_is_silent(self):
         """LG-08"""
-        ctx = self.ctx(drop=SRC_FILES + ["libraries/my-lib/src/my_lib/log.py"])
+        ctx = self.ctx(drop=SRC_FILES + ["libraries/evennia-lib/src/evennia_lib/log.py"])
         self.assertEqual(lib.check_logging(ctx), [])
 
     def test_function_not_named_for_the_library_is_warn(self):
         """LG-09"""
         f = lib.check_logging(self.ctx(**{
-            _LOG_PATH: SPDX + LOG_SHIM.replace("def my_log(", "def zzz_log(")}))
+            _LOG_PATH: SPDX + LOG_SHIM.replace("def lib_log(", "def zzz_log(")}))
         self.assertEqual(kinds(f, "error"), set())
         self.assertIn("log_shim_function_name", kinds(f, "warn"))
 
@@ -689,8 +714,8 @@ class CheckLogging(ValidatorBase):
         """LG-10"""
         f = lib.check_logging(self.ctx(**{
             _LOG_PATH: SPDX + LOG_SHIM.replace(
-                'def my_log(message, level="INFO", trace=False):',
-                'def my_log(msg, lvl="INFO"):')}))
+                'def lib_log(message, level="INFO", trace=False):',
+                'def lib_log(msg, lvl="INFO"):')}))
         self.assertIn("log_shim_signature", kinds(f, "warn"))
 
     def test_wrong_levels_is_warn(self):
@@ -710,8 +735,8 @@ class CheckLogging(ValidatorBase):
     def test_shim_reexported_from_init_is_warn(self):
         """LG-13"""
         f = lib.check_logging(self.ctx(**{
-            "libraries/my-lib/src/my_lib/__init__.py":
-                SPDX + '__version__ = "0.0.1"\nfrom .log import my_log\n'}))
+            "libraries/evennia-lib/src/evennia_lib/__init__.py":
+                SPDX + '__version__ = "0.0.1"\nfrom .log import lib_log\n'}))
         self.assertIn("log_shim_exported", kinds(f, "warn"))
 
     def test_missing_trace_handling_is_warn(self):
@@ -728,12 +753,12 @@ class CheckMemorySurface(ValidatorBase):
 
     def test_forbidden(self):
         """MS-02"""
-        f = lib.check_memory_surface(self.ctx(**{"libraries/my-lib/.claude/memory/x.md": "x\n"}))
+        f = lib.check_memory_surface(self.ctx(**{"libraries/evennia-lib/.claude/memory/x.md": "x\n"}))
         self.assertIn("forbidden_memory", kinds(f, "warn"))
 
 
 class CheckPyproject(ValidatorBase):
-    PP = "libraries/my-lib/pyproject.toml"
+    PP = "libraries/evennia-lib/pyproject.toml"
 
     def test_clean(self):
         """PP-01"""
@@ -746,7 +771,7 @@ class CheckPyproject(ValidatorBase):
 
     def test_name_mismatch_is_error(self):
         """PP-03"""
-        pp = PYPROJECT.replace('name = "my-lib"', 'name = "other"')
+        pp = PYPROJECT.replace('name = "evennia-lib"', 'name = "other"')
         self.assertIn("pyproject_name",
                       kinds(lib.check_pyproject(self.ctx(**{self.PP: pp})), "error"))
 
@@ -787,7 +812,7 @@ class CheckPyproject(ValidatorBase):
 
 
 class Integration(unittest.TestCase):
-    def lint(self, spec, scope=("my-lib",)):
+    def lint(self, spec, scope=("evennia-lib",)):
         tmp, root = build(spec)
         self.addCleanup(tmp.cleanup)
         return lib.lint(root, list(scope) if scope else scope)
@@ -795,7 +820,7 @@ class Integration(unittest.TestCase):
     def test_compliant_is_clean(self):
         """DS-01"""
         findings, libs = self.lint(compliant())
-        self.assertEqual(libs, ["my-lib"])
+        self.assertEqual(libs, ["evennia-lib"])
         self.assertEqual(findings, [])
 
     def test_discovery_skips_non_library_dirs(self):
@@ -803,16 +828,16 @@ class Integration(unittest.TestCase):
         spec = compliant()
         spec["libraries/fixture-repo/data.yaml"] = "x: 1\n"  # no pyproject -> not a library
         _, libs = self.lint(spec, scope=None)
-        self.assertEqual(libs, ["my-lib"])
+        self.assertEqual(libs, ["evennia-lib"])
 
     def test_scope_restricts_to_named_libraries(self):
         """DS-03"""
         spec = compliant()
-        spec["libraries/other-lib/pyproject.toml"] = PYPROJECT.replace('"my-lib"', '"other-lib"')
+        spec["libraries/other-lib/pyproject.toml"] = PYPROJECT.replace('"evennia-lib"', '"other-lib"')
         _, libs = self.lint(spec, scope=None)
-        self.assertEqual(libs, ["my-lib", "other-lib"])
+        self.assertEqual(libs, ["evennia-lib", "other-lib"])
         _, libs = self.lint(spec)
-        self.assertEqual(libs, ["my-lib"])
+        self.assertEqual(libs, ["evennia-lib"])
 
     def test_root_without_libraries_dir_is_empty(self):
         """DS-04"""
@@ -826,37 +851,37 @@ class Cli(unittest.TestCase):
         self.addCleanup(tmp.cleanup)
         buf = io.StringIO()
         with contextlib.redirect_stdout(buf):
-            code = lib.main(["--root", str(root), "my-lib", *argv])
+            code = lib.main(["--root", str(root), "evennia-lib", *argv])
         return code, buf.getvalue()
 
     def test_clean_library_exits_zero(self):
         """CL-01"""
         code, out = self.run_cli(compliant())
         self.assertEqual(code, 0)
-        self.assertIn("my-lib — OK", out)
+        self.assertIn("evennia-lib — OK", out)
 
     def test_error_exits_one(self):
         """CL-02"""
         spec = compliant()
-        spec.pop("libraries/my-lib/LICENSE")
+        spec.pop("libraries/evennia-lib/LICENSE")
         self.assertEqual(self.run_cli(spec)[0], 1)
 
     def test_warnings_exit_zero_unless_strict(self):
         """CL-03"""
         spec = compliant()
-        spec.pop("libraries/my-lib/.gitignore")
+        spec.pop("libraries/evennia-lib/.gitignore")
         self.assertEqual(self.run_cli(spec)[0], 0)
         self.assertEqual(self.run_cli(spec, "--strict")[0], 1)
 
     def test_json_output_carries_findings_and_counts(self):
         """CL-04"""
         spec = compliant()
-        spec.pop("libraries/my-lib/LICENSE")
-        spec.pop("libraries/my-lib/.gitignore")
+        spec.pop("libraries/evennia-lib/LICENSE")
+        spec.pop("libraries/evennia-lib/.gitignore")
         _, out = self.run_cli(spec, "--json")
         payload = json.loads(out)
         summary = payload["summary"]
-        self.assertEqual(summary["libraries"], ["my-lib"])
+        self.assertEqual(summary["libraries"], ["evennia-lib"])
         self.assertEqual(summary["errors"], 1)
         self.assertEqual(summary["warnings"], 1)
         self.assertEqual(len(payload["findings"]), 2)
@@ -900,10 +925,10 @@ class CrossCutting(unittest.TestCase):
     def test_finding_paths_are_repo_relative(self):
         """XC-03"""
         spec = compliant()
-        spec.pop("libraries/my-lib/LICENSE")
+        spec.pop("libraries/evennia-lib/LICENSE")
         tmp, root = build(spec)
         self.addCleanup(tmp.cleanup)
-        findings, _ = lib.lint(root, ["my-lib"])
+        findings, _ = lib.lint(root, ["evennia-lib"])
         self.assertTrue(findings)
         for f in findings:
             self.assertFalse(Path(f.path).is_absolute())

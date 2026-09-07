@@ -35,6 +35,8 @@ chiefly *whether a deviation is a sanctioned divergence* — to a human or a fut
 |---|---|
 | `missing_file` / `missing_docs` / `missing_src` / `missing_package` — required structure | error |
 | `naming_mismatch` — src package name ≠ underscored repo name | error |
+| `family_prefix` — library name carries neither `evennia-` nor `fcm-` | error |
+| `library_name_form` — library name is not hyphenated lowercase | error |
 | `pyproject_name` / `license` — pyproject `name`≠dir, or license≠BSD-3-Clause | error |
 | `pyproject_unparseable` — `pyproject.toml` is not valid TOML | error |
 | `forbidden_meta_doc` — a `docs/documentation-structure.md` exists (reduced-set rule) | error |
