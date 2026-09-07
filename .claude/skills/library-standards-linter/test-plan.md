@@ -61,6 +61,7 @@ and calls one validator in isolation.
 | DC-04 | Missing `docs/progress.md` is a warn | `CheckDocs.test_missing_progress_is_warn` |
 | DC-05 | Missing `docs/archive/` is a warn; a `.gitkeep` satisfies it | `CheckDocs.test_missing_archive_is_warn` |
 | DC-06 | A `docs/documentation-structure.md` is a `forbidden_meta_doc` error | `CheckDocs.test_documentation_structure_md_forbidden` |
+| DC-07 | Missing `docs/installing.md` is an error. It is the page a consumer arrives at, and the standard names one filename so a consumer running several libraries looks in the same place each time — so a differently-named install doc must not satisfy it | `CheckDocs.test_missing_installing_is_error` |
 
 ## TP — `check_test_plan`
 

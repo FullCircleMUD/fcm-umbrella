@@ -86,6 +86,7 @@ def compliant():
         "libraries/my-lib/.gitignore": "venv/\n",
         "libraries/my-lib/runtests.py": "# runner\n",
         "libraries/my-lib/docs/INDEX.md": "# Index\n",
+        "libraries/my-lib/docs/installing.md": "# Installing\n",
         "libraries/my-lib/docs/progress.md": "# Progress\n",
         "libraries/my-lib/docs/test-plan.md": TEST_PLAN,
         "libraries/my-lib/docs/archive/.gitkeep": "",
@@ -171,6 +172,7 @@ class CheckDocs(ValidatorBase):
     def test_missing_docs_dir_is_single_error(self):
         """DC-02"""
         f = lib.check_docs(self.ctx(drop=["libraries/my-lib/docs/INDEX.md",
+                                          "libraries/my-lib/docs/installing.md",
                                           "libraries/my-lib/docs/progress.md",
                                           "libraries/my-lib/docs/test-plan.md",
                                           "libraries/my-lib/docs/archive/.gitkeep"]))
@@ -197,6 +199,18 @@ class CheckDocs(ValidatorBase):
         """DC-06"""
         f = lib.check_docs(self.ctx(**{"libraries/my-lib/docs/documentation-structure.md": "# no\n"}))
         self.assertIn("forbidden_meta_doc", kinds(f, "error"))
+
+    def test_missing_installing_is_error(self):
+        """DC-07"""
+        f = lib.check_docs(self.ctx(drop=["libraries/my-lib/docs/installing.md"]))
+        self.assertIn("missing_file", kinds(f, "error"))
+        self.assertIn("installing.md", messages(f))
+        # A differently-named install doc does not satisfy it: the standard names
+        # one filename so a consumer running several libraries looks in the same
+        # place each time.
+        f = lib.check_docs(self.ctx(drop=["libraries/my-lib/docs/installing.md"],
+                                    **{"libraries/my-lib/docs/installation.md": "# Installation\n"}))
+        self.assertIn("missing_file", kinds(f, "error"))
 
 
 class CheckTestPlan(ValidatorBase):

@@ -133,6 +133,13 @@ def check_docs(ctx):
     out = []
     if not (docs / "INDEX.md").exists():
         out.append(ctx.F("missing_file", "error", docs / "INDEX.md", "missing docs/INDEX.md"))
+    # The filename is part of the standard, not just the content: a consumer
+    # running several of our libraries looks in the same place each time, so an
+    # install doc under any other name does not satisfy this.
+    if not (docs / "installing.md").exists():
+        out.append(ctx.F("missing_file", "error", docs / "installing.md",
+                          "missing docs/installing.md — the numbered install steps, the required "
+                          "and optional settings, and what is not checked for you"))
     if not (docs / "progress.md").exists():
         out.append(ctx.F("missing_file", "warn", docs / "progress.md", "missing docs/progress.md"))
     if not (docs / "archive").is_dir():
