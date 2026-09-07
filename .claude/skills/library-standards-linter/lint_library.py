@@ -427,6 +427,116 @@ def check_installing(ctx):
     return out
 
 
+def _package_modules(ctx, extra_skip=()):
+    """Every library source file a code rule applies to, with its AST.
+
+    `tests.py` and `migrations/` are out of scope throughout: the first exists
+    to emulate a running game, the second is generated.
+    """
+    for f in sorted(ctx.pkg.rglob("*.py")):
+        if CONSTANT_SKIP_DIRS & set(f.parts) or f.name in CONSTANT_SKIP_FILES:
+            continue
+        if f.name in extra_skip:
+            continue
+        tree = _parse(f)
+        if tree is not None:
+            yield f, tree
+
+
+def _aggregate(ctx, check, sites, message):
+    """One finding per library, naming up to six sites."""
+    if not sites:
+        return []
+    shown = ", ".join(f"{rel(f, ctx.root)}:{line}" for f, line in sites[:6])
+    more = f" (+{len(sites) - 6} more)" if len(sites) > 6 else ""
+    return [ctx.F(check, "warn", ctx.pkg, f"{len(sites)} {message}: {shown}{more}")]
+
+
+def check_evennia_imports(ctx):
+    """Evennia is imported in log.py; elsewhere the import says why.
+
+    See § Importing Evennia. The comment is looked for on the line above, which
+    is where the standard's example puts it — a reader landing on the import
+    should see the reason without hunting for it.
+    """
+    if ctx.pkg is None:
+        return []
+    sites = []
+    for f, tree in _package_modules(ctx, extra_skip=("log.py",)):
+        lines = f.read_text(encoding="utf-8", errors="replace").splitlines()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                module = node.module or ""
+            elif isinstance(node, ast.Import):
+                module = node.names[0].name if node.names else ""
+            else:
+                continue
+            if module.split(".")[0] != "evennia":
+                continue
+            above = lines[node.lineno - 2].strip() if node.lineno >= 2 else ""
+            # The SPDX header is a comment and sits above the first import in
+            # every file, so it would silence exactly the import most likely to
+            # need explaining.
+            if not above.startswith("#") or SPDX in above:
+                sites.append((f, node.lineno))
+    return _aggregate(
+        ctx, "evennia_import_unexplained", sites,
+        "Evennia import(s) outside log.py with no comment saying why that module needs "
+        "the engine. The narrower the coupling, the more of the library runs without an "
+        "engine — and an import with no comment is an open question, not a settled one")
+
+
+def check_object_state(ctx):
+    """A library sets its own attributes by assignment, never through `.db`.
+
+    See § Reading and writing object state. `.db` goes through the
+    AttributeHandler and never reaches an AttributeProperty's `at_set()`, so a
+    validated property accepts through `.db` whatever it would refuse by
+    assignment.
+    """
+    if ctx.pkg is None:
+        return []
+    sites = []
+    for f, tree in _package_modules(ctx):
+        for node in ast.walk(tree):
+            targets = (node.targets if isinstance(node, ast.Assign)
+                       else [node.target] if isinstance(node, (ast.AnnAssign, ast.AugAssign))
+                       else [])
+            for t in targets:
+                # obj.db.<name> = … — the write is what the standard names; a
+                # read through .db is ordinary Evennia.
+                if (isinstance(t, ast.Attribute) and isinstance(t.value, ast.Attribute)
+                        and t.value.attr == "db"):
+                    sites.append((f, node.lineno))
+    return _aggregate(
+        ctx, "db_attribute_write", sites,
+        "write(s) through `.db`. A library sets its own attributes by assignment, because "
+        "`.db` never reaches the descriptor — an unvalidated property is one commit away "
+        "from a validated one, and every `.db` write is then silently wrong")
+
+
+def check_boot_side_effects(ctx):
+    """A library creates no directories in the consumer's gamedir.
+
+    See § Consumer-authored config. Where a consumer's modules sit is theirs to
+    decide; a library that creates a folder takes the decision away and leaves
+    something behind in a repo it does not own.
+    """
+    if ctx.pkg is None:
+        return []
+    sites = []
+    for f, tree in _package_modules(ctx):
+        for node in ast.walk(tree):
+            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                    and node.func.attr in ("makedirs", "mkdir")):
+                sites.append((f, node.lineno))
+    return _aggregate(
+        ctx, "creates_directories", sites,
+        "director(y/ies) created by library code. Config the consumer authors is named by a "
+        "setting and read from where they put it — a library that creates the folder decides "
+        "for them and leaves something behind in a repo it does not own")
+
+
 SETTINGS_VALIDATOR = "check_settings"
 # Two libraries call theirs validate_settings; the standard names one function so
 # every library's boot check is found in the same place under the same name.
@@ -822,7 +932,8 @@ def check_pyproject(ctx):
 CHECKS = [
     check_root_files, check_docs, check_test_plan, check_src_layout, check_naming,
     check_spdx, check_tests_dir, check_logging, check_constants, check_claude_md,
-    check_interoperability, check_installing, check_settings_access, check_boot_validation, check_memory_surface, check_pyproject,
+    check_interoperability, check_installing, check_settings_access, check_boot_validation, check_evennia_imports,
+    check_object_state, check_boot_side_effects, check_memory_surface, check_pyproject,
 ]
 
 

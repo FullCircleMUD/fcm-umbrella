@@ -595,6 +595,96 @@ class CheckBootValidation(ValidatorBase):
         self.assertEqual(lib.check_boot_validation(self.ctx(drop=SRC_FILES)), [])
 
 
+class CheckEvenniaImports(ValidatorBase):
+    def test_clean(self):
+        """EI-01"""
+        self.assertEqual(lib.check_evennia_imports(self.ctx()), [])
+
+    def test_commented_import_is_clean(self):
+        """EI-02"""
+        f = lib.check_evennia_imports(self.ctx(**{
+            _CORE_PATH: SPDX + "# Rows carry attributes through Evennia's own m2m tables.\n"
+                               "from evennia.typeclasses.models import Attribute\n"}))
+        self.assertEqual(f, [])
+
+    def test_uncommented_import_is_warn(self):
+        """EI-03"""
+        f = lib.check_evennia_imports(self.ctx(**{
+            _CORE_PATH: SPDX + "from evennia.typeclasses.models import Attribute\n"}))
+        self.assertEqual(kinds(f, "error"), set())
+        self.assertIn("evennia_import_unexplained", kinds(f, "warn"))
+        self.assertIn("core.py", messages(f))
+
+    def test_plain_import_counts(self):
+        """EI-04"""
+        f = lib.check_evennia_imports(self.ctx(**{_CORE_PATH: SPDX + "import evennia\n"}))
+        self.assertIn("evennia_import_unexplained", kinds(f, "warn"))
+
+    def test_tests_module_is_exempt(self):
+        """EI-05"""
+        f = lib.check_evennia_imports(self.ctx(**{
+            "libraries/evennia-lib/src/evennia_lib/tests.py": LIB_TESTS + "import evennia\n"}))
+        self.assertEqual(f, [])
+
+    def test_no_package_is_silent(self):
+        """EI-06"""
+        self.assertEqual(lib.check_evennia_imports(self.ctx(drop=SRC_FILES)), [])
+
+
+class CheckObjectState(ValidatorBase):
+    def test_clean(self):
+        """OS-01"""
+        self.assertEqual(lib.check_object_state(self.ctx()), [])
+
+    def test_db_write_is_warn(self):
+        """OS-02"""
+        f = lib.check_object_state(self.ctx(**{
+            _CORE_PATH: SPDX + "def f(obj):\n    obj.db.weight = 5\n"}))
+        self.assertEqual(kinds(f, "error"), set())
+        self.assertIn("db_attribute_write", kinds(f, "warn"))
+        self.assertIn("core.py", messages(f))
+
+    def test_db_read_is_not_a_finding(self):
+        """OS-03"""
+        f = lib.check_object_state(self.ctx(**{
+            _CORE_PATH: SPDX + "def f(obj):\n    return obj.db.weight\n"}))
+        self.assertEqual(f, [])
+
+    def test_tests_module_is_exempt(self):
+        """OS-04"""
+        f = lib.check_object_state(self.ctx(**{
+            "libraries/evennia-lib/src/evennia_lib/tests.py":
+                LIB_TESTS + "def f(obj):\n    obj.db.weight = 5\n"}))
+        self.assertEqual(f, [])
+
+
+class CheckBootSideEffects(ValidatorBase):
+    def test_clean(self):
+        """BS-01"""
+        self.assertEqual(lib.check_boot_side_effects(self.ctx()), [])
+
+    def test_makedirs_is_warn(self):
+        """BS-02"""
+        f = lib.check_boot_side_effects(self.ctx(**{
+            _CORE_PATH: SPDX + "import os\n\n\ndef f(p):\n    os.makedirs(p)\n"}))
+        self.assertEqual(kinds(f, "error"), set())
+        self.assertIn("creates_directories", kinds(f, "warn"))
+        self.assertIn("core.py", messages(f))
+
+    def test_path_mkdir_is_warn(self):
+        """BS-03"""
+        f = lib.check_boot_side_effects(self.ctx(**{
+            _CORE_PATH: SPDX + "def f(p):\n    p.mkdir(parents=True)\n"}))
+        self.assertIn("creates_directories", kinds(f, "warn"))
+
+    def test_tests_module_is_exempt(self):
+        """BS-04"""
+        f = lib.check_boot_side_effects(self.ctx(**{
+            "libraries/evennia-lib/src/evennia_lib/tests.py":
+                LIB_TESTS + "import os\n\nos.makedirs('/tmp/x')\n"}))
+        self.assertEqual(f, [])
+
+
 class CheckDocs(ValidatorBase):
     def test_clean(self):
         """DC-01"""

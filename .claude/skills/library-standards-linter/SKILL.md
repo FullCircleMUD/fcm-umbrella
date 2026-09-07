@@ -60,6 +60,9 @@ chiefly *whether a deviation is a sanctioned divergence* — to a human or a fut
 | `log_shim_levels` / `log_shim_timestamp` / `log_shim_trace` — levels beyond `INFO`/`WARN`/`ERROR`, a timestamp of its own, or no `format_exc` + `NoneType: None` suppression | warn |
 | `log_shim_exported` — `__init__.py` re-exports the shim, which is internal | warn |
 | `stdlib_logging` — `logging.getLogger` outside the shim; those records reach nobody | warn |
+| `evennia_import_unexplained` — an Evennia import outside `log.py` with no comment saying why | warn |
+| `db_attribute_write` — a write through `.db`, which never reaches the descriptor's `at_set()` | warn |
+| `creates_directories` — library code calling `makedirs`/`mkdir` in the consumer's gamedir | warn |
 | `constant_outside_config` — a module-level constant declared outside `config.py` | warn |
 | `settings_read_outside_config` — a `settings.X` or `getattr(settings, …)` read bypassing its accessor | warn |
 | `settings_validator_uncalled` / `settings_validator_outside_config` — `check_settings()` defined but never called from `ready()`, or defined outside `config.py` | error |

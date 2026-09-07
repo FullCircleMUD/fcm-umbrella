@@ -27,6 +27,9 @@ All test functions live in `tests.py`, beside this plan. Run them with
 | `IN` | `check_installing` |
 | `SA` | `check_settings_access` |
 | `BV` | `check_boot_validation` |
+| `EI` | `check_evennia_imports` |
+| `OS` | `check_object_state` |
+| `BS` | `check_boot_side_effects` |
 | `MS` | `check_memory_surface` |
 | `PP` | `check_pyproject` |
 | `DS` | `discover` / `lint` |
@@ -317,6 +320,59 @@ layer's.
 | BV-05 | A validator named `validate_settings` rather than `check_settings` is a warn | `CheckBootValidation.test_nonstandard_validator_name_is_warn` |
 | BV-06 | A call somewhere in `apps.py` but outside `ready()` does not satisfy it — boot is the point | `CheckBootValidation.test_call_outside_ready_does_not_count` |
 | BV-07 | A library with no package produces no findings | `CheckBootValidation.test_no_package_is_silent` |
+
+## EI — `check_evennia_imports`
+
+Covers *Importing Evennia*: `log.py` is the default home, and every other import site carries a
+comment saying why that module needs the engine.
+
+A **warn**, and a large one — 95 of the 102 Evennia imports outside `log.py` have no comment today.
+The rule is a day old and the corpus predates it, so this is a queue.
+
+`tests.py` and `tests/` are exempt: they exist to emulate a running game, so the import is the job.
+
+The comment is looked for on the line above the import, which is where the standard's example puts it.
+A comment elsewhere in the module does not count — the rule is that a reader landing on the import can
+see the reason without hunting.
+
+| ID | Case | Test function |
+|---|---|---|
+| EI-01 | A library importing Evennia only in `log.py` produces no findings | `CheckEvenniaImports.test_clean` |
+| EI-02 | An import elsewhere with a comment on the line above produces no findings | `CheckEvenniaImports.test_commented_import_is_clean` |
+| EI-03 | An import elsewhere with no comment is a warn naming the module | `CheckEvenniaImports.test_uncommented_import_is_warn` |
+| EI-04 | `import evennia` counts as well as `from evennia… import …` | `CheckEvenniaImports.test_plain_import_counts` |
+| EI-05 | `tests.py` is exempt | `CheckEvenniaImports.test_tests_module_is_exempt` |
+| EI-06 | A library with no package produces no findings | `CheckEvenniaImports.test_no_package_is_silent` |
+
+## OS — `check_object_state`
+
+Covers *Reading and writing object state*: a library sets its own attributes by assignment, never
+through `.db`, because `.db` goes through the `AttributeHandler` and never reaches the descriptor's
+`at_set()`.
+
+A **warn**: four libraries write through `.db`, 64 sites between them.
+
+| ID | Case | Test function |
+|---|---|---|
+| OS-01 | A library making no `.db` writes produces no findings | `CheckObjectState.test_clean` |
+| OS-02 | A `.db` write is a warn naming the module. An unvalidated property is one commit away from a validated one, and every `.db` write that was harmless before is then silently wrong | `CheckObjectState.test_db_write_is_warn` |
+| OS-03 | A `.db` *read* is not a finding — the bypass the standard names is the write | `CheckObjectState.test_db_read_is_not_a_finding` |
+| OS-04 | `tests.py` is exempt | `CheckObjectState.test_tests_module_is_exempt` |
+
+## BS — `check_boot_side_effects`
+
+Covers the prohibition in *Consumer-authored config*: a library does not create directories in the
+consumer's gamedir. Where those modules sit is the consumer's business, and a library that creates one
+takes the decision away and leaves something behind in a repo it does not own.
+
+A **warn**; two libraries call `mkdir`/`makedirs` today.
+
+| ID | Case | Test function |
+|---|---|---|
+| BS-01 | A library creating no directories produces no findings | `CheckBootSideEffects.test_clean` |
+| BS-02 | An `os.makedirs` call is a warn naming the module | `CheckBootSideEffects.test_makedirs_is_warn` |
+| BS-03 | A `Path.mkdir` call is a warn — the same act through a different API | `CheckBootSideEffects.test_path_mkdir_is_warn` |
+| BS-04 | `tests.py` is exempt; a test builds its own scratch directories | `CheckBootSideEffects.test_tests_module_is_exempt` |
 
 ## MS — `check_memory_surface`
 
