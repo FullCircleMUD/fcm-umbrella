@@ -39,6 +39,7 @@ chiefly *whether a deviation is a sanctioned divergence* — to a human or a fut
 | `family_prefix` — library name carries neither `evennia-` nor `fcm-` | error |
 | `library_name_form` — library name is not hyphenated lowercase | error |
 | `pyproject_name` / `license` — pyproject `name`≠dir, or license≠BSD-3-Clause | error |
+| `legacy_build_file` — a `setup.py`, `setup.cfg` or `requirements.txt` at the repo root | error |
 | `pyproject_unparseable` — `pyproject.toml` is not valid TOML | error |
 | `forbidden_meta_doc` — a `docs/documentation-structure.md` exists (reduced-set rule) | error |
 | `test_plan_dangling_ref` — a test function named in `docs/test-plan.md` doesn't exist | error |
@@ -54,6 +55,9 @@ chiefly *whether a deviation is a sanctioned divergence* — to a human or a fut
 | `installing_no_required_settings` / `installing_no_optional_settings` — neither settings part named, and the document does not state that the library reads none | warn |
 | `installing_no_unchecked_section` — no "what is not checked for you" section | warn |
 | `missing_dir` — no `tests/` or `docs/archive/` (a placeholder satisfies these) | warn |
+| `tests_dir_incomplete` — a `tests/` with Python files but no `test_settings.py` / `urls.py` | warn |
+| `pytest_in_use` — a conftest.py, a pytest import, or a pytest dependency | warn |
+| `venv_not_ignored` — `.gitignore` does not ignore `venv/` | warn |
 | `log_shim_mechanism` — a `log.py` that doesn't call Evennia's `logger.log_file` | error |
 | `missing_log_shim` / `log_shim_filename` / `log_shim_fallback` — no `log.py`, no `.log` filename, no `ImportError` no-op | warn |
 | `log_shim_function_name` / `log_shim_signature` — shim not named for the library, or not `(message, level, trace)` | warn |

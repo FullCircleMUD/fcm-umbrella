@@ -196,6 +196,19 @@ class CheckRootFiles(ValidatorBase):
                 self.assertEqual(f[0].severity, severity)
                 self.assertIn(fn, f[0].message)
 
+    def test_legacy_build_file_is_error(self):
+        """RF-05"""
+        for fn in ("setup.py", "setup.cfg", "requirements.txt"):
+            with self.subTest(file=fn):
+                f = lib.check_root_files(self.ctx(**{f"libraries/evennia-lib/{fn}": "x\n"}))
+                self.assertIn("legacy_build_file", kinds(f, "error"))
+
+    def test_venv_not_ignored_is_warn(self):
+        """RF-06"""
+        f = lib.check_root_files(self.ctx(**{"libraries/evennia-lib/.gitignore": "*.pyc\n"}))
+        self.assertEqual(kinds(f, "error"), set())
+        self.assertIn("venv_not_ignored", kinds(f, "warn"))
+
 
 _LOG_PATH = "libraries/evennia-lib/src/evennia_lib/log.py"
 
@@ -867,6 +880,23 @@ class CheckTestsDir(ValidatorBase):
         f = lib.check_tests_dir(self.ctx(drop=["libraries/evennia-lib/tests/.gitkeep"]))
         self.assertIn("missing_dir", kinds(f, "warn"))
         self.assertEqual(kinds(f, "error"), set())
+
+
+    def test_incomplete_tests_dir_is_warn(self):
+        """TD-03"""
+        f = lib.check_tests_dir(self.ctx(**{
+            "libraries/evennia-lib/tests/__init__.py": ""}))
+        self.assertIn("tests_dir_incomplete", kinds(f, "warn"))
+        self.assertIn("test_settings.py", messages(f))
+
+    def test_placeholder_only_stays_clean(self):
+        """TD-04"""
+        self.assertNotIn("tests_dir_incomplete", kinds(lib.check_tests_dir(self.ctx())))
+
+    def test_pytest_in_use_is_warn(self):
+        """TD-05"""
+        f = lib.check_tests_dir(self.ctx(**{"libraries/evennia-lib/conftest.py": ""}))
+        self.assertIn("pytest_in_use", kinds(f, "warn"))
 
 
 class CheckLogging(ValidatorBase):

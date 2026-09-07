@@ -163,6 +163,9 @@ class LibContext:
 
 
 # --- checks (each: LibContext -> list[Finding], independently unit-testable) --
+LEGACY_BUILD_FILES = ("setup.py", "setup.cfg", "requirements.txt")
+
+
 def check_root_files(ctx):
     out = []
     for fn, sev in [("pyproject.toml", "error"), ("README.md", "error"),
@@ -170,6 +173,22 @@ def check_root_files(ctx):
                     (".gitignore", "warn"), ("runtests.py", "warn")]:
         if not (ctx.libdir / fn).exists():
             out.append(ctx.F("missing_file", sev, ctx.libdir / fn, f"missing {fn}"))
+
+    legacy = [fn for fn in LEGACY_BUILD_FILES if (ctx.libdir / fn).exists()]
+    if legacy:
+        out.append(ctx.F(
+            "legacy_build_file", "error", ctx.libdir,
+            f"{', '.join(legacy)} at the repo root. pyproject.toml is the only build and "
+            f"dependency declaration, and a second one is a second source of truth that "
+            f"drifts from the first"))
+
+    gitignore = ctx.libdir / ".gitignore"
+    if gitignore.exists() and "venv" not in gitignore.read_text(encoding="utf-8",
+                                                                errors="replace"):
+        out.append(ctx.F(
+            "venv_not_ignored", "warn", gitignore,
+            ".gitignore does not ignore venv/. Each library is developed against a dedicated "
+            "venv at its root, and an unignored one is committed sooner or later"))
     return out
 
 
@@ -759,12 +778,41 @@ def check_spdx(ctx):
                   f"`# {SPDX}`: {shown}{more}")]
 
 
+TESTS_DIR_FILES = ("test_settings.py", "urls.py")
+PYTEST = re.compile(r"^\s*import pytest\b|^\s*from pytest\b|\bpytest\b", re.M)
+
+
 def check_tests_dir(ctx):
-    if (ctx.libdir / "tests").is_dir():
-        return []
-    return [ctx.F("missing_dir", "warn", ctx.libdir / "tests",
-                  "no tests/ directory — add it (a placeholder is fine) or document a "
-                  "divergence in CLAUDE.md (e.g. a pure-Python library)")]
+    tests = ctx.libdir / "tests"
+    if not tests.is_dir():
+        return [ctx.F("missing_dir", "warn", tests,
+                      "no tests/ directory — add it (a placeholder is fine) or document a "
+                      "divergence in CLAUDE.md (e.g. a pure-Python library)")]
+    out = []
+    # Only once the library has started building test infrastructure. A
+    # placeholder-only tests/ is the documented not-yet state; half-built is the
+    # one worth reporting.
+    if any(tests.glob("*.py")):
+        missing = [n for n in TESTS_DIR_FILES if not (tests / n).exists()]
+        if missing:
+            out.append(ctx.F(
+                "tests_dir_incomplete", "warn", tests,
+                f"tests/ is missing {', '.join(missing)} — the standalone runner needs its "
+                f"own settings module and an empty URL conf, so `runtests.py` works with no "
+                f"consumer gamedir"))
+
+    pytest_dep = PYTEST.search(str(((ctx.pyproject or {}).get("project") or {})))
+    conftest = (ctx.libdir / "conftest.py").exists()
+    imports = ctx.pkg is not None and any(
+        PYTEST.search(f.read_text(encoding="utf-8", errors="replace"))
+        for f, _ in _package_modules(ctx))
+    if pytest_dep or conftest or imports:
+        out.append(ctx.F(
+            "pytest_in_use", "warn", ctx.libdir,
+            "pytest is in use — a conftest.py, an import, or a dependency. The standard is "
+            "Django's test runner via runtests.py, which bootstraps Django and Evennia and "
+            "needs no consumer gamedir"))
+    return out
 
 
 def _parse(path: Path):

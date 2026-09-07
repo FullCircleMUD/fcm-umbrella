@@ -59,6 +59,10 @@ and calls one validator in isolation.
 | RF-02 | Missing `LICENSE` is an error | `CheckRootFiles.test_missing_license_is_error` |
 | RF-03 | Missing `.gitignore` is a warn, not an error | `CheckRootFiles.test_missing_gitignore_is_warn` |
 | RF-04 | Each required root file, dropped on its own, yields exactly one finding at its documented severity (`pyproject.toml`/`README.md`/`CLAUDE.md`/`LICENSE` error; `.gitignore`/`runtests.py` warn) | `CheckRootFiles.test_each_required_file_has_its_documented_severity` |
+| RF-05 | A `setup.py`, `setup.cfg` or `requirements.txt` at the repo root is an error. `pyproject.toml` is the only build and dependency declaration, and a second one is a second source of truth | `CheckRootFiles.test_legacy_build_file_is_error` |
+| RF-06 | A `.gitignore` not ignoring `venv/` is a warn. Each library is developed against a dedicated venv at its root, and an unignored one is committed sooner or later | `CheckRootFiles.test_venv_not_ignored_is_warn` |
+
+`RF-05` is an error: no library carries a legacy build file today, so enforcing costs nothing.
 
 ## DC — `check_docs`
 
@@ -125,6 +129,9 @@ now and catches the first library bootstrapped without a family decision.
 |---|---|---|
 | TD-01 | A `tests/` holding only a placeholder passes | `CheckTestsDir.test_placeholder_passes` |
 | TD-02 | A missing `tests/` is a warn, not an error | `CheckTestsDir.test_missing_is_warn_not_error` |
+| TD-03 | A `tests/` carrying Python files but missing `test_settings.py` or `urls.py` is a warn naming them. The standard's layout puts the standalone runner's settings and an empty URL conf there | `CheckTestsDir.test_incomplete_tests_dir_is_warn` |
+| TD-04 | A placeholder-only `tests/` stays clean, per `TD-01`. Empty is the documented not-yet state; half-built is the one worth reporting | `CheckTestsDir.test_placeholder_only_stays_clean` |
+| TD-05 | pytest in use — a `conftest.py`, an `import pytest`, or a pytest dependency — is a warn. The standard is Django's test runner via `runtests.py` | `CheckTestsDir.test_pytest_in_use_is_warn` |
 
 ## LG — `check_logging`
 
