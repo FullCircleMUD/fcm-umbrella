@@ -15,9 +15,10 @@ system-design documentation; each working repo stays version-controlled by its o
 
 **How it fits together:** the game runs on **Evennia** (Python/Django) in `src/game`; reusable,
 FCM-agnostic Evennia extensions live in `libraries/` (world-builder, mob-spawner, targeting, shards,
-yaml-reader); blockchain/XRPL integration spans `xrpl-tools`, `nft_api`, `cosigner`, and
-`transparency`. System design lives in `design/`. Marketing and operational material is secondary and
-kept in private repos (e.g. `ops/`).
+yaml-reader); game-content repos (fcm-world, fcm-mobs, lore, fullcirclemud, transparency) are grouped
+under `content/`; supporting tools — including the blockchain/XRPL integration (`xrpl-tools`,
+`nft_api`, `cosigner`) and `llm-test-harness` — are grouped under `utilities/`. System design lives in
+`design/`. Marketing and operational material is secondary and kept in private repos (e.g. `ops/`).
 
 **Deliberately not:** a financial product — no redemption, peg, or backing. Blockchain is FCM's
 *database* for genuine ownership, not an investment; XRPL tokens are how the game implements items and

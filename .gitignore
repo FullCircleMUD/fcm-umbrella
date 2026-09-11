@@ -1,16 +1,15 @@
 # Nested working repos — version-controlled independently by their own remotes.
-/cosigner/
 /design/
-/fcm-mobs/
-/fcm-world/
-/fullcirclemud/
-/llm-test-harness/
-/lore/
-/nft_api/
 /ops/
-/transparency/
-/xrpl-tools/
 /src/game/
+
+# Grouped nested repos — content/ holds the game-content repos, utilities/ the
+# supporting tools. Ignored as a whole so a new repo is covered the day it
+# appears; see the libraries/ block below for why.
+/content/*
+!/content/README.md
+/utilities/*
+!/utilities/README.md
 
 # Every library is its own repo. Ignored as a whole rather than named one by
 # one, so a new library is covered the day it appears — the per-repo list this
@@ -41,6 +40,3 @@ __pycache__/
 
 # Personal, machine-local instructions — not synced.
 /CLAUDE.local.md
-
-# Scratch website checkout — its own git repo, not part of the umbrella
-temp-website/

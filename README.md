@@ -19,14 +19,17 @@ private repos such as `ops/`.)
 fcm-umbrella/
 ├── .claude/              shared tooling: settings, rules, agents, hooks, memory
 ├── CLAUDE.md             always-loaded project context + working rules
+├── content/              game content repos: fcm-world, fcm-mobs, lore, fullcirclemud,
+│                         transparency, temp-website (each its own repo)
 ├── design/               the technical / knowledge wiki (own repo; start at design/INDEX.md)
 ├── libraries/            Evennia support libraries (each its own repo; see libraries/README.md)
+├── utilities/            supporting tools: cosigner, llm-test-harness, nft_api, xrpl-tools
+│                         (each its own repo)
 ├── src/
 │   ├── game/             the Evennia game (git-crypt'd secrets; own repo)
 │   ├── game-router/      Unix view gamedir (symlinks → ../game) — tracked here
 │   └── game-shard1/      Unix view gamedir (symlinks → ../game) — tracked here
-└── <top-level repos>     cosigner, fcm-mobs, fcm-world, fullcirclemud, llm-test-harness,
-                          lore, nft_api, ops, transparency, xrpl-tools (each its own repo)
+└── ops/                  operations workspace (own repo)
 ```
 
 ## Getting started
