@@ -38,14 +38,19 @@
 
 ## Upcoming Work
 - [Upcoming FCM world build in YAML](upcoming_fcm_world_build.md) — starting 2026-05-08, rebuilding FCM world content via the `evennia-world-builder` library; real-world content expected to surface edge cases the synthetic fixtures didn't reach
+- [Logging migration pass pending](logging-migration-pass-pending.md) — Tim migrates every library to `evennia-logging-extension` himself, newest first; the linter's `log_shim_mechanism` errors are that queue, not defects. Don't migrate unless asked. evennia-equipment done 2026-09-11.
+- [Log levels: INFO vs WARN](feedback_log_levels_info_vs_warn.md) — INFO = game working as intended, recorded for lookup; WARN/ERROR only when something is actually or potentially wrong.
+- [logging-extension loses settings-window writes in twistd children](logging-extension-settings-window-loss.md) — observed live from database-cascade; raise with the extension, not a consumer bug.
 - [fcm-telemetry-spawn parked pending fcm-xrpl](telemetry-spawn-parked-pending-xrpl.md) — scaffolded 2026-08-31; extraction waits on the XRPL library's shape, which may become a hard dependency.
 - [fcm-telemetry-spawn is unlicensed](library-unlicensed-fcm-telemetry-spawn.md) — sanctioned divergence; the linter's 3 licence findings are expected, don't "fix" them.
+- [evennia-targeting does not log](library-no-logging-evennia-targeting.md) — accepted divergence; `log_shim_unused` is expected, adding call sites would break predicate purity.
 
 ## Documentation
 - **Document what IS, not what WAS** — see the always-on rule in [CLAUDE.md](../../CLAUDE.md). When something changes, record the current state only; no "used to be"/"migrated from"/"renamed from" framing unless a human agreed there's a direct need.
 - [Design docs live in the design repo](design-docs-in-design-repo.md) — FCM system design lives in the `design` repo, cloned into the umbrella root as `design/` (kebab-case). Libraries self-document in their own `docs/`.
 - [Docs short and plain](feedback_docs_short_and_plain.md) — what it is, how it works, how to use it; no hedging, no alternatives considered, no archaeology. Cut drafts to a third.
 - [Doc conventions live in doco-structure.md](doc-conventions-home.md) — record new doc conventions in `design/doco-structure.md` (the spec); the `doc-convention-auditor` enforces them, the `doc-convention-linter` checks the mechanical subset.
+- [Cascade migration queue](cascade-migration-queue.md) — the linter's `hand_rolled_router`/`hand_rolled_resolution` errors are the queue for migrating libraries to `evennia-database-cascade`; don't migrate unless asked.
 - [Doc/library audit toolchain + consistency campaign](doc-audit-toolchain-and-campaign.md) — the spec→linter→auditor pairs (all read-only) and the in-flight code-vs-doc consistency sweep (shards + world-builder done; mob-spawner, yaml-reader, src/game next; targeting deferred).
 
 ## Do not use
@@ -55,6 +60,7 @@
 - [Mobs are spawn-script driven, not YAML entities](feedback_mobs_vs_npcs_yaml.md) — NPCs go in `npc_*.yaml`; mobs (incl. named bosses) get only a `mob_area` room tag and are spawned dynamically
 
 ## Instance-to-instance messaging
+- [Shards superseded by scaling](shards-superseded-by-scaling.md) — `evennia-shards` is being deprecated; `evennia-scaling` is the standard and the rebuild targets it. Don't design for shards.
 - [Shards v2 — independent instances, not shared Postgres](shards-v2-independent-instances.md) — standalone Evennia servers; archive+xrpl move the character, the bus coordinates. "Non-shards" means *not shards as it is today*.
 - [evennia-message-bus library](evennia-message-bus-library.md) — working, round trip proven between demo instances; no consumer game yet.
 
@@ -63,10 +69,12 @@
 
 ## Working approach
 - [Confirm before crossing repos](confirm-before-crossing-repos.md) — tasked in one repo, ask before writing in another; reading across is always fine.
+- [Test-instance credentials are root / p](feedback_test_instance_credentials.md) — local demo/test gamedirs only; never anything deployed.
 - [Cheap tests beat confident theory](feedback_cheap_tests_over_theory.md) — verify before asserting; and when I haven't verified, ask ("does this make sense to you?") rather than declaring it broken — or fine.
 - [Reason, don't reflexively gather](feedback_reason_dont_just_gather.md) — senior-dev role: before running a check, ask what result would change the recommendation. "Changes behaviour" ≠ "risky".
 - [One file while iterating, sweep at the end](feedback_targeted_tests_during_dev.md) — run only the test module just edited; broad sweeps cost ~4 min and belong at the end of a body of work. Full suite (~2 hours, holds the test DBs) is end-of-day only.
 - [No troubleshooting relics](feedback_no_troubleshooting_relics.md) — only the code that solved it ships; spikes, debug logging and failed approaches are removed. Revert to a clean tree between attempts.
+- [Cooperative design loop](feedback_cooperative_design_loop.md) — discuss architecture, plan, write cases for one named unit, get approval, *then* write tests. Scaffolding means structure, not content.
 - [Stop on each problem](feedback_stop_on_each_problem.md) — when auditing, surface one finding, stop, and let the user decide fix/leave/defer before editing or hunting the next one. Don't auto-fix or batch-enumerate.
 - [No legacy-data concerns, ever](feedback_no_legacy_data_concerns.md) — pre-alpha, fresh DB every deploy. Never propose a backfill or caveat a change with "objects created before this won't have it". Applies to all work, not just shards.
 - [No hardening language](feedback_no_hardening_language.md) — never write a decision up as settled/locked in/immutable; it's the *current* plan, always open to review. Hardened notes get quoted back as constraints that never existed. Externally-imposed constraints are the exception — record those as hard.
