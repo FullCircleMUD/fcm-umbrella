@@ -67,14 +67,16 @@ chiefly *whether a deviation is a sanctioned divergence* — to a human or a fut
 | `log_shim_exported` — `__init__.py` re-exports the shim, which is internal | warn |
 | `log_shim_unused` — a `log.py` no module calls, so the library emits nothing | warn |
 | `claude_md_reading_order` — `Where to read first` does not name `docs/test-plan.md` | warn |
-| `database_helper_missing` — a library owning an alias with no `<name>_database()` / `describe_*_database()` in `config.py` | warn |
 | `stdlib_logging` — `logging.getLogger` outside the shim; those records reach nobody | warn |
 | `evennia_import_unexplained` — an Evennia import outside `log.py` with no comment saying why | warn |
 | `db_attribute_write` — a write through `.db`, which never reaches the descriptor's `at_set()` | warn |
 | `creates_directories` — library code calling `makedirs`/`mkdir` in the consumer's gamedir | warn |
 | `core_imports_contrib` — a core module importing from `contrib/` | error |
-| `models_without_router` — `models.py` with no `db_router.py` | warn |
-| `router_setup_not_append_form` — `installing.md` documents `DATABASE_ROUTERS` as an assignment or `+=` | warn |
+| `models_without_spec` — `models.py` with no `db_spec.py` declaring the alias to `evennia-database-cascade` | warn |
+| `hand_rolled_router` / `hand_rolled_resolution` — a `db_router.py` or router-method class, or `dj_database_url` / a `DATABASE_URL*` environ read; routing and resolution belong to `evennia-database-cascade` | error |
+| `cascade_dependency_undeclared` — a `db_spec.py` with no `evennia-database-cascade` in `pyproject.toml` dependencies | warn |
+| `db_spec_imports_django` — `db_spec.py` imports Django at module scope, on the consumer's settings path | error |
+| `installing_documents_databases` — `installing.md` documents `DATABASE_ROUTERS` or hand-written `DATABASES[…]` entries instead of pointing at the cascade's docs | warn |
 | `targeting_module_missing` / `targeting_callable_outside_module` — depends on targeting with no `targeting.py`, or a `p_`/`f_`/`op_` declared elsewhere | warn |
 | `contrib_empty` — a `contrib/` scaffolded with no modules in it | warn |
 | `constant_outside_config` — a module-level constant declared outside `config.py` | warn |

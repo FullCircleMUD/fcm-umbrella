@@ -420,25 +420,35 @@ A **warn**; two libraries call `mkdir`/`makedirs` today.
 
 ## DB — `check_database`
 
-Covers *Database aliases and routers*: a library owning tables has a router, and the snippet a
-consumer pastes appends to `DATABASE_ROUTERS` rather than assigning it.
+Covers *Database aliases and routers*: a library owning tables on an alias depends on
+`evennia-database-cascade` and declares a `db_spec` — no router, no `DATABASES` entry, no resolution
+code of its own. The cascade derives routing and migration from one answer; hand-rolled they can
+disagree, and the failure is silent.
 
-Both **warns**. Two libraries have `models.py` and no `db_router.py`, and the append-form check reads
-`installing.md`, which most libraries have only just gained.
+Severities follow the logging precedent: a hand-rolled router or resolution is the wrong mechanism,
+so `DB-09`/`DB-10` are **errors** — the migration queue, exactly as `log_shim_mechanism` is for
+logging. Four libraries report them today. A `models.py` with no spec is a **warn**: it is either
+un-migrated or legitimately game-database-scoped, and the `CLAUDE.md` pin that distinguishes those is
+the judgment layer's to read.
 
-The append form is checked as written prose rather than executed: `installing.md` must show the
-`list(globals().get("DATABASE_ROUTERS", []))` shape and must not show a bare assignment or `+=`. The
-standard has it copied verbatim between libraries precisely so it can be recognised.
+`tests.py` is exempt from `DB-09` and `DB-10`, as it is everywhere in this linter — a test
+legitimately builds router doubles and environment fixtures.
 
 | ID | Case | Test function |
 |---|---|---|
 | DB-01 | A library with no `models.py` produces no findings | `CheckDatabase.test_no_models_is_silent` |
-| DB-02 | A `models.py` with no `db_router.py` is a warn. Owning tables and not steering them is how a library's rows end up in the game database | `CheckDatabase.test_models_without_router_is_warn` |
-| DB-03 | A `models.py` with a `db_router.py` produces no findings | `CheckDatabase.test_models_with_router_is_clean` |
-| DB-04 | An `installing.md` showing `DATABASE_ROUTERS = [` or `+=` is a warn. Evennia defines no `DATABASE_ROUTERS`, so a bare assignment works on a clean gamedir and silently drops another library's router on one that already has some | `CheckDatabase.test_assign_form_is_warn` |
-| DB-05 | An `installing.md` showing the append form produces no findings | `CheckDatabase.test_append_form_is_clean` |
-| DB-06 | The append-form check applies only where the library has a router — a library with none documents no routers | `CheckDatabase.test_append_check_needs_a_router` |
-| DB-07 | A library with a router but no `<name>_database()` / `describe_*_database()` pair in `config.py` is a warn. The helper resolves the alias through its rungs and the companion names which one won, so two instances that should share a database are confirmed by reading two log lines | `CheckDatabase.test_router_without_database_helper_is_warn` |
+| DB-08 | A `models.py` with no `db_spec.py` is a warn — either un-migrated or legitimately game-database-scoped; the `CLAUDE.md` pin is the judgment layer's to read. A spec beside the models clears it | `CheckDatabase.test_models_without_spec_is_warn` |
+| DB-09 | A `db_router.py`, or a class defining `db_for_read`/`db_for_write`/`allow_migrate` in any module but `tests.py`, is an error — it steers databases and it is the wrong mechanism. This is what an un-migrated library reports | `CheckDatabase.test_hand_rolled_router_is_error` |
+| DB-10 | Hand-rolled resolution — `dj_database_url` imported, or an environ read of a `DATABASE_URL*` literal, outside `tests.py` — is an error naming the module | `CheckDatabase.test_hand_rolled_resolution_is_error` |
+| DB-11 | A `db_spec.py` with no `evennia-database-cascade` in `pyproject.toml` dependencies is a warn. The spec imports it, so without the declaration the library works only where something else happened to install it | `CheckDatabase.test_spec_without_dependency_is_warn` |
+| DB-12 | A `db_spec.py` importing Django at module scope is an error — the spec sits on the consumer's settings path, before `django.setup()` | `CheckDatabase.test_spec_importing_django_is_error` |
+| DB-13 | An `installing.md` documenting `DATABASE_ROUTERS` or hand-written `DATABASES[…]` entries is a warn — it names the cascade dependency and points at the cascade's own docs. The `DATABASES, DATABASE_ROUTERS = configure(…)` call is the cascade's shape and is not a finding | `CheckDatabase.test_installing_documenting_databases_is_warn` |
+| DB-14 | `evennia-database-cascade` itself produces no findings here — its `router.py` and environ reads *are* the mechanism | `CheckDatabase.test_the_cascade_itself_is_exempt` |
+| DB-15 | A `models.py` with a `db_spec.py`, the declared dependency and an `installing.md` showing the `configure()` call produces no findings | `CheckDatabase.test_spec_with_dependency_is_clean` |
+
+**Retired.** `DB-02` to `DB-07` enforced the hand-rolled pattern — the library's own router, the
+`describe_*_database()` helper pair, and the `DATABASE_ROUTERS` append snippet — which the cascade
+replaces. IDs are not reused.
 
 ## TG — `check_targeting`
 

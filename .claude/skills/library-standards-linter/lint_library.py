@@ -434,53 +434,124 @@ def check_installing(ctx):
     return out
 
 
-ROUTER_APPEND = re.compile(r"globals\(\)\.get\(\s*[\"']DATABASE_ROUTERS")
-ROUTER_ASSIGN = re.compile(r"^\s*DATABASE_ROUTERS\s*(=\s*\[|\+=)", re.M)
+CASCADE_DIST = "evennia-database-cascade"
+CASCADE_PKG = "evennia_database_cascade"
+ROUTER_METHODS = {"db_for_read", "db_for_write", "allow_migrate"}
+INSTALLING_DATABASES = re.compile(r"^\s*DATABASE_ROUTERS\s*(=|\+=)|DATABASES\[", re.M)
 TARGETING_CALLABLE = re.compile(r"^(p|f|op)_")
 TARGETING_PACKAGE = "evennia_targeting"
 TARGETING_DIST = "evennia-targeting"
 
 
-def check_database(ctx):
-    """A library owning tables has a router, documented in the append form.
+def _defines_router_class(tree):
+    """True when any class in the module defines a Django router method."""
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef):
+            methods = {n.name for n in node.body
+                       if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+            if methods & ROUTER_METHODS:
+                return True
+    return False
 
-    See § Database aliases and routers. The append form is recognised as prose
-    rather than executed — the standard has it copied verbatim between libraries
-    precisely so it can be.
+
+def _resolves_from_environment(tree):
+    """True when the module imports dj_database_url or reads a DATABASE_URL* name."""
+    def _is_url_literal(node):
+        return (isinstance(node, ast.Constant) and isinstance(node.value, str)
+                and node.value.startswith("DATABASE_URL"))
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            if any(a.name.split(".")[0] == "dj_database_url" for a in node.names):
+                return True
+        elif isinstance(node, ast.ImportFrom):
+            if node.module and node.module.split(".")[0] == "dj_database_url":
+                return True
+        elif isinstance(node, ast.Call):
+            if (isinstance(node.func, ast.Attribute)
+                    and node.func.attr in ("get", "getenv")
+                    and node.args and _is_url_literal(node.args[0])):
+                return True
+        elif isinstance(node, ast.Subscript):
+            if _is_url_literal(node.slice):
+                return True
+    return False
+
+
+def check_database(ctx):
+    """A library owning tables declares a db_spec to evennia-database-cascade.
+
+    See § Database aliases and routers. Routing and resolution belong to the
+    cascade — a hand-rolled router or environment resolution is the wrong
+    mechanism, the same shape as `log_shim_mechanism`. The cascade itself is
+    exempt: its router.py and environ reads *are* the mechanism.
     """
-    if ctx.pkg is None:
+    if ctx.pkg is None or ctx.expected_pkg == CASCADE_PKG:
         return []
     out = []
-    has_router = (ctx.pkg / "db_router.py").exists()
-    if (ctx.pkg / "models.py").exists() and not has_router:
-        out.append(ctx.F(
-            "models_without_router", "warn", ctx.pkg / "db_router.py",
-            "the library declares models.py but ships no db_router.py. Without a router, "
-            "`evennia migrate` creates the library's tables in the game database too, and "
-            "the separation exists only on paper"))
+    spec = ctx.pkg / "db_spec.py"
 
-    if has_router:
-        config = ctx.pkg / CONSTANT_HOME
-        source = config.read_text(encoding="utf-8", errors="replace") if config.exists() else ""
-        if not (re.search(r"^def \w*_database\b", source, re.M)
-                and re.search(r"^def describe_\w*_database\b", source, re.M)):
+    if (ctx.pkg / "models.py").exists() and not spec.exists():
+        out.append(ctx.F(
+            "models_without_spec", "warn", ctx.pkg / "models.py",
+            "the library declares models.py but no db_spec.py. Tables that belong on an "
+            "alias are declared to evennia-database-cascade through a spec; tables that "
+            "belong in the game database are pinned as such in CLAUDE.md, which is the "
+            "judgment layer's to read"))
+
+    router_file = ctx.pkg / "db_router.py"
+    if router_file.exists():
+        out.append(ctx.F(
+            "hand_rolled_router", "error", router_file,
+            "db_router.py steers databases and it is the wrong mechanism — routers are "
+            "derived by evennia-database-cascade from the library's db_spec, so routing "
+            "and migration cannot disagree. This is what an un-migrated library reports"))
+
+    for f, tree in _package_modules(ctx):
+        if f != router_file and _defines_router_class(tree):
             out.append(ctx.F(
-                "database_helper_missing", "warn", config,
-                f"the library owns an alias but {CONSTANT_HOME} ships no "
-                f"`<name>_database()` / `describe_*_database()` pair. The helper resolves the "
-                f"alias through its rungs so a consumer writes one line instead of a DATABASES "
-                f"dict, and the companion names which rung won — two instances that should "
-                f"share a database are then confirmed by reading two log lines"))
+                "hand_rolled_router", "error", f,
+                f"{f.name} defines a class with db_for_read/db_for_write/allow_migrate. "
+                f"Routers are derived by evennia-database-cascade from the library's "
+                f"db_spec. This is what an un-migrated library reports"))
+        if _resolves_from_environment(tree):
+            out.append(ctx.F(
+                "hand_rolled_resolution", "error", f,
+                f"{f.name} resolves a database from the environment (dj_database_url, "
+                f"or a DATABASE_URL* read). Resolution belongs to "
+                f"evennia-database-cascade, which derives routing and migration from "
+                f"the same answer. This is what an un-migrated library reports"))
+        if f == spec:
+            for node in tree.body:
+                module = (node.module if isinstance(node, ast.ImportFrom)
+                          else node.names[0].name
+                          if isinstance(node, ast.Import) and node.names else None)
+                if module and module.split(".")[0] == "django":
+                    out.append(ctx.F(
+                        "db_spec_imports_django", "error", f,
+                        "db_spec.py imports Django at module scope. The spec sits on "
+                        "the consumer's settings path, before django.setup(), so the "
+                        "import raises before the server starts"))
+                    break
+
+    if spec.exists():
+        deps = ((ctx.pyproject or {}).get("project") or {}).get("dependencies") or []
+        if not any(CASCADE_DIST in str(d) for d in deps):
+            out.append(ctx.F(
+                "cascade_dependency_undeclared", "warn", ctx.pyproject_path,
+                f"the library declares a db_spec but pyproject.toml does not declare "
+                f"{CASCADE_DIST}. The spec imports it, so without the declaration the "
+                f"library works only where something else happened to install it"))
 
     installing = ctx.libdir / "docs" / "installing.md"
-    if has_router and installing.exists():
+    if installing.exists():
         text = installing.read_text(encoding="utf-8", errors="replace")
-        if ROUTER_ASSIGN.search(text) and not ROUTER_APPEND.search(text):
+        if INSTALLING_DATABASES.search(text):
             out.append(ctx.F(
-                "router_setup_not_append_form", "warn", installing,
-                "installing.md documents DATABASE_ROUTERS as an assignment or `+=`. Evennia "
-                "defines no DATABASE_ROUTERS, so that works on a clean gamedir and silently "
-                "drops another library's router on one that already has some"))
+                "installing_documents_databases", "warn", installing,
+                "installing.md documents DATABASE_ROUTERS or a hand-written DATABASES "
+                "entry. The consumer instruction is the cascade's: name the dependency "
+                "and point at evennia-database-cascade's own installing.md"))
     return out
 
 

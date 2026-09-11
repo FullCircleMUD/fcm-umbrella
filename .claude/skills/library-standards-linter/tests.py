@@ -712,13 +712,24 @@ _ROUTER_PATH = "libraries/evennia-lib/src/evennia_lib/db_router.py"
 _TARGETING_PATH = "libraries/evennia-lib/src/evennia_lib/targeting.py"
 _CONTRIB = "libraries/evennia-lib/src/evennia_lib/contrib"
 
-APPEND_FORM = INSTALLING + """
+_SPEC_PATH = "libraries/evennia-lib/src/evennia_lib/db_spec.py"
+
+DB_SPEC = SPDX + (
+    "from evennia_database_cascade import AliasSpec\n\n"
+    'SPEC = AliasSpec(app_label="evennia_lib", alias="evennia_lib")\n')
+
+PYPROJECT_CASCADE = PYPROJECT.replace(
+    '"evennia-logging-extension"',
+    '"evennia-logging-extension", "evennia-database-cascade"')
+
+#: The cascade's own consumer shape — must never read as hand-written DATABASES doc.
+INSTALLING_CASCADE = INSTALLING + """
 ```python
-_R = "evennia_lib.db_router.LibRouter"
-DATABASE_ROUTERS = list(globals().get("DATABASE_ROUTERS", []))
+DATABASES, DATABASE_ROUTERS = configure(
+    DATABASES, INSTALLED_APPS, GAME_DIR, os.environ
+)
 ```
 """
-ASSIGN_FORM = INSTALLING + '\n```python\nDATABASE_ROUTERS = ["evennia_lib.db_router.LibRouter"]\n```\n'
 
 
 class CheckDatabase(ValidatorBase):
@@ -726,51 +737,91 @@ class CheckDatabase(ValidatorBase):
         """DB-01"""
         self.assertEqual(lib.check_database(self.ctx()), [])
 
-    def test_models_without_router_is_warn(self):
-        """DB-02"""
+    def test_models_without_spec_is_warn(self):
+        """DB-08"""
         f = lib.check_database(self.ctx(**{_MODELS_PATH: SPDX + "x = 1\n"}))
-        self.assertIn("models_without_router", kinds(f, "warn"))
-
-    def test_models_with_router_is_clean(self):
-        """DB-03"""
+        self.assertIn("models_without_spec", kinds(f, "warn"))
         f = lib.check_database(self.ctx(**{
-            _MODELS_PATH: SPDX + "x = 1\n", _ROUTER_PATH: SPDX + "class R:\n    pass\n",
-            _CONFIG_PATH: SPDX + "def lib_database(p):\n    return {}\n\n\n"
-                                 "def describe_lib_database():\n    return ''\n",
-            }))
-        self.assertEqual(f, [])
+            _MODELS_PATH: SPDX + "x = 1\n", _SPEC_PATH: DB_SPEC,
+            "libraries/evennia-lib/pyproject.toml": PYPROJECT_CASCADE}))
+        self.assertNotIn("models_without_spec", kinds(f))
 
-    def test_router_without_database_helper_is_warn(self):
-        """DB-07"""
+    def test_hand_rolled_router_is_error(self):
+        """DB-09"""
         f = lib.check_database(self.ctx(**{_ROUTER_PATH: SPDX + "class R:\n    pass\n"}))
-        self.assertIn("database_helper_missing", kinds(f, "warn"))
+        self.assertIn("hand_rolled_router", kinds(f, "error"))
+        # a router-shaped class in any other module reports the same
         f = lib.check_database(self.ctx(**{
-            _ROUTER_PATH: SPDX + "class R:\n    pass\n",
-            _CONFIG_PATH: SPDX + "def lib_database(p):\n    return {}\n\n\n"
-                                 "def describe_lib_database():\n    return ''\n"}))
-        self.assertNotIn("database_helper_missing", kinds(f))
+            "libraries/evennia-lib/src/evennia_lib/routing.py":
+                SPDX + "class R:\n    def db_for_read(self, model, **hints):\n"
+                       "        return None\n"}))
+        self.assertIn("hand_rolled_router", kinds(f, "error"))
+        # tests.py is exempt, as everywhere
+        f = lib.check_database(self.ctx(**{
+            "libraries/evennia-lib/src/evennia_lib/tests.py":
+                LIB_TESTS + "\n\nclass FakeRouter:\n"
+                            "    def db_for_read(self, model, **hints):\n"
+                            "        return None\n"}))
+        self.assertNotIn("hand_rolled_router", kinds(f))
 
-    def test_assign_form_is_warn(self):
-        """DB-04"""
+    def test_hand_rolled_resolution_is_error(self):
+        """DB-10"""
         f = lib.check_database(self.ctx(**{
-            _ROUTER_PATH: SPDX + "class R:\n    pass\n",
-            "libraries/evennia-lib/docs/installing.md": ASSIGN_FORM}))
-        self.assertIn("router_setup_not_append_form", kinds(f, "warn"))
+            _CONFIG_PATH: SPDX + "import dj_database_url\n"}))
+        self.assertIn("hand_rolled_resolution", kinds(f, "error"))
+        f = lib.check_database(self.ctx(**{
+            _CONFIG_PATH: SPDX + "import os\n\n\ndef lib_database(path):\n"
+                                 "    return os.environ.get('DATABASE_URL_LIB')\n"}))
+        self.assertIn("hand_rolled_resolution", kinds(f, "error"))
+        # tests.py is exempt, as everywhere
+        f = lib.check_database(self.ctx(**{
+            "libraries/evennia-lib/src/evennia_lib/tests.py":
+                LIB_TESTS + "\nimport os\n\nURL = os.environ.get('DATABASE_URL')\n"}))
+        self.assertNotIn("hand_rolled_resolution", kinds(f))
 
-    def test_append_form_is_clean(self):
-        """DB-05"""
+    def test_spec_without_dependency_is_warn(self):
+        """DB-11"""
+        f = lib.check_database(self.ctx(**{_SPEC_PATH: DB_SPEC}))
+        self.assertIn("cascade_dependency_undeclared", kinds(f, "warn"))
+
+    def test_spec_importing_django_is_error(self):
+        """DB-12"""
         f = lib.check_database(self.ctx(**{
-            _ROUTER_PATH: SPDX + "class R:\n    pass\n",
-            _CONFIG_PATH: SPDX + "def lib_database(p):\n    return {}\n\n\n"
-                                 "def describe_lib_database():\n    return ''\n",
-            "libraries/evennia-lib/docs/installing.md": APPEND_FORM}))
+            _SPEC_PATH: SPDX + "from django.conf import settings\n\nSPEC = None\n",
+            "libraries/evennia-lib/pyproject.toml": PYPROJECT_CASCADE}))
+        self.assertIn("db_spec_imports_django", kinds(f, "error"))
+
+    def test_installing_documenting_databases_is_warn(self):
+        """DB-13"""
+        for snippet in (
+                '\n```python\nDATABASE_ROUTERS = ["evennia_lib.db_router.R"]\n```\n',
+                '\n```python\nDATABASE_ROUTERS += ["evennia_lib.db_router.R"]\n```\n',
+                '\n```python\nDATABASES["lib"] = lib_database(path)\n```\n'):
+            with self.subTest(snippet=snippet):
+                f = lib.check_database(self.ctx(**{_INSTALLING_PATH: INSTALLING + snippet}))
+                self.assertIn("installing_documents_databases", kinds(f, "warn"))
+
+    def test_the_cascade_itself_is_exempt(self):
+        """DB-14"""
+        # Its router.py and environ reads *are* the mechanism.
+        ctx = self.ctx(**{
+            "libraries/evennia-lib/src/evennia_lib/router.py":
+                SPDX + "class CascadeRouter:\n    def db_for_read(self, model, **hints):\n"
+                       "        return None\n",
+            _CONFIG_PATH: SPDX + "import os\n\n\ndef common_url():\n"
+                                 "    return os.environ.get('DATABASE_URL')\n"})
+        ctx.name = "evennia-database-cascade"
+        ctx.expected_pkg = "evennia_database_cascade"
+        self.assertEqual(lib.check_database(ctx), [])
+
+    def test_spec_with_dependency_is_clean(self):
+        """DB-15"""
+        f = lib.check_database(self.ctx(**{
+            _MODELS_PATH: SPDX + "x = 1\n",
+            _SPEC_PATH: DB_SPEC,
+            "libraries/evennia-lib/pyproject.toml": PYPROJECT_CASCADE,
+            _INSTALLING_PATH: INSTALLING_CASCADE}))
         self.assertEqual(f, [])
-
-    def test_append_check_needs_a_router(self):
-        """DB-06"""
-        f = lib.check_database(self.ctx(**{
-            "libraries/evennia-lib/docs/installing.md": ASSIGN_FORM}))
-        self.assertNotIn("router_setup_not_append_form", kinds(f))
 
 
 class CheckTargeting(ValidatorBase):
