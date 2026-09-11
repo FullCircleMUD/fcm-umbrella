@@ -224,6 +224,8 @@ is a work queue a library drains at its own pace, not a gate that fails every ru
 | CN-07 | `migrations/` is excluded — Django generates those files and nobody hand-places their constants | `test_constants_in_migrations_are_ignored` |
 | CN-09 | A lowercase or mixed-case module-level assignment is not a constant and is ignored — otherwise every module-level variable would be a finding | `test_lowercase_assignment_is_not_a_constant` |
 | CN-10 | A constant in `log.py` is a warn like any other module. The exemption is gone, and this is what fails if anyone re-adds it | `test_a_constant_in_the_shim_is_a_warn` |
+| CN-11 | `SPEC` in `db_spec.py` produces nothing — the cascade's discovery imports that module and reads that attribute, so it is the one name the rule cannot house in `config.py` | `test_the_spec_binding_in_db_spec_is_exempt` |
+| CN-12 | Any other constant in `db_spec.py` is a warn — the exemption is the one name, not the file | `test_any_other_constant_in_db_spec_is_a_warn` |
 
 **Retired.** `CN-04`, `CN-05` and `CN-08` covered the `log.py` constants exemption, which no longer
 exists — a hardcoded log filename is a literal in the one call that uses it, and a settable one lives
@@ -445,6 +447,8 @@ legitimately builds router doubles and environment fixtures.
 | DB-13 | An `installing.md` documenting `DATABASE_ROUTERS` or hand-written `DATABASES[…]` entries is a warn — it names the cascade dependency and points at the cascade's own docs. The `DATABASES, DATABASE_ROUTERS = configure(…)` call is the cascade's shape and is not a finding | `CheckDatabase.test_installing_documenting_databases_is_warn` |
 | DB-14 | `evennia-database-cascade` itself produces no findings here — its `router.py` and environ reads *are* the mechanism | `CheckDatabase.test_the_cascade_itself_is_exempt` |
 | DB-15 | A `models.py` with a `db_spec.py`, the declared dependency and an `installing.md` showing the `configure()` call produces no findings | `CheckDatabase.test_spec_with_dependency_is_clean` |
+| DB-16 | A `db_spec.py` binding no `SPEC` is a warn — discovery reads that attribute, so a spec module without one declares nothing and the alias is never placed | `CheckDatabase.test_a_db_spec_binding_no_spec_is_a_warn` |
+| DB-17 | A `SPEC` imported into `db_spec.py` counts as bound — discovery finds a re-export the same way | `CheckDatabase.test_a_reexported_spec_still_counts_as_bound` |
 
 **Retired.** `DB-02` to `DB-07` enforced the hand-rolled pattern — the library's own router, the
 `describe_*_database()` helper pair, and the `DATABASE_ROUTERS` append snippet — which the cascade

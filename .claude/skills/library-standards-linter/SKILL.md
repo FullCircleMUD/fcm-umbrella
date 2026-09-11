@@ -76,10 +76,11 @@ chiefly *whether a deviation is a sanctioned divergence* — to a human or a fut
 | `hand_rolled_router` / `hand_rolled_resolution` — a `db_router.py` or router-method class, or `dj_database_url` / a `DATABASE_URL*` environ read; routing and resolution belong to `evennia-database-cascade` | error |
 | `cascade_dependency_undeclared` — a `db_spec.py` with no `evennia-database-cascade` in `pyproject.toml` dependencies | warn |
 | `db_spec_imports_django` — `db_spec.py` imports Django at module scope, on the consumer's settings path | error |
+| `db_spec_missing_spec` — a `db_spec.py` binding no `SPEC`, which is the attribute the cascade's discovery reads | warn |
 | `installing_documents_databases` — `installing.md` documents `DATABASE_ROUTERS` or hand-written `DATABASES[…]` entries instead of pointing at the cascade's docs | warn |
 | `targeting_module_missing` / `targeting_callable_outside_module` — depends on targeting with no `targeting.py`, or a `p_`/`f_`/`op_` declared elsewhere | warn |
 | `contrib_empty` — a `contrib/` scaffolded with no modules in it | warn |
-| `constant_outside_config` — a module-level constant declared outside `config.py` | warn |
+| `constant_outside_config` — a module-level constant declared outside `config.py`; `SPEC` in `db_spec.py` is exempt, being the cascade's discovery contract | warn |
 | `settings_read_outside_config` — a `settings.X` or `getattr(settings, …)` read bypassing its accessor | warn |
 | `settings_validator_uncalled` / `settings_validator_outside_config` — `check_settings()` defined but never called from `ready()`, or defined outside `config.py` | error |
 | `settings_validator_name` — the boot validator is not named `check_settings` | warn |

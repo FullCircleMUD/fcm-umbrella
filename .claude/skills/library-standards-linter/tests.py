@@ -264,6 +264,19 @@ class CheckConstants(ValidatorBase):
         self.assertIn("constant_outside_config", kinds(f, "warn"))
         self.assertIn("_LOG_FILENAME", messages(f))
 
+    def test_the_spec_binding_in_db_spec_is_exempt(self):
+        """CN-11 — SPEC in db_spec.py is the cascade's discovery contract."""
+        f = lib.check_constants(self.ctx(**{_SPEC_PATH: DB_SPEC}))
+        self.assertEqual(f, [])
+
+    def test_any_other_constant_in_db_spec_is_a_warn(self):
+        """CN-12 — the exemption is the one name, not the file."""
+        f = lib.check_constants(self.ctx(**{
+            _SPEC_PATH: DB_SPEC + "DEFAULT_TIMEOUT = 5\n"}))
+        self.assertIn("constant_outside_config", kinds(f, "warn"))
+        self.assertIn("DEFAULT_TIMEOUT", messages(f))
+        self.assertNotIn(":SPEC", messages(f))
+
     def test_lowercase_assignment_is_not_a_constant(self):
         """CN-09"""
         f = lib.check_constants(self.ctx(**{
@@ -790,6 +803,24 @@ class CheckDatabase(ValidatorBase):
             _SPEC_PATH: SPDX + "from django.conf import settings\n\nSPEC = None\n",
             "libraries/evennia-lib/pyproject.toml": PYPROJECT_CASCADE}))
         self.assertIn("db_spec_imports_django", kinds(f, "error"))
+
+    def test_a_db_spec_binding_no_spec_is_a_warn(self):
+        """DB-16 — discovery reads the SPEC attribute; a module without one declares nothing."""
+        f = lib.check_database(self.ctx(**{
+            _SPEC_PATH: SPDX + "from evennia_database_cascade import AliasSpec\n",
+            "libraries/evennia-lib/pyproject.toml": PYPROJECT_CASCADE}))
+        self.assertIn("db_spec_missing_spec", kinds(f, "warn"))
+        f = lib.check_database(self.ctx(**{
+            _SPEC_PATH: DB_SPEC,
+            "libraries/evennia-lib/pyproject.toml": PYPROJECT_CASCADE}))
+        self.assertNotIn("db_spec_missing_spec", kinds(f))
+
+    def test_a_reexported_spec_still_counts_as_bound(self):
+        """DB-17 — a SPEC imported into db_spec.py is found by discovery the same way."""
+        f = lib.check_database(self.ctx(**{
+            _SPEC_PATH: SPDX + "from .config import SPEC\n",
+            "libraries/evennia-lib/pyproject.toml": PYPROJECT_CASCADE}))
+        self.assertNotIn("db_spec_missing_spec", kinds(f))
 
     def test_installing_documenting_databases_is_warn(self):
         """DB-13"""

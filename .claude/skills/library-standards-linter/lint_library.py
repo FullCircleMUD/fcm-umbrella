@@ -228,13 +228,18 @@ def _module_constants(path: Path):
 
 
 def check_constants(ctx):
-    """Every module-level constant lives in config.py — no exemptions.
+    """Every module-level constant lives in config.py — one exemption.
 
     Encodes *Where constants are declared* in library-standards.md. Reports
     `constant_outside_config` (warn) for a constant declared anywhere but
     `config.py`. `log.py` is an ordinary module here: a hardcoded log filename
     is a literal in the `make_logger` call, and a settable one lives in
     `config.py` like any other setting, so the shim declares nothing.
+
+    The exemption is `SPEC` in `db_spec.py` — the cascade's discovery imports
+    that module and reads that attribute, so it is the one name the rule
+    cannot house in `config.py`. The name, not the file: any other constant
+    declared in `db_spec.py` is reported as usual.
 
     `tests.py` and `migrations/` are out of scope — the first is scaffolding
     that lives in the package by Django convention, the second is generated.
@@ -248,6 +253,8 @@ def check_constants(ctx):
         if f.name == CONSTANT_HOME:
             continue
         constants, _ = _module_constants(f)
+        if f.name == "db_spec.py":
+            constants = [c for c in constants if c[0] != "SPEC"]
         stray += [(f, name) for name, _ in constants]
 
     if stray:
@@ -533,6 +540,22 @@ def check_database(ctx):
                         "the consumer's settings path, before django.setup(), so the "
                         "import raises before the server starts"))
                     break
+            binds_spec = any(
+                (isinstance(node, ast.Assign) and any(
+                    isinstance(t, ast.Name) and t.id == "SPEC"
+                    for t in node.targets))
+                or (isinstance(node, ast.AnnAssign)
+                    and isinstance(node.target, ast.Name)
+                    and node.target.id == "SPEC")
+                or (isinstance(node, ast.ImportFrom) and any(
+                    (a.asname or a.name) == "SPEC" for a in node.names))
+                for node in tree.body)
+            if not binds_spec:
+                out.append(ctx.F(
+                    "db_spec_missing_spec", "warn", f,
+                    "db_spec.py binds no SPEC. The cascade's discovery imports the "
+                    "module and reads its SPEC attribute — a spec module without "
+                    "one declares nothing, and the alias is never placed"))
 
     if spec.exists():
         deps = ((ctx.pyproject or {}).get("project") or {}).get("dependencies") or []
