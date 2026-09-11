@@ -328,6 +328,25 @@ reported as outside its accessor, and two findings for one line is noise.
 What this cannot see is an accessor that is *missing* — the linter only knows about the reads that
 exist, not the ones a library ought to have. That is the judgment layer's.
 
+**The layer-over exemption.** *Layering over a setting* in `library-standards.md` carves out the read
+that is part of overriding a setting rather than consuming a value: read what is installed, build on
+it, put it back. A class setting subclassed and repointed, or a list setting appended to — the check
+does not distinguish, because the standard does not either. The read is the operand of that write.
+
+Two conditions, and both have to hold — together they are what keep the exemption from becoming a free
+pass for any stray read:
+
+- **The same function writes the same setting back.** A `getattr(settings, X)` or `settings.X` whose
+  function also contains `setattr(settings, X, …)` or `settings.X = …`. Read-only is an ordinary
+  settings read, and so is a read paired with a write of some *other* setting — the stash write in the
+  reference implementation is exactly that, and it does not qualify a thing.
+- **In `apps.py`.** The standard says install time, inside `AppConfig.ready()`; `apps.py` is that
+  module by Django convention and is what a linter can decide. Layering from anywhere else is a
+  standards conversation, not something this check waves through.
+
+The setting name is matched whether it is a literal or a parameter, because the reference implementation
+passes it in — one function over a table of four settings.
+
 | ID | Case | Test function |
 |---|---|---|
 | SA-01 | A library reading no settings produces no findings | `CheckSettingsAccess.test_clean` |
@@ -339,6 +358,12 @@ exist, not the ones a library ought to have. That is the judgment layer's.
 | SA-07 | The same import inside a function produces no findings | `CheckSettingsAccess.test_import_inside_a_function_is_clean` |
 | SA-08 | `tests.py` is exempt — a test legitimately reaches for settings directly | `CheckSettingsAccess.test_tests_module_is_exempt` |
 | SA-09 | A library with no package produces no findings | `CheckSettingsAccess.test_no_package_is_silent` |
+| SA-10 | A read in `apps.py` whose function writes the same setting back produces no findings — the read is the operand of a class override, not a settings read | `CheckSettingsAccess.test_layer_over_is_clean` |
+| SA-11 | The same read with no write of that setting is a warn. A read that feeds nothing is an ordinary settings read | `CheckSettingsAccess.test_read_without_a_write_is_warn` |
+| SA-12 | A read paired with a write of a *different* setting is a warn — the stash write is not the layer-over write | `CheckSettingsAccess.test_write_of_a_different_setting_is_warn` |
+| SA-13 | The same read-and-write pair outside `apps.py` is a warn. The exemption is install time, and `apps.py` is where that is decidable | `CheckSettingsAccess.test_layer_over_outside_apps_is_warn` |
+| SA-14 | The setting named by a parameter rather than a literal is matched the same way, which is the form the reference implementation uses | `CheckSettingsAccess.test_layer_over_by_parameter_is_clean` |
+| SA-15 | A list setting read, appended to and written back is clean. Overwriting would discard the consumer's entries exactly as overwriting a class setting discards their class, so the read is there for the same reason | `CheckSettingsAccess.test_layer_over_a_list_setting_is_clean` |
 
 ## BV — `check_boot_validation`
 

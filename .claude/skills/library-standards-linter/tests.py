@@ -507,6 +507,38 @@ def get_tick_seconds():
 '''
 
 
+def _layering(read, write, prelude=""):
+    """An apps.py-shaped module whose one function reads and writes a setting.
+
+    The reference implementation's shape: read what the class setting names,
+    subclass it, point the setting at the subclass. Parameterised so a case can
+    break exactly one of the two conditions the exemption rests on.
+    """
+    return SPDX + (
+        "from django.apps import AppConfig\n\n\n"
+        "class LibConfig(AppConfig):\n"
+        '    name = "evennia_lib"\n\n'
+        f"    def _layer_over(self{prelude}):\n"
+        "        from django.conf import settings\n\n"
+        '        ours = "evennia_lib.services.LibService"\n'
+        f"        original = {read}\n"
+        "        if original == ours:\n"
+        "            return\n"
+        f"        {write}\n"
+    )
+
+
+LAYER_OVER_LITERAL = _layering(
+    'getattr(settings, "LIB_SERVICE_CLASS")',
+    'setattr(settings, "LIB_SERVICE_CLASS", ours)',
+)
+LAYER_OVER_PARAMETER = _layering(
+    "getattr(settings, setting)",
+    "setattr(settings, setting, ours)",
+    prelude=", setting",
+)
+
+
 class CheckSettingsAccess(ValidatorBase):
     def test_clean(self):
         """SA-01"""
@@ -558,6 +590,43 @@ class CheckSettingsAccess(ValidatorBase):
     def test_no_package_is_silent(self):
         """SA-09"""
         self.assertEqual(lib.check_settings_access(self.ctx(drop=SRC_FILES)), [])
+
+    def test_layer_over_is_clean(self):
+        """SA-10: the read is the operand of the write, not a value consumed."""
+        f = lib.check_settings_access(self.ctx(**{_APPS_PATH: LAYER_OVER_LITERAL}))
+        self.assertEqual(f, [])
+
+    def test_read_without_a_write_is_warn(self):
+        """SA-11: a read that feeds nothing is an ordinary settings read."""
+        f = lib.check_settings_access(self.ctx(**{
+            _APPS_PATH: _layering('getattr(settings, "LIB_SERVICE_CLASS")', "pass")}))
+        self.assertIn("settings_read_outside_config", kinds(f, "warn"))
+
+    def test_write_of_a_different_setting_is_warn(self):
+        """SA-12: the stash write is not the layer-over write."""
+        f = lib.check_settings_access(self.ctx(**{
+            _APPS_PATH: _layering(
+                'getattr(settings, "LIB_SERVICE_CLASS")',
+                'setattr(settings, "_LIB_ORIGINAL_SERVICE", original)')}))
+        self.assertIn("settings_read_outside_config", kinds(f, "warn"))
+
+    def test_layer_over_outside_apps_is_warn(self):
+        """SA-13: the exemption is install time, and apps.py is where that is decidable."""
+        f = lib.check_settings_access(self.ctx(**{_CORE_PATH: LAYER_OVER_LITERAL}))
+        self.assertIn("settings_read_outside_config", kinds(f, "warn"))
+
+    def test_layer_over_by_parameter_is_clean(self):
+        """SA-14: the reference implementation passes the setting name in."""
+        f = lib.check_settings_access(self.ctx(**{_APPS_PATH: LAYER_OVER_PARAMETER}))
+        self.assertEqual(f, [])
+
+    def test_layer_over_a_list_setting_is_clean(self):
+        """SA-15: appending to a list is the same shape as subclassing a class."""
+        f = lib.check_settings_access(self.ctx(**{
+            _APPS_PATH: _layering(
+                "list(settings.AT_SERVER_STARTSTOP_MODULE)",
+                "settings.AT_SERVER_STARTSTOP_MODULE = original + [ours]")}))
+        self.assertEqual(f, [])
 
 
 _APPS_PATH = "libraries/evennia-lib/src/evennia_lib/apps.py"

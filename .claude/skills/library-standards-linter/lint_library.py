@@ -61,6 +61,10 @@ CONSTANT_SKIP_DIRS = {"migrations", "__pycache__"}
 # scaffolding rather than library surface.
 CONSTANT_SKIP_FILES = {"tests.py"}
 CONSTANT_HOME = "config.py"
+# Where the layer-over exemption applies. The standard says install time,
+# inside AppConfig.ready(); this is that module by Django convention, and it is
+# the part a linter can decide.
+LAYER_OVER_HOME = "apps.py"
 # The library every shim binds through, and its import name. The linter
 # exempts the extension itself from the logging checks: it has no log.py
 # because it IS the mechanism.
@@ -850,12 +854,79 @@ def _is_settings_read(node):
             and isinstance(node.args[0], ast.Name) and node.args[0].id == "settings")
 
 
+def _settings_key(node):
+    """A comparable key for the setting a node names, or None.
+
+    A literal and a parameter both count: the reference layer-over is one
+    function over a table of four settings, so the name arrives as a `Name`.
+    """
+    if isinstance(node, ast.Name):
+        return ("name", node.id)
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return ("const", node.value)
+    return None
+
+
+def _read_key(node):
+    """The setting a read names — `settings.X` or `getattr(settings, X)`."""
+    if isinstance(node, ast.Attribute):
+        return ("const", node.attr)
+    return _settings_key(node.args[1]) if len(node.args) > 1 else None
+
+
+def _settings_writes(fn):
+    """Settings this function writes — `setattr(settings, X, …)` or `settings.X = …`."""
+    keys = set()
+    for n in ast.walk(fn):
+        if (isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+                and n.func.id == "setattr" and len(n.args) >= 2
+                and isinstance(n.args[0], ast.Name) and n.args[0].id == "settings"):
+            key = _settings_key(n.args[1])
+            if key:
+                keys.add(key)
+        elif isinstance(n, ast.Assign):
+            keys.update(("const", t.attr) for t in n.targets
+                        if isinstance(t, ast.Attribute)
+                        and isinstance(t.value, ast.Name) and t.value.id == "settings")
+    return keys
+
+
+def _layer_over_reads(tree):
+    """Read nodes that are the operand of a write of the same setting.
+
+    See § Layering over a setting: read what is installed, build on it, put it
+    back. A class setting subclassed and repointed so the consumer's class
+    survives underneath, or a list setting appended to so their entries do —
+    the shape is what matters, not the type of the value, so this does not
+    distinguish them. The read is the operand of the write and no value is
+    consumed, which puts it outside the accessor rule rather than in breach
+    of it.
+
+    Both conditions have to hold, and the caller applies the second: the same
+    function writes the same setting back, in `apps.py`. A read paired with a
+    write of some *other* setting — the stash — qualifies nothing.
+    """
+    exempt = set()
+    for fn in ast.walk(tree):
+        if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        written = _settings_writes(fn)
+        if not written:
+            continue
+        exempt.update(id(n) for n in ast.walk(fn)
+                      if _is_settings_read(n) and _read_key(n) in written)
+    return exempt
+
+
 def check_settings_access(ctx):
     """Settings are read through a named accessor in config.py, and read late.
 
     See § Reading settings. The linter sees only the reads that exist, so an
     accessor that is *missing* for a setting the library ought to read is the
     judgment layer's to spot.
+
+    The one exemption is the layer-over pattern in `apps.py` — see
+    `_layer_over_reads`.
     """
     if ctx.pkg is None:
         return []
@@ -868,7 +939,9 @@ def check_settings_access(ctx):
             continue
 
         if f.name != CONSTANT_HOME:
-            reads = sum(1 for n in ast.walk(tree) if _is_settings_read(n))
+            exempt = _layer_over_reads(tree) if f.name == LAYER_OVER_HOME else set()
+            reads = sum(1 for n in ast.walk(tree)
+                        if _is_settings_read(n) and id(n) not in exempt)
             if reads:
                 stray.append((f, reads))
         else:
