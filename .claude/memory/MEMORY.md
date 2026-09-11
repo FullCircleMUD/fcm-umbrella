@@ -81,6 +81,7 @@
 - [Terse written records too](feedback_terse_written_records.md) — memory files and notes get the same treatment as replies: one line per fact, no prose scaffolding.
 - [Bottom line first](feedback_terse_confirmations.md) — lead with the one-line answer (yes/no *and* open questions), then any additional factors as short dot points. Stop there; mechanism, tables, and citations only when asked.
 - [A question is not an instruction](feedback_question_is_not_instruction.md) — answer questions in prose and stop; wait for an imperative before editing code.
+- [Never invent detail](feedback_never_invent_detail.md) — no invented timespans, counts or severities to make a point land; check a factual claim before repeating it. "Passed for months" about a three-day-old library is the case that prompted it.
 - [No manufactured objections](feedback_no_manufactured_objections.md) — raise only concerns that bind in this codebase; check a consequence actually bites before stating it. Zero real objections means say so.
 - [Answer the concept, not the literal wording](feedback_answer_the_concept_not_the_literal.md) — judge whether Tim's idea works before objecting; don't let a technicality read as "that won't work".
 - [Lead with the no](feedback_lead_with_the_no.md) — when a proposal won't work, say so in the first sentence; never open with agreement, never raise caveats that don't change the decision.
