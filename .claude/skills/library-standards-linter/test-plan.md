@@ -138,67 +138,96 @@ now and catches the first library bootstrapped without a family decision.
 
 ## LG — `check_logging`
 
-The mechanically decidable parts of the logging standard: that `log.py` exists, uses Evennia's
-`logger.log_file`, names a log file of its own, degrades outside an Evennia engine, carries the
-prescribed function name and signature, stamps no timestamp of its own, and stays internal — and that
-no other module has fallen back to stdlib `logging`, whose records reach nobody when the consumer has
-configured no handler. Whether a missing shim is a documented divergence is the judgment layer's call,
-so its absence is a warn.
+The mechanically decidable parts of the logging standard: that the library declares
+`evennia-logging-extension`, that `log.py` exists and binds its log function through `make_logger`,
+that the name it binds is named for the library, that the file it names ends in `.log`, that the shim
+stays internal, and that no module has fallen back to stdlib `logging`, whose records reach nobody
+when the consumer has configured no handler. Whether a missing shim is a documented divergence is the
+judgment layer's call, so its absence is a warn.
 
 Every check here tests for the *presence of the mechanism* rather than proving the behaviour — the
-linter reads source, it does not execute it. `LG-03` asks whether `log_file` is called, not whether the
-line it writes is correct, and `LG-14` asks whether the `NoneType: None` suppression is there, not
-whether it fires. That is the ceiling of a mechanical linter, and the reason the judgment layer exists.
+linter reads source, it does not execute it. That is the ceiling of a mechanical linter, and the
+reason the judgment layer exists.
+
+**`log.py` is three lines now**, so most of what this section used to check has nowhere left to go
+wrong. The levels, the signature, the `ImportError` fallback, the traceback suppression and the
+timestamp all live in `evennia-logging-extension` and are covered by its own suite. What is left is
+whether a library is wired to it.
+
+**The public name is an assignment, not a `def`.** That is the trap in this section: the old checks
+were gated on finding a single public `FunctionDef` in `log.py`, and against the new shape that gate
+does not match — producing no finding and no error. A check that stops checking reads as a clean
+corpus.
+
+Two things make that failure loud rather than silent:
+
+- **`LG-09` and `LG-15` are tested against the three-line shim.** If the name extraction ever regresses
+  to `FunctionDef`-only, those cases fail rather than going quiet.
+- **`LG-20` reports a `log.py` the linter cannot read.** The old gate skipped when it could not
+  identify the public name; the replacement treats that as a finding. **An unknown answer is not a
+  clean one**, and a linter that silently narrows its own coverage is worse than one that complains
+  about a file it does not understand.
+
+`LG-20` walks a list of unreadable shapes rather than one, so it cannot be satisfied by special-casing
+whichever shape is in front of whoever implements it — an implementation that skips on an unfamiliar
+`log.py` fails the case rather than reporting a clean library. The list is the point, and it grows
+whenever a shape turns up that slipped through.
 
 | ID | Case | Test function |
 |---|---|---|
-| LG-01 | A compliant shim produces no findings | `CheckLogging.test_clean` |
+| LG-01 | A compliant three-line shim produces no findings | `CheckLogging.test_clean` |
 | LG-02 | A missing `log.py` is a warn, not an error | `CheckLogging.test_missing_shim_is_warn_not_error` |
-| LG-03 | A shim that does not call `logger.log_file` is an error — it has one and it is the wrong mechanism | `CheckLogging.test_shim_not_using_log_file_is_error` |
 | LG-04 | A shim naming no `.log` file is a warn | `CheckLogging.test_shim_naming_no_log_file_is_warn` |
-| LG-05 | A shim that does not handle `ImportError` is a warn — it must no-op outside an Evennia engine | `CheckLogging.test_shim_without_importerror_handling_is_warn` |
 | LG-06 | `logging.getLogger` outside the shim is a warn, and the finding names the file | `CheckLogging.test_stdlib_logging_outside_the_shim_is_warn` |
-| LG-07 | The shim itself is exempt from the stdlib check | `CheckLogging.test_the_shim_itself_may_mention_logging` |
 | LG-08 | A library with no package produces no findings | `CheckLogging.test_no_package_is_silent` |
-| LG-09 | The shim's public function is named for the library — `bus_log`, `ai_memory_log`. A warn. A consumer reading a stack trace uses that name to tell whose log line it is | `CheckLogging.test_function_not_named_for_the_library_is_warn` |
-| LG-10 | Its signature is `(message, level="INFO", trace=False)`. A warn. The shim is copied between libraries, so a changed signature means a copy was edited rather than adapted | `CheckLogging.test_wrong_signature_is_warn` |
-| LG-11 | `_VALID_LEVELS` holds exactly `INFO`, `WARN`, `ERROR`. A warn. `CN-04` checks the constant's name; nothing checks its value, so a shim could carry a fourth level and pass | `CheckLogging.test_wrong_levels_is_warn` |
-| LG-12 | `log.py` stamps no timestamp of its own — no `datetime`, `strftime` or `time.time()`. A warn. `log_file` already prefixes one in UTC, so a second stamps every line twice and the file stops reading against `server.log` | `CheckLogging.test_own_timestamp_is_warn` |
+| LG-09 | The name bound in `log.py` is named for the library — `bus_log`, `ai_memory_log`. A warn. A consumer reading a stack trace uses that name to tell whose log line it is | `CheckLogging.test_function_not_named_for_the_library_is_warn` |
 | LG-13 | The shim is not re-exported from `__init__.py`. A warn. It is internal; a consumer who imports it is depending on something the standard does not offer them | `CheckLogging.test_shim_reexported_from_init_is_warn` |
-| LG-14 | The `trace` path is present — `format_exc` is called and the `NoneType: None` case is suppressed. A warn. Without the suppression every `trace=True` call outside an `except` block writes a line of noise | `CheckLogging.test_missing_trace_handling_is_warn` |
 | LG-15 | A shim no module calls is a warn. The library emits nothing, so the log file the standard asks for never exists — which is worth a look rather than a defect, since what to log is a decision | `CheckLogging.test_unused_shim_is_warn` |
+| LG-16 | A `log.py` that does not call `make_logger` is an **error** — it has a shim and it is the wrong mechanism. This is what an un-migrated library reports | `CheckLogging.test_shim_not_calling_make_logger_is_error` |
+| LG-17 | A library that does not declare `evennia-logging-extension` in `dependencies` is a warn. The shim imports it, so without the declaration the library works only where something else happened to install it | `CheckLogging.test_undeclared_dependency_is_warn` |
+| LG-18 | A filename that is not a literal — `make_logger(get_log_filename())` — produces no findings. Whether the name is hardcoded or read from a setting is the library's decision, and the extension has no opinion | `CheckLogging.test_a_filename_from_an_accessor_is_clean` |
+| LG-19 | `evennia-logging-extension` itself produces no findings in this section. It has no `log.py` because it *is* the mechanism, and a logger that logs its own failures through itself is a cycle | `CheckLogging.test_the_extension_itself_is_exempt` |
+| LG-20 | A `log.py` the linter cannot read produces **at least one finding, for every unreadable shape** — a `def` where a binding belongs, two public bindings, none at all, an empty file. "Cannot tell" is reported, never treated as clean | `CheckLogging.test_an_unreadable_shim_is_reported_not_skipped` |
+| LG-21 | A module-scope import of `.log` in `config.py` is a warn. `log.py` may import `config.py` for a settable filename, so the reverse import at module scope completes a cycle that resolves or crashes on declaration order. Imports inside function bodies are fine and are not inspected; no import at all is fine — logging from `config.py` is optional | `CheckLogging.test_module_scope_log_import_in_config_is_warn` |
 
-`LG-09` to `LG-14` are all warns. `LG-03` is the section's only error, and it is reserved for a shim
-that logs through the wrong mechanism — the one failure where the lines go somewhere nobody reads.
-Everything else here is a shim that works and diverges.
+`LG-16` is the section's only error, and it is reserved for a shim that logs through the wrong
+mechanism — the one failure where the lines go somewhere nobody reads. Everything else here is a
+library that works and diverges.
+
+**Retired**, with the shape they checked. IDs are not reused.
+
+| ID | Why |
+|---|---|
+| LG-03 | Nothing in a library calls `logger.log_file` any more. `LG-16` is its replacement |
+| LG-05 | The `ImportError` no-op lives in the extension |
+| LG-07 | The shim's exemption from the stdlib check. A three-line `log.py` has no way to trip a `logging.getLogger` grep |
+| LG-10 | The signature comes from the extension; `log.py` declares none |
+| LG-11 | `_VALID_LEVELS` no longer exists in a library |
+| LG-12 | The duplicate-timestamp drift came from copied shims, and there is nothing left to copy |
+| LG-14 | The `trace` path lives in the extension |
 
 ## CN — `check_constants`
 
 Covers *Where constants are declared* in `library-standards.md`: every module-level constant lives in
-`config.py`, with `log.py` exempt for exactly two names.
+`config.py`. There are no exemptions — `log.py` declares nothing, since a hardcoded log filename is a
+literal in the one call that uses it and a settable one lives in `config.py` like any other setting.
 
-Severity is deliberately split. The main rule is a **warn**, because 224 constants across the fifteen
-libraries currently sit outside `config.py` — it is a work queue a library drains at its own pace, not
-a gate that fails every run. The bounded-exemption rule is an **error**, because no library violates it
-today, so it costs nothing now and catches the first attempt to smuggle a constant into `log.py` to
-escape the main rule.
+A **warn**, because 224 constants across the fifteen libraries currently sit outside `config.py` — it
+is a work queue a library drains at its own pace, not a gate that fails every run.
 
 | ID | Case | Test function |
 |---|---|---|
 | CN-01 | A compliant library produces no findings | `CheckConstants.test_clean` |
 | CN-02 | A module-level constant in any module other than `config.py` is a warn, and the finding names the module and the constant | `test_constant_outside_config_is_warn` |
 | CN-03 | Constants in `config.py` produce nothing — it is the declared home | `test_constants_in_config_are_clean` |
-| CN-04 | `log.py` declaring exactly `_LOG_FILENAME` and `_VALID_LEVELS` produces nothing. The standard's one exemption | `test_log_shim_constants_are_exempt` |
-| CN-05 | A third constant in `log.py` is an error. The exemption is bounded by name, so it cannot be widened into an escape hatch | `test_a_third_log_constant_is_an_error` |
 | CN-06 | `tests.py` is excluded. It lives inside the package by Django convention, but its constants are test scaffolding rather than library surface | `test_constants_in_tests_are_ignored` |
 | CN-07 | `migrations/` is excluded — Django generates those files and nobody hand-places their constants | `test_constants_in_migrations_are_ignored` |
-| CN-08 | An import other than `traceback` above `log.py`'s constants is a warn. The standard puts the two names at the top with `import traceback` alone above them | `test_extra_import_above_log_constants_is_warn` |
 | CN-09 | A lowercase or mixed-case module-level assignment is not a constant and is ignored — otherwise every module-level variable would be a finding | `test_lowercase_assignment_is_not_a_constant` |
+| CN-10 | A constant in `log.py` is a warn like any other module. The exemption is gone, and this is what fails if anyone re-adds it | `test_a_constant_in_the_shim_is_a_warn` |
 
-`CN-08` is a warn rather than an error because one library already breaches it: `evennia-shards`'
-`log.py` carries `from datetime import datetime, timezone` for its `security=True` dual-write. That is
-either a sanctioned divergence or a finding, and it has not been adjudicated — a warn reports it
-without pre-judging.
+**Retired.** `CN-04`, `CN-05` and `CN-08` covered the `log.py` constants exemption, which no longer
+exists — a hardcoded log filename is a literal in the one call that uses it, and a settable one lives
+in `config.py` like any other setting. IDs are not reused.
 
 ## CM — `check_claude_md`
 
@@ -335,11 +364,13 @@ layer's.
 
 ## EI — `check_evennia_imports`
 
-Covers *Importing Evennia*: `log.py` is the default home, and every other import site carries a
-comment saying why that module needs the engine.
+Covers *Importing Evennia*: every import site carries a comment saying why that module needs the
+engine. There is no default home — `log.py` imports `evennia-logging-extension`, which holds the
+Evennia coupling, so a library with no other need for the engine imports it nowhere.
 
-A **warn**, and a large one — 95 of the 102 Evennia imports outside `log.py` have no comment today.
-The rule is a day old and the corpus predates it, so this is a queue.
+A **warn**, and a large one — 95 of the 102 Evennia imports outside `log.py` have no comment today,
+and every `log.py` import joins them once the libraries migrate. The corpus predates the rule, so this
+is a queue.
 
 `tests.py` and `tests/` are exempt: they exist to emulate a running game, so the import is the job.
 
@@ -349,12 +380,13 @@ see the reason without hunting.
 
 | ID | Case | Test function |
 |---|---|---|
-| EI-01 | A library importing Evennia only in `log.py` produces no findings | `CheckEvenniaImports.test_clean` |
+| EI-01 | A library that imports Evennia nowhere produces no findings | `CheckEvenniaImports.test_clean` |
 | EI-02 | An import elsewhere with a comment on the line above produces no findings | `CheckEvenniaImports.test_commented_import_is_clean` |
 | EI-03 | An import elsewhere with no comment is a warn naming the module | `CheckEvenniaImports.test_uncommented_import_is_warn` |
 | EI-04 | `import evennia` counts as well as `from evennia… import …` | `CheckEvenniaImports.test_plain_import_counts` |
 | EI-05 | `tests.py` is exempt | `CheckEvenniaImports.test_tests_module_is_exempt` |
 | EI-06 | A library with no package produces no findings | `CheckEvenniaImports.test_no_package_is_silent` |
+| EI-07 | An uncommented Evennia import in `log.py` is a warn like any other. `log.py` is no longer exempt, and the skip that made it so has to go | `CheckEvenniaImports.test_an_import_in_the_shim_is_not_exempt` |
 
 ## OS — `check_object_state`
 

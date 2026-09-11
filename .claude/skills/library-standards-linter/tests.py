@@ -37,7 +37,7 @@ description = "x"
 readme = "README.md"
 license = {text = "BSD-3-Clause"}
 requires-python = ">=3.10"
-dependencies = ["evennia"]
+dependencies = ["evennia", "evennia-logging-extension"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -64,7 +64,9 @@ LIB_TESTS = SPDX + (
     "class WalkTests:\n    def test_wc_empty(self):\n        pass\n")
 
 
-LOG_SHIM = '''\
+#: The pre-extension shim, kept so `LG-16` can assert what an un-migrated
+#: library reports. Not a shape any library should still carry.
+OLD_LOG_SHIM = '''\
 """Logging shim."""
 import traceback
 
@@ -79,11 +81,15 @@ def lib_log(message, level="INFO", trace=False):
         return
     if level not in _VALID_LEVELS:
         level = "INFO"
-    if trace:
-        formatted = traceback.format_exc()
-        if formatted and not formatted.startswith("NoneType: None"):
-            message = f"{message}\\n{formatted.rstrip()}"
     logger.log_file(f"[{level}] {message}", filename=_LOG_FILENAME)
+'''
+
+LOG_SHIM = '''\
+"""Logging shim."""
+
+from evennia_logging_extension import make_logger
+
+lib_log = make_logger("evennia_lib.log")
 '''
 
 
@@ -236,20 +242,6 @@ class CheckConstants(ValidatorBase):
             "libraries/evennia-lib/src/evennia_lib/config.py": SPDX + 'ARCHIVE_ALIAS = "archive"\n'}))
         self.assertEqual(f, [])
 
-    def test_log_shim_constants_are_exempt(self):
-        """CN-04"""
-        f = lib.check_constants(self.ctx(**{_LOG_PATH: SPDX + LOG_SHIM}))
-        self.assertEqual(f, [])
-
-    def test_a_third_log_constant_is_an_error(self):
-        """CN-05"""
-        shim = LOG_SHIM.replace(
-            '_VALID_LEVELS = ("INFO", "WARN", "ERROR")',
-            '_VALID_LEVELS = ("INFO", "WARN", "ERROR")\n_RETRIES = 3')
-        f = lib.check_constants(self.ctx(**{_LOG_PATH: SPDX + shim}))
-        self.assertIn("log_shim_extra_constant", kinds(f, "error"))
-        self.assertIn("_RETRIES", messages(f))
-
     def test_constants_in_tests_are_ignored(self):
         """CN-06"""
         f = lib.check_constants(self.ctx(**{
@@ -264,14 +256,13 @@ class CheckConstants(ValidatorBase):
                 'DEPENDENCIES = ["evennia"]\n'}))
         self.assertEqual(f, [])
 
-    def test_extra_import_above_log_constants_is_warn(self):
-        """CN-08"""
-        shim = LOG_SHIM.replace(
-            "import traceback\n",
-            "import traceback\nfrom datetime import datetime\n")
-        f = lib.check_constants(self.ctx(**{_LOG_PATH: SPDX + shim}))
-        self.assertEqual(kinds(f, "error"), set())
-        self.assertIn("log_shim_constant_placement", kinds(f, "warn"))
+    def test_a_constant_in_the_shim_is_a_warn(self):
+        """CN-10"""
+        # The exemption is gone. This is what fails if anyone re-adds it.
+        f = lib.check_constants(self.ctx(**{
+            _LOG_PATH: SPDX + LOG_SHIM + '_LOG_FILENAME = "evennia_lib.log"\n'}))
+        self.assertIn("constant_outside_config", kinds(f, "warn"))
+        self.assertIn("_LOG_FILENAME", messages(f))
 
     def test_lowercase_assignment_is_not_a_constant(self):
         """CN-09"""
@@ -647,6 +638,15 @@ class CheckEvenniaImports(ValidatorBase):
         f = lib.check_evennia_imports(self.ctx(**{
             "libraries/evennia-lib/src/evennia_lib/tests.py": LIB_TESTS + "import evennia\n"}))
         self.assertEqual(f, [])
+
+    def test_an_import_in_the_shim_is_not_exempt(self):
+        """EI-07"""
+        # log.py imports evennia-logging-extension, which holds the Evennia
+        # coupling. An Evennia import here is an exception like any other.
+        f = lib.check_evennia_imports(self.ctx(**{
+            _LOG_PATH: SPDX + "from evennia.utils import logger\n" + LOG_SHIM}))
+        self.assertIn("evennia_import_unexplained", kinds(f, "warn"))
+        self.assertIn("log.py", messages(f))
 
     def test_no_package_is_silent(self):
         """EI-06"""
@@ -1073,26 +1073,11 @@ class CheckLogging(ValidatorBase):
         self.assertIn("missing_log_shim", kinds(f, "warn"))
         self.assertEqual(kinds(f, "error"), set())
 
-    def test_shim_not_using_log_file_is_error(self):
-        """LG-03"""
-        f = lib.check_logging(self.ctx(**{
-            "libraries/evennia-lib/src/evennia_lib/log.py":
-                SPDX + 'import logging\n\n\ndef lib_log(m):\n    print("my.log", m)\n'}))
-        self.assertIn("log_shim_mechanism", kinds(f, "error"))
-
     def test_shim_naming_no_log_file_is_warn(self):
         """LG-04"""
         f = lib.check_logging(self.ctx(**{
             "libraries/evennia-lib/src/evennia_lib/log.py": SPDX + LOG_SHIM.replace('"evennia_lib.log"', '""')}))
         self.assertIn("log_shim_filename", kinds(f, "warn"))
-
-    def test_shim_without_importerror_handling_is_warn(self):
-        """LG-05"""
-        stripped = LOG_SHIM.replace("    except ImportError:\n        return\n", "")
-        stripped = stripped.replace("    try:\n", "")
-        f = lib.check_logging(self.ctx(**{
-            "libraries/evennia-lib/src/evennia_lib/log.py": SPDX + stripped}))
-        self.assertIn("log_shim_fallback", kinds(f, "warn"))
 
     def test_stdlib_logging_outside_the_shim_is_warn(self):
         """LG-06"""
@@ -1102,10 +1087,6 @@ class CheckLogging(ValidatorBase):
         self.assertIn("stdlib_logging", kinds(f, "warn"))
         self.assertIn("core.py", messages(f))
 
-    def test_the_shim_itself_may_mention_logging(self):
-        """LG-07"""
-        self.assertNotIn("stdlib_logging", kinds(lib.check_logging(self.ctx())))
-
     def test_no_package_is_silent(self):
         """LG-08"""
         ctx = self.ctx(drop=SRC_FILES + ["libraries/evennia-lib/src/evennia_lib/log.py"])
@@ -1113,32 +1094,13 @@ class CheckLogging(ValidatorBase):
 
     def test_function_not_named_for_the_library_is_warn(self):
         """LG-09"""
+        # Read off the assignment target, not a `def`. If the extraction ever
+        # regresses to FunctionDef-only this goes quiet rather than failing,
+        # which is what LG-20 exists to prevent.
         f = lib.check_logging(self.ctx(**{
-            _LOG_PATH: SPDX + LOG_SHIM.replace("def lib_log(", "def zzz_log(")}))
+            _LOG_PATH: SPDX + LOG_SHIM.replace("lib_log = ", "zzz_log = ")}))
         self.assertEqual(kinds(f, "error"), set())
         self.assertIn("log_shim_function_name", kinds(f, "warn"))
-
-    def test_wrong_signature_is_warn(self):
-        """LG-10"""
-        f = lib.check_logging(self.ctx(**{
-            _LOG_PATH: SPDX + LOG_SHIM.replace(
-                'def lib_log(message, level="INFO", trace=False):',
-                'def lib_log(msg, lvl="INFO"):')}))
-        self.assertIn("log_shim_signature", kinds(f, "warn"))
-
-    def test_wrong_levels_is_warn(self):
-        """LG-11"""
-        f = lib.check_logging(self.ctx(**{
-            _LOG_PATH: SPDX + LOG_SHIM.replace(
-                '("INFO", "WARN", "ERROR")', '("INFO", "WARN", "ERROR", "DEBUG")')}))
-        self.assertIn("log_shim_levels", kinds(f, "warn"))
-
-    def test_own_timestamp_is_warn(self):
-        """LG-12"""
-        shim = LOG_SHIM.replace(
-            "import traceback\n", "import traceback\nfrom datetime import datetime\n")
-        f = lib.check_logging(self.ctx(**{_LOG_PATH: SPDX + shim}))
-        self.assertIn("log_shim_timestamp", kinds(f, "warn"))
 
     def test_shim_reexported_from_init_is_warn(self):
         """LG-13"""
@@ -1157,11 +1119,91 @@ class CheckLogging(ValidatorBase):
             _CORE_PATH: SPDX + "from .log import lib_log\n\n\ndef f():\n    lib_log('x')\n"}))
         self.assertNotIn("log_shim_unused", kinds(f))
 
-    def test_missing_trace_handling_is_warn(self):
-        """LG-14"""
+    def test_shim_not_calling_make_logger_is_error(self):
+        """LG-16"""
+        # What an un-migrated library reports: a hand-rolled shim is a shim
+        # through the wrong mechanism, and its lines go where nobody reads.
         f = lib.check_logging(self.ctx(**{
-            _LOG_PATH: SPDX + LOG_SHIM.replace("traceback.format_exc()", '""')}))
-        self.assertIn("log_shim_trace", kinds(f, "warn"))
+            _LOG_PATH: SPDX + OLD_LOG_SHIM}))
+        self.assertIn("log_shim_mechanism", kinds(f, "error"))
+
+    def test_undeclared_dependency_is_warn(self):
+        """LG-17"""
+        f = lib.check_logging(self.ctx(**{
+            "libraries/evennia-lib/pyproject.toml":
+                PYPROJECT.replace(
+                    'dependencies = ["evennia", "evennia-logging-extension"]',
+                    'dependencies = ["evennia"]')}))
+        self.assertIn("log_dependency_undeclared", kinds(f, "warn"))
+        self.assertEqual(kinds(f, "error"), set())
+
+    def test_a_filename_from_an_accessor_is_clean(self):
+        """LG-18"""
+        # Whether the name is hardcoded or read from a setting is the
+        # library's decision, and the extension has no opinion. The linter
+        # must not read an accessor call as a missing filename.
+        shim = ('"""Logging shim."""\n\n'
+                "from evennia_logging_extension import make_logger\n\n"
+                "from .config import get_log_filename\n\n"
+                "lib_log = make_logger(get_log_filename())\n")
+        f = lib.check_logging(self.ctx(**{_LOG_PATH: SPDX + shim}))
+        self.assertNotIn("log_shim_filename", kinds(f))
+        self.assertEqual(kinds(f, "error"), set())
+
+    def test_the_extension_itself_is_exempt(self):
+        """LG-19"""
+        # It has no log.py because it *is* the mechanism, and a logger that
+        # logs its own failures through itself is a cycle.
+        ctx = self.ctx(drop=["libraries/evennia-lib/src/evennia_lib/log.py"])
+        ctx.name = "evennia-logging-extension"
+        ctx.expected_pkg = "evennia_logging_extension"
+        self.assertEqual(lib.check_logging(ctx), [])
+
+    def test_module_scope_log_import_in_config_is_warn(self):
+        """LG-21"""
+        # log.py may import config.py for a settable filename, so the reverse
+        # import at module scope completes a cycle that resolves or crashes on
+        # declaration order. Lazy imports inside functions are the idiom.
+        config = "libraries/evennia-lib/src/evennia_lib/config.py"
+
+        # Module scope: a finding.
+        f = lib.check_logging(self.ctx(**{
+            config: SPDX + "from .log import lib_log\n\nX = 1\n"}))
+        self.assertIn("log_import_in_config_scope", kinds(f, "warn"))
+
+        # Inside a function: clean.
+        f = lib.check_logging(self.ctx(**{
+            config: SPDX + "def check_settings():\n"
+                           "    from .log import lib_log\n"
+                           "    lib_log('checked')\n"}))
+        self.assertNotIn("log_import_in_config_scope", kinds(f))
+
+        # No import at all: clean — logging from config.py is optional.
+        f = lib.check_logging(self.ctx(**{config: SPDX + "X = 1\n"}))
+        self.assertNotIn("log_import_in_config_scope", kinds(f))
+
+    def test_an_unreadable_shim_is_reported_not_skipped(self):
+        """LG-20"""
+        # "Cannot tell" is reported, never treated as clean. The list is the
+        # point: an implementation that special-cases one shape and skips the
+        # rest fails here rather than reporting a clean library.
+        unreadable = {
+            "a def where a binding belongs":
+                '"""Shim."""\n\n\ndef lib_log(message, level="INFO", trace=False):\n    pass\n',
+            "two public bindings":
+                '"""Shim."""\n\nfrom evennia_logging_extension import make_logger\n\n'
+                'lib_log = make_logger("evennia_lib.log")\n'
+                'other_log = make_logger("other.log")\n',
+            "no binding at all":
+                '"""Shim."""\n\nfrom evennia_logging_extension import make_logger\n',
+            "an empty file": "",
+            "a file that does not parse": "def (broken\n",
+        }
+        for shape, source in unreadable.items():
+            with self.subTest(shape=shape):
+                f = lib.check_logging(self.ctx(**{_LOG_PATH: SPDX + source}))
+                self.assertTrue(f, f"{shape} produced no findings — it read as clean")
+
 
 
 class CheckMemorySurface(ValidatorBase):

@@ -7,9 +7,10 @@ description: |
   packages-where), the package __version__, SPDX headers, the required docs/ files,
   the docs/test-plan.md coverage trail in both directions (uncovered cases, named
   test functions that do not exist, tests no case claims, duplicate case IDs and
-  unresolved [TBD] cases), the logging shim (mechanism, filename, ImportError no-op,
-  function name, signature, levels, no timestamp of its own, trace handling, and that
-  it stays internal), where module-level constants are declared, CLAUDE.md's nine
+  unresolved [TBD] cases), the logging wiring (the
+  evennia-logging-extension dependency, the three-line log.py binding through
+  make_logger, the bound name, the filename, no module-scope log import in
+  config.py, and that the shim stays internal), where module-level constants are declared, CLAUDE.md's nine
   standard sections and its section-4 principles, interoperability.md against the
   live contents of libraries/, installing.md's step list and its settings and
   not-checked-for-you parts, that settings are read through an accessor in
@@ -46,7 +47,6 @@ chiefly *whether a deviation is a sanctioned divergence* — to a human or a fut
 | `test_plan_ghost_test` — a test function no case in the plan names | error |
 | `test_plan_duplicate_id` — the same case ID used on two rows | error |
 | `test_plan_tbd` — a case still carrying an unresolved `[TBD]` | error |
-| `log_shim_extra_constant` — a constant in `log.py` beyond the exempt two | error |
 | `claude_md_section` / `claude_md_order` — a missing or misordered `CLAUDE.md` standard section | error |
 | `claude_md_principle` — section 4 omits one of the principles its family carries | warn |
 | `interop_missing_sibling` / `interop_order` — `interoperability.md` omits a library under `libraries/`, or its sections are not alphabetical | warn |
@@ -58,10 +58,12 @@ chiefly *whether a deviation is a sanctioned divergence* — to a human or a fut
 | `tests_dir_incomplete` — a `tests/` with Python files but no `test_settings.py` / `urls.py` | warn |
 | `pytest_in_use` — a conftest.py, a pytest import, or a pytest dependency | warn |
 | `venv_not_ignored` — `.gitignore` does not ignore `venv/` | warn |
-| `log_shim_mechanism` — a `log.py` that doesn't call Evennia's `logger.log_file` | error |
-| `missing_log_shim` / `log_shim_filename` / `log_shim_fallback` — no `log.py`, no `.log` filename, no `ImportError` no-op | warn |
-| `log_shim_function_name` / `log_shim_signature` — shim not named for the library, or not `(message, level, trace)` | warn |
-| `log_shim_levels` / `log_shim_timestamp` / `log_shim_trace` — levels beyond `INFO`/`WARN`/`ERROR`, a timestamp of its own, or no `format_exc` + `NoneType: None` suppression | warn |
+| `log_shim_mechanism` — a `log.py` that doesn't bind through `make_logger`, including the old hand-rolled shim | error |
+| `missing_log_shim` / `log_shim_filename` — no `log.py`, or a literal filename that is not a plain `<name>.log` | warn |
+| `log_dependency_undeclared` — `evennia-logging-extension` missing from `pyproject.toml` dependencies | warn |
+| `log_shim_function_name` — the bound name is not the library's name plus `_log` | warn |
+| `log_shim_unreadable` — a `log.py` the checks cannot read: unparseable, or more than one public binding. Cannot-tell is reported, never skipped | warn |
+| `log_import_in_config_scope` — `config.py` imports the log function at module scope, completing an order-dependent cycle with a settable filename | warn |
 | `log_shim_exported` — `__init__.py` re-exports the shim, which is internal | warn |
 | `log_shim_unused` — a `log.py` no module calls, so the library emits nothing | warn |
 | `claude_md_reading_order` — `Where to read first` does not name `docs/test-plan.md` | warn |
@@ -80,7 +82,6 @@ chiefly *whether a deviation is a sanctioned divergence* — to a human or a fut
 | `settings_validator_uncalled` / `settings_validator_outside_config` — `check_settings()` defined but never called from `ready()`, or defined outside `config.py` | error |
 | `settings_validator_name` — the boot validator is not named `check_settings` | warn |
 | `settings_read_at_module_scope` / `settings_import_at_module_scope` — a read or the `django.conf` import evaluated at import time rather than inside the accessor | warn |
-| `log_shim_constant_placement` — something above `log.py`'s constants beyond the docstring and `import traceback` | warn |
 | `test_plan_uncovered` — cases in `docs/test-plan.md` with an empty `Test function` cell | warn |
 | `test_plan_no_column` — the test plan has no case table with a `Test function` column | warn |
 | `missing_spdx` — source files lacking the SPDX header (migrations excluded) | warn |
@@ -108,10 +109,6 @@ flagged.
 `constant_outside_config` is a **warn** because the corpus predates the rule: over
 two hundred constants across the libraries sit outside `config.py` today. It reads
 as a queue each library drains at its own pace, not a gate that fails every run.
-
-`log_shim_extra_constant` is an **error** because nothing violates it — `log.py`'s
-exemption is bounded to `_LOG_FILENAME` and `_VALID_LEVELS` precisely so it cannot
-become the escape hatch, and enforcing that costs nothing today.
 
 `tests.py` and `migrations/` are out of scope: the first is scaffolding that lives
 in the package by Django convention, the second is generated.

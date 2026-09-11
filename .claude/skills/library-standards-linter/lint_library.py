@@ -61,12 +61,11 @@ CONSTANT_SKIP_DIRS = {"migrations", "__pycache__"}
 # scaffolding rather than library surface.
 CONSTANT_SKIP_FILES = {"tests.py"}
 CONSTANT_HOME = "config.py"
-# The bounded exemption: log.py may declare these two and nothing else.
-LOG_SHIM_CONSTANTS = ("_LOG_FILENAME", "_VALID_LEVELS")
-SHIM_ARGS = ("message", "level", "trace")
-SHIM_LEVELS = ("INFO", "WARN", "ERROR")
-# log_file already prefixes a UTC timestamp; a second stamps every line twice.
-SHIM_TIMESTAMP = re.compile(r"\bdatetime\b|\bstrftime\b|\btime\.time\b")
+# The library every shim binds through, and its import name. The linter
+# exempts the extension itself from the logging checks: it has no log.py
+# because it IS the mechanism.
+LOGGING_EXTENSION_DIST = "evennia-logging-extension"
+LOGGING_EXTENSION_PKG = "evennia_logging_extension"
 
 
 def _library_words(name):
@@ -88,11 +87,21 @@ def _names_the_library(token, words):
                and min(len(token), len(w)) >= 4 for w in words)
 
 
-def _shim_function(tree):
-    """The shim's single public module-level function, or None if unclear."""
-    fns = [n for n in tree.body
-           if isinstance(n, ast.FunctionDef) and not n.name.startswith("_")]
-    return fns[0] if len(fns) == 1 else None
+def _log_bindings(tree):
+    """Module-level public names bound to a ``make_logger(...)`` call."""
+    bindings = []
+    for node in tree.body:
+        if not isinstance(node, ast.Assign) or not isinstance(node.value, ast.Call):
+            continue
+        func = node.value.func
+        name = (func.id if isinstance(func, ast.Name)
+                else func.attr if isinstance(func, ast.Attribute) else None)
+        if name != "make_logger":
+            continue
+        for target in node.targets:
+            if isinstance(target, ast.Name) and not target.id.startswith("_"):
+                bindings.append((target.id, node.value))
+    return bindings
 
 
 class Finding:
@@ -218,42 +227,14 @@ def _module_constants(path: Path):
     return found, tree
 
 
-def _check_log_shim(ctx, path, constants, tree):
-    """The bounded exemption: exactly the two names, at the top of the file."""
-    out = []
-    extra = [name for name, _ in constants if name not in LOG_SHIM_CONSTANTS]
-    if extra:
-        out.append(ctx.F(
-            "log_shim_extra_constant", "error", path,
-            f"log.py declares {', '.join(extra)} — its exemption is exactly "
-            f"{' and '.join(LOG_SHIM_CONSTANTS)}. Everything else belongs in "
-            f"{CONSTANT_HOME}"))
-    if not constants or tree is None:
-        return out
-    # Only the module docstring and `import traceback` may precede them.
-    for node in tree.body[:tree.body.index(constants[0][1])]:
-        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) \
-                and isinstance(node.value.value, str):
-            continue
-        if isinstance(node, ast.Import) and [a.name for a in node.names] == ["traceback"]:
-            continue
-        out.append(ctx.F(
-            "log_shim_constant_placement", "warn", path,
-            "log.py has something above its constants other than the module "
-            "docstring and `import traceback`. The two names sit at the top so "
-            "anyone looking for them finds them without reading the file"))
-        break
-    return out
-
-
 def check_constants(ctx):
-    """Every module-level constant lives in config.py; log.py is bounded-exempt.
+    """Every module-level constant lives in config.py — no exemptions.
 
     Encodes *Where constants are declared* in library-standards.md. Reports
     `constant_outside_config` (warn) for a constant declared anywhere but
-    `config.py`, `log_shim_extra_constant` (error) for a name in `log.py`
-    outside `{_LOG_FILENAME, _VALID_LEVELS}`, and `log_shim_constant_placement`
-    (warn) where anything but `import traceback` sits above them.
+    `config.py`. `log.py` is an ordinary module here: a hardcoded log filename
+    is a literal in the `make_logger` call, and a settable one lives in
+    `config.py` like any other setting, so the shim declares nothing.
 
     `tests.py` and `migrations/` are out of scope — the first is scaffolding
     that lives in the package by Django convention, the second is generated.
@@ -266,10 +247,7 @@ def check_constants(ctx):
             continue
         if f.name == CONSTANT_HOME:
             continue
-        constants, tree = _module_constants(f)
-        if f.name == "log.py":
-            out += _check_log_shim(ctx, f, constants, tree)
-            continue
+        constants, _ = _module_constants(f)
         stray += [(f, name) for name, _ in constants]
 
     if stray:
@@ -615,7 +593,11 @@ def _aggregate(ctx, check, sites, message):
 
 
 def check_evennia_imports(ctx):
-    """Evennia is imported in log.py; elsewhere the import says why.
+    """Every Evennia import carries a comment saying why.
+
+    There is no sanctioned home any more — log.py imports the logging
+    extension, which holds the Evennia coupling, so a library with no other
+    need for the engine imports it nowhere.
 
     See § Importing Evennia. The comment is looked for on the line above, which
     is where the standard's example puts it — a reader landing on the import
@@ -624,7 +606,7 @@ def check_evennia_imports(ctx):
     if ctx.pkg is None:
         return []
     sites = []
-    for f, tree in _package_modules(ctx, extra_skip=("log.py",)):
+    for f, tree in _package_modules(ctx):
         lines = f.read_text(encoding="utf-8", errors="replace").splitlines()
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
@@ -643,9 +625,9 @@ def check_evennia_imports(ctx):
                 sites.append((f, node.lineno))
     return _aggregate(
         ctx, "evennia_import_unexplained", sites,
-        "Evennia import(s) outside log.py with no comment saying why that module needs "
-        "the engine. The narrower the coupling, the more of the library runs without an "
-        "engine — and an import with no comment is an open question, not a settled one")
+        "Evennia import(s) with no comment saying why that module needs the engine. "
+        "The narrower the coupling, the more of the library runs without an engine — "
+        "and an import with no comment is an open question, not a settled one")
 
 
 def check_object_state(ctx):
@@ -966,107 +948,132 @@ def _parse(path: Path):
         return None
 
 
-def _check_shim_interface(ctx, shim: Path, source: str):
-    """The shim's public function: named for the library, with the fixed signature."""
-    tree = _parse(shim)
-    if tree is None:
-        return []
-    out = []
-
-    fn = _shim_function(tree)
-    if fn is not None:
-        words = _library_words(ctx.name)
-        stem = fn.name[:-4] if fn.name.endswith("_log") else fn.name
-        if not fn.name.endswith("_log") or not all(
-                _names_the_library(part, words) for part in stem.split("_") if part):
-            out.append(ctx.F(
-                "log_shim_function_name", "warn", shim,
-                f"the shim's function is `{fn.name}` — it should be named for the library "
-                f"({'/'.join(words)}) plus `_log`, in full words. A reader tracing a log line "
-                f"back uses that name to tell whose it is, and an abbreviation reads fine only "
-                f"to whoever picked it"))
-        if tuple(a.arg for a in fn.args.args) != SHIM_ARGS:
-            out.append(ctx.F(
-                "log_shim_signature", "warn", shim,
-                f"`{fn.name}` takes {tuple(a.arg for a in fn.args.args)} — the shim's signature "
-                f"is {SHIM_ARGS}. It is copied between libraries, so a changed one means a copy "
-                f"was edited rather than adapted"))
-
-    for name, node in _module_constants(shim)[0]:
-        if name != "_VALID_LEVELS":
-            continue
-        try:
-            value = ast.literal_eval(node.value)
-        except ValueError:
-            break
-        if tuple(value) != SHIM_LEVELS:
-            out.append(ctx.F(
-                "log_shim_levels", "warn", shim,
-                f"_VALID_LEVELS is {tuple(value)} — the shim's levels are {SHIM_LEVELS}. A "
-                f"fourth level is one the rest of the corpus cannot be grepped for"))
-        break
-    return out
-
-
 def check_logging(ctx):
     """The logging shim — see design/library-standards.md § Logging.
 
-    Every library logs to a file of its own through ``log.py``, a lazy wrapper
-    over Evennia's ``logger.log_file``. Only the mechanically decidable parts
-    are checked here: that the shim exists, that it uses that mechanism, that
-    it degrades outside an Evennia engine, and that no other module has fallen
-    back to stdlib ``logging`` — records nobody sees, which is the failure the
-    shim exists to prevent.
+    Every library declares ``evennia-logging-extension`` and binds one log
+    function in ``log.py`` through ``make_logger``. The mechanism — the
+    reactor branch, the levels, the traceback handling — lives in the
+    extension and is covered by its own suite, so what is checked here is
+    whether a library is wired to it: the dependency, the bind, the name it
+    binds, the file it names, and that no module has fallen back to stdlib
+    ``logging`` — records nobody sees, which is the failure the shim exists
+    to prevent.
+
+    A ``log.py`` this check cannot read is reported, never skipped: a check
+    that goes quiet when it cannot tell reads as a clean corpus.
     """
     if ctx.pkg is None:
         return []
+    # The extension itself is exempt: it has no log.py because it IS the
+    # mechanism, and a logger that logs its own failures through itself is a
+    # cycle.
+    if ctx.expected_pkg == LOGGING_EXTENSION_PKG:
+        return []
     out = []
+
+    deps = ((ctx.pyproject or {}).get("project") or {}).get("dependencies") or []
+    if not any(LOGGING_EXTENSION_DIST in str(d) for d in deps):
+        out.append(ctx.F(
+            "log_dependency_undeclared", "warn", ctx.pyproject_path,
+            f"pyproject.toml does not declare {LOGGING_EXTENSION_DIST} — log.py "
+            f"imports it, so without the declaration the library works only where "
+            f"something else happened to install it"))
+
     shim = ctx.pkg / "log.py"
     if not shim.exists():
         out.append(ctx.F("missing_log_shim", "warn", shim,
-                         "no log.py — a library logs to a file of its own through the shim "
-                         "(copy a sibling's and rename); or document a divergence in CLAUDE.md"))
+                         "no log.py — a library binds its log function there, in three "
+                         "lines, through evennia-logging-extension's make_logger; or "
+                         "documents a divergence in CLAUDE.md"))
     else:
-        source = shim.read_text(encoding="utf-8", errors="replace")
-        if "log_file" not in source:
-            out.append(ctx.F("log_shim_mechanism", "error", shim,
-                             "log.py does not call Evennia's `logger.log_file` — that is the "
-                             "mechanism that puts lines in the instance's LOG_DIR"))
-        if not re.search(r"""["'][\w.-]+\.log["']""", source):
-            out.append(ctx.F("log_shim_filename", "warn", shim,
-                             "log.py names no `<library>.log` file — lines would land in the "
-                             "main server log rather than one of the library's own"))
-        if "ImportError" not in source:
-            out.append(ctx.F("log_shim_fallback", "warn", shim,
-                             "log.py does not handle ImportError — the shim must be a silent "
-                             "no-op outside an Evennia engine, so tests need no log directory"))
-        if not ("format_exc" in source and "NoneType: None" in source):
-            out.append(ctx.F("log_shim_trace", "warn", shim,
-                             "log.py does not both call `traceback.format_exc()` and suppress the "
-                             "`NoneType: None` it returns outside an except block — without the "
-                             "suppression every trace=True call from outside one logs noise"))
-        if SHIM_TIMESTAMP.search(source):
-            out.append(ctx.F("log_shim_timestamp", "warn", shim,
-                             "log.py stamps a time of its own — `logger.log_file` already "
-                             "prefixes one in UTC, so a second stamps every line twice and the "
-                             "file stops reading against server.log"))
-        out += _check_shim_interface(ctx, shim, source)
-
-        # A shim nothing calls means the library emits nothing, so the log file
-        # the standard asks for never exists. Worth a look rather than a defect
-        # — what a library should log is a decision, not a default.
         tree = _parse(shim)
-        fn = _shim_function(tree) if tree is not None else None
-        if fn is not None and not any(
-                re.search(rf"\b{re.escape(fn.name)}\b",
-                          f.read_text(encoding="utf-8", errors="replace"))
-                for f, _ in _package_modules(ctx, extra_skip=("log.py",))):
+        bindings = _log_bindings(tree) if tree is not None else []
+
+        if tree is None:
             out.append(ctx.F(
-                "log_shim_unused", "warn", shim,
-                f"`{fn.name}` is never called, so the library emits no lines and "
-                f"{rel(shim, ctx.root).rsplit('/', 1)[0]}'s log file never appears. Worth "
-                f"deciding what it should log — the operations a reader goes to a log for "
-                f"are usually the public calls and the refusal paths"))
+                "log_shim_unreadable", "warn", shim,
+                "log.py could not be parsed, so nothing about the shim was checked. "
+                "Cannot-tell is reported rather than skipped"))
+        elif not bindings:
+            # Covers the un-migrated hand-rolled shim, an empty file, and a
+            # file that imports make_logger without binding anything.
+            out.append(ctx.F(
+                "log_shim_mechanism", "error", shim,
+                "log.py does not bind a logger through make_logger — the mechanism "
+                "is evennia-logging-extension, and a shim on any other one writes "
+                "lines nobody reads. The whole file is three lines: import "
+                "make_logger, then `<library>_log = make_logger(\"<library>.log\")`"))
+        elif len(bindings) > 1:
+            names = ", ".join(name for name, _ in bindings)
+            out.append(ctx.F(
+                "log_shim_unreadable", "warn", shim,
+                f"log.py binds {len(bindings)} public loggers ({names}) — the shim "
+                f"names one log file for one library, and the checks that read the "
+                f"binding cannot tell which one is it. Cannot-tell is reported "
+                f"rather than skipped"))
+        else:
+            name, call = bindings[0]
+
+            # The filename, where it is statically visible. An accessor call
+            # is the settable form and deliberately produces nothing — the
+            # extension has no opinion on where the string came from.
+            arg = call.args[0] if call.args else None
+            if arg is None:
+                out.append(ctx.F(
+                    "log_shim_filename", "warn", shim,
+                    "make_logger is called with no filename — the bind refuses that "
+                    "at import, so this library cannot boot"))
+            elif isinstance(arg, ast.Constant) and isinstance(arg.value, str) \
+                    and not re.fullmatch(r"[\w.-]+\.log", arg.value):
+                out.append(ctx.F(
+                    "log_shim_filename", "warn", shim,
+                    f"make_logger is passed {arg.value!r} — a log filename is a plain "
+                    f"name ending in .log, and the bind refuses anything else at import"))
+
+            words = _library_words(ctx.name)
+            stem = name[:-4] if name.endswith("_log") else name
+            if not name.endswith("_log") or not all(
+                    _names_the_library(part, words) for part in stem.split("_") if part):
+                out.append(ctx.F(
+                    "log_shim_function_name", "warn", shim,
+                    f"the shim binds `{name}` — it should be named for the library "
+                    f"({'/'.join(words)}) plus `_log`, in full words. A reader tracing "
+                    f"a log line back uses that name to tell whose it is, and an "
+                    f"abbreviation reads fine only to whoever picked it"))
+
+            # A shim nothing calls means the library emits nothing, so the log
+            # file the standard asks for never exists. Worth a look rather than
+            # a defect — what a library should log is a decision, not a default.
+            if not any(
+                    re.search(rf"\b{re.escape(name)}\b",
+                              f.read_text(encoding="utf-8", errors="replace"))
+                    for f, _ in _package_modules(ctx, extra_skip=("log.py",))):
+                out.append(ctx.F(
+                    "log_shim_unused", "warn", shim,
+                    f"`{name}` is never called, so the library emits no lines and "
+                    f"{rel(shim, ctx.root).rsplit('/', 1)[0]}'s log file never appears. "
+                    f"Worth deciding what it should log — the operations a reader goes "
+                    f"to a log for are usually the public calls and the refusal paths"))
+
+    # config.py imports the log function lazily, inside the functions that
+    # call it. log.py may import config.py for a settable filename, so the
+    # reverse import at module scope completes a cycle that resolves or
+    # crashes on declaration order.
+    config = ctx.pkg / CONSTANT_HOME
+    if config.exists():
+        tree = _parse(config)
+        for node in (tree.body if tree is not None else []):
+            if isinstance(node, ast.ImportFrom) and (
+                    (node.level and node.module == "log")
+                    or node.module == f"{ctx.expected_pkg}.log"):
+                out.append(ctx.F(
+                    "log_import_in_config_scope", "warn", config,
+                    "config.py imports the log function at module scope — log.py may "
+                    "import config.py for a settable filename, and two module-scope "
+                    "imports of each other resolve or crash on declaration order. "
+                    "Import it lazily, inside the functions that call it"))
+                break
 
     init = ctx.pkg / "__init__.py"
     if init.exists():
