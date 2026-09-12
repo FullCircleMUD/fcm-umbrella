@@ -12,6 +12,8 @@ The corpus-wide logging migration (every library's hand-rolled `log.py` → thre
 
 **Why:** the linter now reports 16 `log_shim_mechanism` errors and 17 `log_dependency_undeclared` warns — that is the pass's work queue, not defects to fix opportunistically.
 
-**How to apply:** don't migrate a library's logging unless asked. Known items for the pass: `evennia-ai-memory` has the module-scope `from .log import` cycle in `config.py`; `evennia-database-cascade`'s CLAUDE.md principle 8 ("cannot log") is disproven and needs rewriting; `evennia-yaml-reader` likely gets a documented exception. `evennia-targeting` migrated 2026-09-11 (binding only, no call sites — see [[library-no-logging-evennia-targeting]]). `evennia-archive` migrated 2026-09-11 (phase 1 + live-validated; phase 2 boot logging not discussed).
+**How to apply:** don't migrate a library's logging unless asked. Known items for the pass: `evennia-ai-memory` has the module-scope `from .log import` cycle in `config.py`; `evennia-yaml-reader` likely gets a documented exception.
+
+Migrated so far: `evennia-targeting` 2026-09-11 (binding only, no call sites — see [[library-no-logging-evennia-targeting]]); `evennia-archive` 2026-09-11 (phase 1, live-validated); `evennia-database-cascade` and `evennia-message-bus`; `evennia-scaling` 2026-09-12 (phase 1, live-validated on the three demo instances — INFO, WARN and ERROR-with-traceback all landed in `scaling.log`). Phase 2 boot logging is undiscussed on every one of them.
 
 The logging extension's own `interoperability.md` is deliberately left stale during the pass — Tim updates it in one sweep after all libraries are converted (decided 2026-09-11). Don't fix its per-library entries piecemeal.
