@@ -2,6 +2,7 @@
 /design/
 /ops/
 /src/game/
+/src-rebuild/game-rebuild/
 
 # Grouped nested repos — content/ holds the game-content repos, utilities/ the
 # supporting tools. Ignored as a whole so a new repo is covered the day it
@@ -20,6 +21,7 @@
 
 # Local-only, regenerable — not tracked.
 /src/venv/
+/src-rebuild/venv/
 .DS_Store
 
 # Python bytecode (incl. inside the tracked view gamedirs).
