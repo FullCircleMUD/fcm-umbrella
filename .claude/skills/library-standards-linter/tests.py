@@ -424,6 +424,15 @@ class CheckInteroperability(ValidatorBase):
         ctx = self.ctx(drop=[_INTEROP_PATH])
         self.assertEqual(lib.check_interoperability(ctx), [])
 
+    def test_indirect_dependency_is_a_relationship(self):
+        """IO-09"""
+        doc = interop([("evennia-lib", "This library."),
+                       ("zz-other", "**Indirect dependency.** Nothing here imports it; it "
+                                    "arrives with a sibling that does, and the consumer "
+                                    "configures it.")])
+        f = lib.check_interoperability(self.sibling_ctx(doc))
+        self.assertNotIn("interop_no_relationship", kinds(f))
+
 
 class CheckClaudeMd(ValidatorBase):
     def fcm_ctx(self, **add):

@@ -271,6 +271,14 @@ sibling" is a fact about the directory, not about the file. The library list com
 All three findings are **warns**. Section counts across the corpus run from 6 to 15 against 15
 libraries, so every library has a gap here; this is a queue, not a gate.
 
+**Four relationships, not three.** `Indirect dependency` covers the sibling that no line of the
+library imports but that every install of it carries, because a library it does import depends on it.
+The other three answer *who imports whom*; this one answers the question that actually reaches a
+consumer — is it installed, and do I configure it. `evennia-scaling` against
+`evennia-database-cascade` is the case: the cascade arrives through `evennia-archive` and
+`evennia-message-bus`, and the consumer's settings call it, while nothing in scaling's `src/` names
+it.
+
 The library's own section is exempt from the relationship check — the standard has it say
 *"This library."* and nothing else, so demanding a relationship there would flag every compliant file.
 
@@ -280,10 +288,11 @@ The library's own section is exempt from the relationship check — the standard
 | IO-02 | A library under `libraries/` with no section is a warn naming it | `CheckInteroperability.test_missing_sibling_is_warn` |
 | IO-03 | The library's own section is required too — a doc covering every sibling but itself is a warn | `CheckInteroperability.test_own_section_is_required` |
 | IO-04 | Sections out of alphabetical order is a warn | `CheckInteroperability.test_out_of_order_is_warn` |
-| IO-05 | A sibling section naming none of the three relationships is a warn. An empty section is the common form of this | `CheckInteroperability.test_section_without_a_relationship_is_warn` |
+| IO-05 | A sibling section naming none of the four relationships is a warn. An empty section is the common form of this | `CheckInteroperability.test_section_without_a_relationship_is_warn` |
 | IO-06 | The library's own section needs no relationship — `"This library."` is the whole entry | `CheckInteroperability.test_own_section_needs_no_relationship` |
 | IO-07 | Headings that name no library are ignored, so a preamble or a trailing note is not a finding | `CheckInteroperability.test_non_library_headings_are_ignored` |
 | IO-08 | No `docs/interoperability.md` produces no findings here — `DC-08` owns its absence | `CheckInteroperability.test_missing_doc_is_silent` |
+| IO-09 | `Indirect dependency` is a relationship like the other three. A library whose sibling is absent from its imports but present in every install — arriving as a hard dependency of one it does import — has a real relationship to declare, and the reader's question is whether it is installed, not who imports it | `CheckInteroperability.test_indirect_dependency_is_a_relationship` |
 
 ## IN — `check_installing`
 

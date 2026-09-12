@@ -343,10 +343,10 @@ def check_claude_md(ctx):
     return out
 
 
-# The three relationships a sibling section may declare. "No known issues" on its
+# The four relationships a sibling section may declare. "No known issues" on its
 # own is not one of them — that is the void the document exists to remove.
 INTEROP_RELATIONSHIPS = re.compile(
-    r"hard dependency|optional integration|no coupling", re.I)
+    r"hard dependency|optional integration|indirect dependency|no coupling", re.I)
 
 
 def check_interoperability(ctx):
@@ -393,9 +393,9 @@ def check_interoperability(ctx):
             out.append(ctx.F(
                 "interop_no_relationship", "warn", path,
                 f"the {name} section names no relationship. It opens with one of hard "
-                f"dependency, optional integration or no coupling, then the considerations "
-                f"or an explicit clearance — an empty section is the void the document "
-                f"exists to remove"))
+                f"dependency, optional integration, indirect dependency or no coupling, "
+                f"then the considerations or an explicit clearance — an empty section is "
+                f"the void the document exists to remove"))
     return out
 
 
