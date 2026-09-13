@@ -11,6 +11,7 @@ is tracked here, to keep the folder and document what belongs in it.
 
 | Repo | Branch | Clone |
 |---|---|---|
+| evennia-effects-conditions | main | `git clone https://github.com/FullCircleMUD/evennia-effects-conditions.git` |
 | evennia-mob-spawner | main | `git clone https://github.com/FullCircleMUD/evennia-mob-spawner.git` |
 | evennia-mob-spawner-test-world | main | `git clone https://github.com/FullCircleMUD/evennia-mob-spawner-test-world.git` |
 | evennia-mob-spawner-test-yaml | main | `git clone https://github.com/FullCircleMUD/evennia-mob-spawner-test-yaml.git` |
