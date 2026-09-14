@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 5c171053-81dc-40eb-a35d-b8d83ca4cc34
-  modified: 2026-08-19T02:07:24.095Z
+  modified: 2026-09-13T00:27:44.652Z
 ---
 
 Investigated 2026-08-18.
@@ -32,10 +32,17 @@ invisible to every tenant-filtered query, so `filter(db_location=room)` would mi
 it. The original intermittent case did not reproduce during the 2026-08-18 play
 test; it will now announce itself in `shards.log` if it recurs.
 
-**Unsolved.** Room caches disagree with the database, dozens of rooms, only for
-mobs that move. Ruled out: add/remove pairing, each verified on return; `init`
-rebuilds; duplicate room objects; write failures; tenancy on shard ids; a
-single-threaded race.
+**Unsolved, and still occurring in FCM as at 2026-09-12.** Room caches disagree
+with the database, dozens of rooms, only for mobs that move. Many approaches have
+been tried and tested; none fixed it. Ruled out: add/remove pairing, each verified
+on return; `init` rebuilds; duplicate room objects; write failures; tenancy on
+shard ids; a single-threaded race.
+
+**It is one of the driving reasons for the rebuild** — see [[rebuild-not-retrofit]].
+Treat it as a reason the current game is being replaced, not as a defect awaiting
+another patch in `src/game`. Anything that counts objects in a room (e.g.
+`evennia-mob-spawner`'s tick-time census, which infers deaths from a count delta)
+can be handed a number that is wrong for reasons outside itself.
 
 **Measurement traps.** Reading `obj.contents_cache` *builds* one — use
 `obj.__dict__["contents_cache"]`. Two separate `py` commands see different worlds.

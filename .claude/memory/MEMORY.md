@@ -49,8 +49,11 @@
 - **Document what IS, not what WAS** — see the always-on rule in [CLAUDE.md](../../CLAUDE.md). When something changes, record the current state only; no "used to be"/"migrated from"/"renamed from" framing unless a human agreed there's a direct need.
 - [Design docs live in the design repo](design-docs-in-design-repo.md) — FCM system design lives in the `design` repo, cloned into the umbrella root as `design/` (kebab-case). Libraries self-document in their own `docs/`.
 - [Docs short and plain](feedback_docs_short_and_plain.md) — what it is, how it works, how to use it; no hedging, no alternatives considered, no archaeology. Cut drafts to a third.
+- [Code before docs](feedback-code-before-docs.md) — finish every code change before the documentation pass; docs written mid-stream bake in "yet to be done" and need redoing.
 - [Doc conventions live in doco-structure.md](doc-conventions-home.md) — record new doc conventions in `design/doco-structure.md` (the spec); the `doc-convention-auditor` enforces them, the `doc-convention-linter` checks the mechanical subset.
 - [Cascade migration queue](cascade-migration-queue.md) — the linter's `hand_rolled_router`/`hand_rolled_resolution` errors are the queue for migrating libraries to `evennia-database-cascade`; don't migrate unless asked.
+- [Cascade spec grows multiple app labels](cascade-multi-app-label-spec.md) — `app_labels` tuple pins seed apps too; `XRPL_SEED_APPS` goes; cascade work in its own session.
+- [fcm-xrpl conversion phases](xrpl-conversion-phases.md) — agreed phase list + linter baseline; blocked on the cascade multi-label change.
 - [Doc/library audit toolchain + consistency campaign](doc-audit-toolchain-and-campaign.md) — the spec→linter→auditor pairs (all read-only) and the in-flight code-vs-doc consistency sweep (shards + world-builder done; mob-spawner, yaml-reader, src/game next; targeting deferred).
 
 ## Do not use
@@ -60,6 +63,7 @@
 - [Mobs are spawn-script driven, not YAML entities](feedback_mobs_vs_npcs_yaml.md) — NPCs go in `npc_*.yaml`; mobs (incl. named bosses) get only a `mob_area` room tag and are spawned dynamically
 
 ## Libraries and the rebuild
+- [Editable installs until beta](libraries-installed-editable-until-beta.md) — localhost and staging both clone and editable-install the libraries; publishing to any pip provider, PyPI included, waits for production. A missing install line in a library's `installing.md` is deferred, not forgotten.
 - [Rebuild, not retrofit](rebuild-not-retrofit.md) — libraries are never installed into the running FCM game; `src/game/` is source material and the rebuilt game is the consumer.
 
 ## Instance-to-instance messaging
