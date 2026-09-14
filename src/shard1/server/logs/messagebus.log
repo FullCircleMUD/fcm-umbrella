@@ -1,4 +1,0 @@
-
-26-09-14 20:11:27 [-] [INFO] message bus started: instance 'shard1', bus db '/Users/timbaird/Documents/fcm-umbrella/src/router/server/messagebus.db3' (local file), polling every 0.5s, kinds registered: ping, ping_received, session_authorized, undeliverable_reply, unknown_kind
-26-09-14 20:11:31 [-] [INFO] message bus started: instance 'shard1', bus db '/Users/timbaird/Documents/fcm-umbrella/src/router/server/messagebus.db3' (local file), polling every 0.5s, kinds registered: ping, ping_received, session_authorized, undeliverable_reply, unknown_kind
-26-09-14 20:12:58 [-] [INFO] message bus started: instance 'shard1', bus db '/Users/timbaird/Documents/fcm-umbrella/src/router/server/messagebus.db3' (local file), polling every 0.5s, kinds registered: ping, ping_received, session_authorized, undeliverable_reply, unknown_kind

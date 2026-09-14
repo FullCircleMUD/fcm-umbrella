@@ -64,15 +64,12 @@
 
 ## Libraries and the rebuild
 - [Editable installs until beta](libraries-installed-editable-until-beta.md) — localhost and staging both clone and editable-install the libraries; publishing to any pip provider, PyPI included, waits for production. A missing install line in a library's `installing.md` is deferred, not forgotten.
-- [Library-declared content lives in the game's libraries folder](game-libraries-content-folder.md) — `src/router/libraries/<library-name>/`, one folder per library. Not the umbrella's `libraries/` of repo checkouts.
 - [Rebuild, not retrofit](rebuild-not-retrofit.md) — libraries are never installed into the running FCM game; `src/game/` is source material and the rebuilt game is the consumer.
-- [Never bulk-carry anything from src_old to src](no-bulk-carry-over-from-src-old.md) — no `cp -r`, no `sed` sweep, no "port this across", for code or docs. Every element is re-decided one at a time or the rebuild is pointless.
 
 ## Instance-to-instance messaging
 - [Shards superseded by scaling](shards-superseded-by-scaling.md) — `evennia-shards` is being deprecated; `evennia-scaling` is the standard and the rebuild targets it. Don't design for shards.
 - [Shards v2 — independent instances, not shared Postgres](shards-v2-independent-instances.md) — standalone Evennia servers; archive+xrpl move the character, the bus coordinates. "Non-shards" means *not shards as it is today*.
 - [evennia-message-bus library](evennia-message-bus-library.md) — working, round trip proven between demo instances; no consumer game yet.
-- [Shard first boot runs in isolation](scaling-shard-first-boot-in-isolation.md) — a fresh shard database needs a normal `evennia start` on its own to create Account #1 and Limbo, then a shutdown, before `server_start` attaches it to the router.
 
 ## Multi-shard dev setup
 - [Shards view gamedirs — fix at symlink layer, not settings](feedback_shards_view_gamedirs.md) — Windows runs all roles from `src/game/`; Unix needs view gamedirs (`game-router/`, `game-shard1/`) with symlinks back to `../game/`. Solve path errors with symlinks, not settings edits.

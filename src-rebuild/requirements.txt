@@ -1,0 +1,8 @@
+evennia
+
+# macOS only. Apple's system SQLite drives sqlite3_initialize() through
+# libdispatch, which does not survive the fork `evennia start` uses to
+# daemonize — the server then deadlocks on its first query, silently, with
+# nothing in any log. sqlean.py ships its own statically-linked SQLite, and
+# the demo settings swap it in, gated on darwin.
+sqlean.py; sys_platform == "darwin"
