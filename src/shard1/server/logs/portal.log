@@ -1,0 +1,17 @@
+|Portal| 2026-09-14 20:11:24 [..] Loaded.
+|Portal| 2026-09-14 20:11:21 [..] Loading /Users/timbaird/Documents/fcm-umbrella/src/venv/lib/python3.13/site-packages/evennia/server/portal/portal.py...
+|Portal| 2026-09-14 20:11:24 [..] Loaded.
+|Portal| 2026-09-14 20:11:24 [..] twistd 24.11.0 (/Users/timbaird/Documents/fcm-umbrella/src/venv/bin/python3.13 3.13.5) starting up.
+|Portal| 2026-09-14 20:11:24 [..] reactor class: twisted.internet.selectreactor.SelectReactor.
+|Portal| 2026-09-14 20:11:24 [..] AMP starting on 4006
+|Portal| 2026-09-14 20:11:24 [..] Telnet starting on 4030
+|Portal| 2026-09-14 20:11:24 [..] Websocket starting on 4032
+|Portal| 2026-09-14 20:11:24 [..] Webserver-proxy starting on 4031
+|Portal| 2026-09-14 20:11:24 [..] Portal starting server ... 
+|Portal| 2026-09-14 20:11:28 [..] Portal starting server ... 
+|Portal| 2026-09-14 20:11:54 [..] (TCP Port 4031 Closed)
+|Portal| 2026-09-14 20:11:54 [..] (TCP Port 4032 Closed)
+|Portal| 2026-09-14 20:11:54 [..] (TCP Port 4030 Closed)
+|Portal| 2026-09-14 20:11:54 [..] (TCP Port 4006 Closed)
+|Portal| 2026-09-14 20:11:54 [..] Main loop terminated.
+|Portal| 2026-09-14 20:11:54 [..] Server Shut Down.

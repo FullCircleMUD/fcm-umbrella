@@ -1,8 +1,8 @@
 # Nested working repos — version-controlled independently by their own remotes.
 /design/
 /ops/
-/src/game/
-/src-rebuild/game-rebuild/
+/src_old/game/
+/src/game-rebuild/
 
 # Grouped nested repos — content/ holds the game-content repos, utilities/ the
 # supporting tools. Ignored as a whole so a new repo is covered the day it
@@ -21,7 +21,7 @@
 
 # Local-only, regenerable — not tracked.
 /src/venv/
-/src-rebuild/venv/
+/src_old/venv/
 .DS_Store
 
 # Python bytecode (incl. inside the tracked view gamedirs).
@@ -29,10 +29,10 @@ __pycache__/
 *.pyc
 
 # Per-instance runtime logs in the view gamedirs — keep the (empty) dir, not the contents.
-/src/game-router/server/logs/*
-/src/game-shard1/server/logs/*
-!/src/game-router/server/logs/.gitkeep
-!/src/game-shard1/server/logs/.gitkeep
+/src_old/game-router/server/logs/*
+/src_old/game-shard1/server/logs/*
+!/src_old/game-router/server/logs/.gitkeep
+!/src_old/game-shard1/server/logs/.gitkeep
 
 # Process IDs written by a running server — per-instance, regenerated on every start.
 *.pid

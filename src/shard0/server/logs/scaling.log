@@ -1,0 +1,12 @@
+
+26-09-14 20:05:22 [-] [INFO] started as 'shard' on instance 'shard0'. Shards: ('shard0', 'shard1'). Router: 'router'.
+26-09-14 20:09:15 [-] [INFO] started as 'shard' on instance 'shard0'. Shards: ('shard0', 'shard1'). Router: 'router'.
+26-09-14 20:10:43 [-] [INFO] started as 'shard' on instance 'shard0'. Shards: ('shard0', 'shard1'). Router: 'router'.
+26-09-14 20:10:50 [-] [INFO] started as 'shard' on instance 'shard0'. Shards: ('shard0', 'shard1'). Router: 'router'.
+26-09-14 20:10:54 [-] [INFO] started as 'shard' on instance 'shard0'. Shards: ('shard0', 'shard1'). Router: 'router'.
+26-09-14 20:10:58 [-] [INFO] started as 'shard' on instance 'shard0'. Shards: ('shard0', 'shard1'). Router: 'router'.
+26-09-14 20:11:04 [-] [INFO] started as 'shard' on instance 'shard0'. Shards: ('shard0', 'shard1'). Router: 'router'.
+26-09-14 20:12:29 [-] [INFO] started as 'shard' on instance 'shard0'. Shards: ('shard0', 'shard1'). Router: 'router'.
+26-09-14 20:12:32 [-] [INFO] started as 'shard' on instance 'shard0'. Shards: ('shard0', 'shard1'). Router: 'router'.
+26-09-14 20:14:43 [-] [ERROR] NutinDuin arrived and could not be placed: nothing places NutinDuin on shard0. Their location was 'f0000000-0000-4000-8000-000000000001', their home was None on 'shard0', and the default home 'f0000000-0000-4000-8000-000000000002' is not in this database either. The session cannot be admitted.
+26-09-14 20:25:20 [-] [INFO] started as 'shard' on instance 'shard0'. Shards: ('shard0', 'shard1'). Router: 'router'.
