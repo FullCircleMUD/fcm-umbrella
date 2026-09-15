@@ -64,12 +64,15 @@
 
 ## Libraries and the rebuild
 - [Editable installs until beta](libraries-installed-editable-until-beta.md) — localhost and staging both clone and editable-install the libraries; publishing to any pip provider, PyPI included, waits for production. A missing install line in a library's `installing.md` is deferred, not forgotten.
+- [Library-declared content lives in the game's libraries folder](game-libraries-content-folder.md) — `src/router/libraries/<library-name>/`, one folder per library. Not the umbrella's `libraries/` of repo checkouts.
 - [Rebuild, not retrofit](rebuild-not-retrofit.md) — libraries are never installed into the running FCM game; `src/game/` is source material and the rebuilt game is the consumer.
+- [Never bulk-carry anything from src_old to src](no-bulk-carry-over-from-src-old.md) — no `cp -r`, no `sed` sweep, no "port this across", for code or docs. Every element is re-decided one at a time or the rebuild is pointless.
 
 ## Instance-to-instance messaging
 - [Shards superseded by scaling](shards-superseded-by-scaling.md) — `evennia-shards` is being deprecated; `evennia-scaling` is the standard and the rebuild targets it. Don't design for shards.
 - [Shards v2 — independent instances, not shared Postgres](shards-v2-independent-instances.md) — standalone Evennia servers; archive+xrpl move the character, the bus coordinates. "Non-shards" means *not shards as it is today*.
 - [evennia-message-bus library](evennia-message-bus-library.md) — working, round trip proven between demo instances; no consumer game yet.
+- [Shard first boot runs in isolation](scaling-shard-first-boot-in-isolation.md) — a fresh shard database needs a normal `evennia start` on its own to create Account #1 and Limbo, then a shutdown, before `server_start` attaches it to the router.
 
 ## Multi-shard dev setup
 - [Shards view gamedirs — fix at symlink layer, not settings](feedback_shards_view_gamedirs.md) — Windows runs all roles from `src/game/`; Unix needs view gamedirs (`game-router/`, `game-shard1/`) with symlinks back to `../game/`. Solve path errors with symlinks, not settings edits.
@@ -87,8 +90,11 @@
 - [No hardening language](feedback_no_hardening_language.md) — never write a decision up as settled/locked in/immutable; it's the *current* plan, always open to review. Hardened notes get quoted back as constraints that never existed. Externally-imposed constraints are the exception — record those as hard.
 - [Terse written records too](feedback_terse_written_records.md) — memory files and notes get the same treatment as replies: one line per fact, no prose scaffolding.
 - [Bottom line first](feedback_terse_confirmations.md) — lead with the one-line answer (yes/no *and* open questions), then any additional factors as short dot points. Stop there; mechanism, tables, and citations only when asked.
+- [Don't second-guess agreed scope](feedback-dont-second-guess-agreed-scope.md) — scope stated means execute; a yes/no question gets "Yes.", not an inventory.
 - [A question is not an instruction](feedback_question_is_not_instruction.md) — answer questions in prose and stop; wait for an imperative before editing code.
 - [Never invent detail](feedback_never_invent_detail.md) — no invented timespans, counts or severities to make a point land; check a factual claim before repeating it. "Passed for months" about a three-day-old library is the case that prompted it.
+- [Name the deviation and its benefits](feedback-name-the-deviation-and-its-benefits.md) — rewriting something that already exists means saying so and listing what the change buys; empty list means don't change it. The objection is silent substitution, not change.
+- [Cases need a real trigger](feedback-cases-need-a-real-trigger.md) — a test case earns its place from a bug that happened or a plausible refactor into one; a pattern seen in `src_old/` is neither. Name the trigger or don't write the case.
 - [No manufactured objections](feedback_no_manufactured_objections.md) — raise only concerns that bind in this codebase; check a consequence actually bites before stating it. Zero real objections means say so.
 - [Answer the concept, not the literal wording](feedback_answer_the_concept_not_the_literal.md) — judge whether Tim's idea works before objecting; don't let a technicality read as "that won't work".
 - [Lead with the no](feedback_lead_with_the_no.md) — when a proposal won't work, say so in the first sentence; never open with agreement, never raise caveats that don't change the decision.
