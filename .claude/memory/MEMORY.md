@@ -106,6 +106,7 @@
 - [Don't second-guess agreed scope](feedback-dont-second-guess-agreed-scope.md) — scope stated means execute; a yes/no question gets "Yes.", not an inventory.
 - [A question is not an instruction](feedback_question_is_not_instruction.md) — answer questions in prose and stop; wait for an imperative before editing code.
 - [Never invent detail](feedback_never_invent_detail.md) — no invented timespans, counts or severities to make a point land; check a factual claim before repeating it. "Passed for months" about a three-day-old library is the case that prompted it.
+- [Never refactor a dependency unasked](feedback-never-refactor-dependencies-unasked.md) — existing code other code depends on is not touched as a side effect of new work; ask and wait. `git diff --stat` is the check.
 - [Name the deviation and its benefits](feedback-name-the-deviation-and-its-benefits.md) — rewriting something that already exists means saying so and listing what the change buys; empty list means don't change it. The objection is silent substitution, not change.
 - [Cases need a real trigger](feedback-cases-need-a-real-trigger.md) — a test case earns its place from a bug that happened or a plausible refactor into one; a pattern seen in `src_old/` is neither. Name the trigger or don't write the case.
 - [No manufactured objections](feedback_no_manufactured_objections.md) — raise only concerns that bind in this codebase; check a consequence actually bites before stating it. Zero real objections means say so.
