@@ -55,10 +55,25 @@ The **full** set of nested repos (including those without their own `CLAUDE.md` 
 > These are **plain markdown links, not `@imports`** — plain links keep each sub-repo's `CLAUDE.md`
 > lazy; an `@import` would load them all eagerly on every session.
 
-## Project scope — game-repo changes need board approval
+## The rebuild — nothing carries over unexamined
 
-**No changes to any game repos without explicit board approval.** Development, analysis, and local
-work are fine, but committing/pushing changes to the game repositories requires board sign-off for that
+**Never bulk-copy, bulk-port or bulk-rewrite anything from `src_old/` into `src/`.** No `cp -r`, no
+`sed` across files, no "port this module across", no find-and-replace sweep over the docs. Not once,
+not for the easy cases, not to save time.
+
+The entire point of the rebuild is that every element gets re-evaluated on its merits and exists in
+`src/` because it was decided to, not because it was there before. A bulk operation is the one move
+that guarantees the opposite: it carries the old design across without anyone looking at it, and the
+reasons it was wrong come with it.
+
+So: one thing at a time, with a reason for keeping it. This covers code, settings, content, tests,
+and documentation references alike. `src_old/` is reference material to read and learn from — never a
+source to copy from.
+
+## Project scope — game-repo changes need Tim's approval
+
+**No changes to any game repos without Tim's explicit approval.** Development, analysis, and local
+work are fine, but committing/pushing changes to the game repositories requires Tim's sign-off for that
 specific change. When unsure whether a repo counts, ask before changing it.
 
 ## Test-first — the test plan comes first, everywhere

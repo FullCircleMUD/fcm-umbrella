@@ -5,6 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: b3bba4c6-d5c8-403d-8943-4b214af2df80
+  modified: 2026-09-21T01:36:44.591Z
 ---
 
 A toolchain of **deterministic linter skills + read-only judgment auditor agents** was built for keeping
@@ -37,9 +38,9 @@ scope structurally cannot.
 - ⏸ `evennia-targeting` deferred — it's a scaffold (no library code yet), so its docs are all
   design-ahead with nothing to drift against until code lands
 
-**`src/game` is a game repo — board approval needed to change game code.** This phase fixes
+**`src/game` is a game repo — Tim's approval needed to change game code.** This phase fixes
 `design/` only; anything that would edit `src/game` (incl. stale code docstrings/comments) is surfaced
-for the board, not committed. **Board-surface items from the combat-cluster audit (open):**
+to Tim, not committed. **Items surfaced to Tim from the combat-cluster audit (open):**
 - `world/damage_tables.py` comment groups Sai/Nunchaku under "d6 Base" but both are `base_damage="d4"`.
 - `combat/combat_utils.py` `force_drop_weapon` docstring claims mob floor-drop vs PC inventory; code
   always removes to inventory (no branching).

@@ -10,7 +10,7 @@
 
 ## Company Scope
 - This company's job is **marketing**, not game development
-- **No changes to any game repos without explicit board approval** (confirmed 2026-04-23)
+- **No changes to any game repos without Tim's explicit approval** (confirmed 2026-04-23)
 - All agent work must be scoped to marketing workflows: content, social media, community, analytics, etc.
 
 ## Working Policies
@@ -47,6 +47,7 @@
 
 ## Documentation
 - **Document what IS, not what WAS** — see the always-on rule in [CLAUDE.md](../../CLAUDE.md). When something changes, record the current state only; no "used to be"/"migrated from"/"renamed from" framing unless a human agreed there's a direct need.
+- [No legacy references in rebuild docs](feedback-no-legacy-references-in-rebuild-docs.md) — `src/` documentation never compares itself to `src_old/`; no "legacy did X", no deviation notes.
 - [Design docs live in the design repo](design-docs-in-design-repo.md) — FCM system design lives in the `design` repo, cloned into the umbrella root as `design/` (kebab-case). Libraries self-document in their own `docs/`.
 - [Docs short and plain](feedback_docs_short_and_plain.md) — what it is, how it works, how to use it; no hedging, no alternatives considered, no archaeology. Cut drafts to a third.
 - [Code before docs](feedback-code-before-docs.md) — finish every code change before the documentation pass; docs written mid-stream bake in "yet to be done" and need redoing.
@@ -56,6 +57,13 @@
 - [fcm-xrpl conversion phases](xrpl-conversion-phases.md) — agreed phase list + linter baseline; blocked on the cascade multi-label change.
 - [Doc/library audit toolchain + consistency campaign](doc-audit-toolchain-and-campaign.md) — the spec→linter→auditor pairs (all read-only) and the in-flight code-vs-doc consistency sweep (shards + world-builder done; mob-spawner, yaml-reader, src/game next; targeting deferred).
 
+## Code conventions
+- [Enums are plain Enum](enums-are-plain-enums.md) — cross into strings with `.value`; no `str, Enum` or `IntEnum` mixins. Repeated past problems, plain always won.
+
+- [Components talk by signal](event-driven-components.md) — the FCM layer is event-driven by design; a component never imports another to make something happen, and request-shaped signals are fine.
+- [Kit classes, not character classes](kit-classes-naming.md) — `kit_classes` / `KitClass`, no `Base` suffix; any actor that can learn may hold one, not just characters.
+- [Properties are written by assignment](property-writes-by-assignment.md) — never in-place mutation; `at_set` validation only runs on assignment, and the saver-collection gap is accepted, not a defect to design around.
+
 ## Do not use
 - [No evennia-stateful-text library — use Evennia native](evennia-stateful-text.md) — Evennia provides stateful-text natively; don't propose, reference, or try to fetch an `evennia-stateful-text` repo.
 
@@ -63,10 +71,15 @@
 - [Mobs are spawn-script driven, not YAML entities](feedback_mobs_vs_npcs_yaml.md) — NPCs go in `npc_*.yaml`; mobs (incl. named bosses) get only a `mob_area` room tag and are spawned dynamically
 
 ## Libraries and the rebuild
+- [Live test in a demo gamedir, not the unit suite](library-live-test-in-demo-gamedir.md) — unit tests call hooks directly; real puppet/unpuppet and server ticks wait for a demo environment after the library is complete.
 - [Editable installs until beta](libraries-installed-editable-until-beta.md) — localhost and staging both clone and editable-install the libraries; publishing to any pip provider, PyPI included, waits for production. A missing install line in a library's `installing.md` is deferred, not forgotten.
 - [Library-declared content lives in the game's libraries folder](game-libraries-content-folder.md) — `src/router/libraries/<library-name>/`, one folder per library. Not the umbrella's `libraries/` of repo checkouts.
+- [Build for the intended game, not today's state](feedback-build-for-the-intended-game.md) — a component that is inert because its consumer isn't built yet still goes in; judge it against the finished design.
 - [Rebuild, not retrofit](rebuild-not-retrofit.md) — libraries are never installed into the running FCM game; `src/game/` is source material and the rebuilt game is the consumer.
+- [Never change an inherited hook's signature](never-change-inherited-hook-signatures.md) — override a hook the library didn't define with the base signature verbatim; a changed signature silently breaks every other consumer in the MRO.
+- ["Legacy production", not "production"](feedback-legacy-production-not-production.md) — `src_old/` was production and isn't now; always qualify it.
 - [Never bulk-carry anything from src_old to src](no-bulk-carry-over-from-src-old.md) — no `cp -r`, no `sed` sweep, no "port this across", for code or docs. Every element is re-decided one at a time or the rebuild is pointless.
+- [Weigh a variation against downstream port cost](rebuild-weigh-variation-by-downstream-port-cost.md) — legacy works; port it straight, vary only by agreement. A variation trades what it buys (speed, clarity, a problem removed) against how much harder it makes porting the consumers that come later.
 
 ## Instance-to-instance messaging
 - [Shards superseded by scaling](shards-superseded-by-scaling.md) — `evennia-shards` is being deprecated; `evennia-scaling` is the standard and the rebuild targets it. Don't design for shards.
@@ -85,7 +98,7 @@
 - [One file while iterating, sweep at the end](feedback_targeted_tests_during_dev.md) — run only the test module just edited; broad sweeps cost ~4 min and belong at the end of a body of work. Full suite (~2 hours, holds the test DBs) is end-of-day only.
 - [No troubleshooting relics](feedback_no_troubleshooting_relics.md) — only the code that solved it ships; spikes, debug logging and failed approaches are removed. Revert to a clean tree between attempts.
 - [Cooperative design loop](feedback_cooperative_design_loop.md) — discuss architecture, plan, write cases for one named unit, get approval, *then* write tests. Scaffolding means structure, not content.
-- [Stop on each problem](feedback_stop_on_each_problem.md) — when auditing, surface one finding, stop, and let the user decide fix/leave/defer before editing or hunting the next one. Don't auto-fix or batch-enumerate.
+- [One issue per reply](feedback_stop_on_each_problem.md) — surface one thing needing a decision, stop, let Tim address it, then the next. A reply carrying ten items gets one discussed and the other nine scroll away. Never close with "two more things".
 - [No legacy-data concerns, ever](feedback_no_legacy_data_concerns.md) — pre-alpha, fresh DB every deploy. Never propose a backfill or caveat a change with "objects created before this won't have it". Applies to all work, not just shards.
 - [No hardening language](feedback_no_hardening_language.md) — never write a decision up as settled/locked in/immutable; it's the *current* plan, always open to review. Hardened notes get quoted back as constraints that never existed. Externally-imposed constraints are the exception — record those as hard.
 - [Terse written records too](feedback_terse_written_records.md) — memory files and notes get the same treatment as replies: one line per fact, no prose scaffolding.

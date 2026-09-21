@@ -3,6 +3,7 @@ name: Upcoming — rebuild FCM world in YAML using evennia-world-builder
 description: Starting 2026-05-08, FCM world content gets rebuilt as YAML driven through the evennia-world-builder library; real-world edge cases will surface library gaps to fix
 type: project
 originSessionId: e12138e1-0b05-4f0f-9c0c-f751f175704b
+modified: 2026-09-21T01:36:39.844Z
 ---
 Starting 2026-05-08, the user is rebuilding the existing FullCircleMUD world content as YAML files consumed by the `evennia-world-builder` library at `/Users/timbaird/Documents/FCM/libraries/evennia-world-builder/`.
 
@@ -12,4 +13,4 @@ Starting 2026-05-08, the user is rebuilding the existing FullCircleMUD world con
 - Real-world authoring will surface edge cases the synthetic test fixtures didn't reach. Expect gaps around: FCM-specific typeclass behaviour, scale (dozens-to-hundreds of files vs. 3 in test), authoring ergonomics at scale, `incoming_exits:` maintenance burden, integration with hooks/scripts the game expects post-build.
 - Per the project's "synthetic content first" principle, when a real-content edge case bites, capture it as a new synthetic fixture in the library's tests before fixing — keeps regression coverage forever.
 - The library is in `libraries/evennia-world-builder/`; the test-content repo is `libraries/evennia-world-builder-test-yaml/`. The actual FCM world content will likely live in a separate content repo (config TBD when that work begins).
-- Per existing Company Scope memory, FCM is marketing-focused and game-repo changes need board approval. Library/content work is upstream of that — confirm with user if any of this work is actually expected to touch `src/game/` directly.
+- Per existing Company Scope memory, FCM is marketing-focused and game-repo changes need Tim's approval. Library/content work is upstream of that — confirm with user if any of this work is actually expected to touch `src/game/` directly.
