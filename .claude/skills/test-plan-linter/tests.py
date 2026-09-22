@@ -349,6 +349,76 @@ class Reverse(PlanCase):
                       messages([x for x in f if x.check == "test_plan_ghost_test"]))
 
 
+class NestedPlans(PlanCase):
+    """NP — a subdirectory carrying its own plan."""
+
+    CHILD_PLAN = """# Test plan — the child
+
+| ID | Case | Test function |
+|---|---|---|
+| CH-01 | The child's own case | `test_child_case` |
+"""
+
+    CHILD_SUITE = '''"""The suite CHILD_PLAN claims to cover."""
+
+
+def test_child_case():
+    """CH-01"""
+'''
+
+    def check(self, root, *roots):
+        return lint.check_test_plan(root / self.PLAN_NAME, list(roots), root)
+
+    def child(self, plan_name="test-plan.md"):
+        return {f"src/weapons/{plan_name}": self.CHILD_PLAN,
+                "src/weapons/tests.py": self.CHILD_SUITE}
+
+    def test_child_with_its_own_plan_is_skipped(self):
+        """NP-01 — the child's tests are that plan's, not the parent's ghosts."""
+        root = self.build(**self.child())
+        self.assertEqual(self.check(root, root / "src"), [])
+
+    def test_child_without_a_plan_is_scanned(self):
+        """NP-02 — its tests belong to the plan above it."""
+        root = self.build(**{"src/weapons/tests.py": self.CHILD_SUITE})
+        f = self.check(root, root / "src")
+        self.assertIn("test_plan_ghost_test", kinds(f, "error"))
+        self.assertIn("test_child_case", messages(f))
+
+    def test_root_holding_the_plan_is_still_scanned(self):
+        """NP-03 — only subdirectories are boundaries."""
+        root = self.build()
+        f = self.check(root, root)
+        self.assertNotIn("test_plan_dangling_ref", kinds(f))
+        self.assertEqual(f, [])
+
+    def test_naming_a_test_in_a_skipped_child_is_dangling(self):
+        """NP-04 — a test belongs to the nearest plan."""
+        plan = PLAN.replace("`test_wc_filters`", "`test_child_case`")
+        root = self.build(plan=plan, **self.child())
+        f = self.check(root, root / "src")
+        self.assertIn("test_plan_dangling_ref", kinds(f, "error"))
+        self.assertIn("test_child_case",
+                      messages([x for x in f if x.check == "test_plan_dangling_ref"]))
+
+    def test_boundary_marker_is_the_linted_plans_filename(self):
+        """NP-05 — no naming convention of the linter's own."""
+        self.PLAN_NAME = "cases.md"
+        root = self.build(**self.child("cases.md"))
+        self.assertEqual(self.check(root, root / "src"), [])
+
+        other = self.build(**self.child("test-plan.md"))
+        f = self.check(other, other / "src")
+        self.assertIn("test_plan_ghost_test", kinds(f, "error"))
+        self.assertIn("test_child_case", messages(f))
+
+    def test_roots_away_from_the_plan_behave_the_same(self):
+        """NP-06 — the walk follows the roots, not the plan's location."""
+        self.PLAN_NAME = "docs/test-plan.md"
+        root = self.build(**self.child())
+        self.assertEqual(self.check(root, root / "src", root / "tests"), [])
+
+
 class CaseIds(PlanCase):
     """ID — case ID integrity."""
 

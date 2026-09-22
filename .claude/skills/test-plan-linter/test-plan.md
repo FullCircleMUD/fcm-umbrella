@@ -25,6 +25,7 @@ next, and a gap fixed here is fixed for all of them.
 | `TS` | `scan_test_functions` — locating the tests a suite defines |
 | `FW` | Forward checks: uncovered cases, dangling references |
 | `RV` | Reverse checks: ghost tests |
+| `NP` | Nested plans — a subdirectory carrying its own plan |
 | `ID` | Case ID integrity |
 | `TB` | Unresolved `[TBD]` cases |
 | `MP` | A missing plan |
@@ -111,6 +112,22 @@ A **ghost test** is a test function no case names.
 | RV-05 | A ghost and a dangling reference in the same run are two separate findings | `Reverse.test_ghost_and_dangling_are_separate_findings` |
 | RV-06 | No test roots supplied means no ghost findings — the caller is checking the plan alone | `Reverse.test_no_test_roots_means_no_ghosts` |
 | RV-07 | Clearing a case's `Test function` cell is reported twice — the case as uncovered, its orphaned test as a ghost — and the finding set is exactly those two |`Reverse.test_clearing_a_cell_orphans_its_test` |
+
+## NP — nested plans
+
+A test belongs to the **nearest plan above it**. Walking a test root, a subdirectory that carries its
+own plan is that plan's territory and is not scanned; a subdirectory that carries none is part of the
+plan being linted. The boundary marker is the filename of the plan being linted, so the linter asserts
+no naming convention of its own.
+
+| ID | Case | Test function |
+|---|---|---|
+| NP-01 | A subdirectory carrying its own plan is not scanned — its tests are not the parent's ghosts | `NestedPlans.test_child_with_its_own_plan_is_skipped` |
+| NP-02 | A subdirectory carrying no plan is scanned, and a test in it that no case names is a ghost | `NestedPlans.test_child_without_a_plan_is_scanned` |
+| NP-03 | The supplied test root is scanned even though it holds the plan being linted — only subdirectories are boundaries | `NestedPlans.test_root_holding_the_plan_is_still_scanned` |
+| NP-04 | A case naming a test that lives inside a skipped subdirectory is a dangling reference | `NestedPlans.test_naming_a_test_in_a_skipped_child_is_dangling` |
+| NP-05 | The boundary marker is the linted plan's own filename, so a caller naming its plans something else gets the same behaviour | `NestedPlans.test_boundary_marker_is_the_linted_plans_filename` |
+| NP-06 | A test root that is not the plan's own directory behaves the same — the walk follows the roots, not the plan's location | `NestedPlans.test_roots_away_from_the_plan_behave_the_same` |
 
 ## ID — case ID integrity
 

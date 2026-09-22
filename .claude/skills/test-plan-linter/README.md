@@ -45,6 +45,11 @@ fixtures and `setUp` are not tests; the standalone Django test infrastructure (`
 `urls.py`, `conftest.py`) is excluded by name; `migrations/` and `__pycache__/` are skipped. A module
 that does not parse is skipped rather than stopping the run.
 
+A test belongs to the **nearest plan above it**. A subdirectory of a test root holding its own plan is
+skipped — its tests answer to that plan — while one holding no plan is part of the plan being linted.
+The marker is the filename of the plan being linted, so no naming convention is baked in, and a test
+root is never itself a boundary. Each plan is checked in its own right.
+
 A case row carrying `[TBD` is an error — an open decision is resolved before the plan passes. A plan
 that needs to write the marker without raising one escapes it with a backslash: `\[TBD]`.
 

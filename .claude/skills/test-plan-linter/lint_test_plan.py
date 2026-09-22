@@ -156,20 +156,40 @@ def _test_defs(text):
             and n.name.startswith("test_")]
 
 
-def scan_test_functions(roots, root=None):
+def _under_nested_plan(module: Path, top: Path, plan_name):
+    """Whether a subdirectory between `top` and `module` carries its own plan.
+
+    A test belongs to the nearest plan above it, so such a subdirectory is that
+    plan's territory. `top` itself is never a boundary — a plan sitting beside the
+    tests it covers is the flat case. NP-01, NP-03."""
+    d = module.parent
+    while d != top and d != d.parent:
+        if (d / plan_name).is_file():
+            return True
+        d = d.parent
+    return False
+
+
+def scan_test_functions(roots, root=None, plan_name=None):
     """{test function name: module path} for every test defined under `roots`.
 
     A test function is a `test_*` def in a `tests.py` / `test_*.py` module. Helpers,
     fixtures and `setUp` are not tests, and the standalone test infrastructure is
     excluded by name — so neither can be mistaken for an unclaimed case. A name
     defined in two modules maps to the first in sorted path order.
-    TS-01..TS-12."""
+
+    `plan_name` is the filename that marks a plan. Given one, a subdirectory holding
+    a file of that name is skipped: its tests answer to that plan. Without one there
+    are no boundaries and everything under `roots` is scanned.
+    TS-01..TS-12, NP-01..NP-06."""
     found = {}
     for r in (Path(p) for p in roots):
         if not r.is_dir():
             continue
         for f in sorted(r.rglob("*.py")):
             if not _is_test_module(f):
+                continue
+            if plan_name and _under_nested_plan(f, r, plan_name):
                 continue
             for name in _test_defs(f.read_text(encoding="utf-8", errors="replace")):
                 found.setdefault(name, _rel(f, root))
@@ -227,7 +247,7 @@ def check_test_plan(plan, test_roots=(), root=None):
     for cid, cell, _ in rows:
         for name in ref_names(cell):
             refs.setdefault(name, []).append(cid)
-    tests = scan_test_functions(test_roots, root)
+    tests = scan_test_functions(test_roots, root, plan.name)
 
     dangling = sorted(n for n in refs if n not in tests)
     if dangling:

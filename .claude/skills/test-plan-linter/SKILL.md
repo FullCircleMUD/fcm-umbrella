@@ -67,6 +67,21 @@ data, not a test. Helpers, fixtures and `setUp` are not tests. The standalone te
 infrastructure (`test_settings.py`, `urls.py`, `conftest.py`) is excluded by name,
 and `migrations/` and `__pycache__/` are skipped.
 
+## Nested plans
+
+A tree may carry a plan at several levels, and that is the expected shape — a package
+plans its own cases, and so does a subpackage under it. **A test belongs to the nearest
+plan above it.** Walking a `--tests` directory, a subdirectory holding its own plan is
+skipped: its tests answer to that plan, not this one. A subdirectory holding no plan is
+part of the plan being linted, and an unclaimed test in it is a ghost.
+
+The boundary marker is the filename of the plan being linted, so the linter asserts no
+naming convention of its own. The directory passed as a test root is never a boundary,
+which is what makes a plan sitting beside the tests it covers work.
+
+Each plan is checked in its own right — pointing the linter at a parent says nothing
+about the plans below it.
+
 ## The `[TBD]` escape
 
 A case row carrying `[TBD` is an error — an open decision is resolved before the
