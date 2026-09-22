@@ -107,11 +107,40 @@ against. The play-to-earn position and everything around it is the standing exam
 [design/compliance.md](design/compliance.md) and `ops/COMPLIANCE_LEGAL.md`. Do not soften compliance wording
 to match the flexible tone used everywhere else, and do not borrow its absolute tone for a design,
 marketing, or engineering preference.
+> ### ⚠️ STOP. THE RULE BELOW IS THE ONE YOU ARE ABOUT TO BREAK. ⚠️
+>
+> **Every single session has read this rule, understood it, and then broken it anyway.** Every one of
+> them has then said some version of *"yes, I knew the rule was there, and I ignored it."* That
+> answer is worthless and Tim is thoroughly sick of hearing it.
+>
+> You are not the exception. You will feel that your particular mention of how it used to be is
+> justified because it explains something. It is not, and it does not. **Delete it.**
+>
+> The documentation has exactly three readers, and **not one of them needs any of it**:
+>
+> 1. **A developer** — "how does this work, so I can develop on it?"
+> 2. **A consumer** — "how does this work, so I can implement against it?"
+> 3. **An LLM** — "how does this work, so I can extend it?"
+>
+> None of those three is served by what it was before, what we changed, what legacy did, why we moved
+> away from the old approach, or which alternative was rejected. **This is a greenfield
+> implementation and it is documented as one.** No archaeology. No past tense about our own work. No
+> comparisons to `src_old/`. No "rather than the old X". No war stories about bugs we hit last week.
+>
+> This applies to every surface: code comments, docstrings, README files, design docs, test plans and
+> case descriptions. Git history is where the past lives. Leave it there.
+
 - **Document what IS, not what WAS.** When something changes, record only the current state — drop
   "used to be" / "migrated from" / "formerly" / "renamed from" / "superseded" framing. The prior state
   serves no future session and goes stale; git history holds it. Record what-was **only** when there is
   a real, direct need a human has agreed to (e.g. a deprecated thing that still exists and must not be
   used — then state the *current* rule: "use X, not Y", without the history).
+
+> ### ⚠️ END OF THE RULE EVERY SESSION BREAKS. ⚠️
+>
+> Before you write any comment, docstring or doc line, check it against the three readers above. If a
+> sentence only makes sense to someone who knows what the code looked like yesterday, it does not go
+> in.
 
 ## Git safety — destructive operations require explicit approval
 
