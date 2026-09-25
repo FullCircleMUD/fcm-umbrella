@@ -108,6 +108,7 @@
 - [No legacy-data concerns, ever](feedback_no_legacy_data_concerns.md) — pre-alpha, fresh DB every deploy. Never propose a backfill or caveat a change with "objects created before this won't have it". Applies to all work, not just shards.
 - [Fail loud until production](fail-loud-until-production.md) — raise, never swallow, through playtesting/staging/pre-alpha; quietening exceptions is a pre-production decision, not a design default.
 - [No hardening language](feedback_no_hardening_language.md) — never write a decision up as settled/locked in/immutable; it's the *current* plan, always open to review. Hardened notes get quoted back as constraints that never existed. Externally-imposed constraints are the exception — record those as hard.
+- [Think twice before a TBD](feedback-no-tbd-for-undiscussed-values.md) — place one only for a meaningful open issue, not something invented or assumed; if unsure, ask whether it goes on the TBD list.
 - [Terse written records too](feedback_terse_written_records.md) — memory files and notes get the same treatment as replies: one line per fact, no prose scaffolding.
 - [Bottom line first](feedback_terse_confirmations.md) — lead with the one-line answer (yes/no *and* open questions), then any additional factors as short dot points. Stop there; mechanism, tables, and citations only when asked.
 - [Don't second-guess agreed scope](feedback-dont-second-guess-agreed-scope.md) — scope stated means execute; a yes/no question gets "Yes.", not an inventory.
