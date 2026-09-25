@@ -48,9 +48,12 @@
 ## Documentation
 - **Document what IS, not what WAS** — see the always-on rule in [CLAUDE.md](../../CLAUDE.md). When something changes, record the current state only; no "used to be"/"migrated from"/"renamed from" framing unless a human agreed there's a direct need.
 - [No legacy references in rebuild docs](feedback-no-legacy-references-in-rebuild-docs.md) — `src/` documentation never compares itself to `src_old/`; no "legacy did X", no deviation notes.
-- [Design docs live in the design repo](design-docs-in-design-repo.md) — FCM system design lives in the `design` repo, cloned into the umbrella root as `design/` (kebab-case). Libraries self-document in their own `docs/`.
+- [Design docs live in the design repo](design-docs-in-design-repo.md) — where they live: the `design` repo, cloned into the umbrella root as `design/` (kebab-case). Libraries self-document in their own `docs/`.
+- [design/ is legacy and frozen](design-repo-not-maintained-for-rebuild.md) — it documents the legacy game, is never updated for rebuild work, and never cites what the rebuilt game does. Rebuild docs get written once, after the design settles.
 - [Docs short and plain](feedback_docs_short_and_plain.md) — what it is, how it works, how to use it; no hedging, no alternatives considered, no archaeology. Cut drafts to a third.
+- [No tuned values in prose](feedback-no-tuned-values-in-prose.md) — say what an attribute means, never what it is set to; balance numbers get retuned and every prose copy goes stale.
 - [Code before docs](feedback-code-before-docs.md) — finish every code change before the documentation pass; docs written mid-stream bake in "yet to be done" and need redoing.
+- [Component plan docs are deleted](component-plan-docs-are-deleted.md) — a finished component keeps only README, test-plan, tests and `__init__`; any working plan goes before finalisation.
 - [Doc conventions live in doco-structure.md](doc-conventions-home.md) — record new doc conventions in `design/doco-structure.md` (the spec); the `doc-convention-auditor` enforces them, the `doc-convention-linter` checks the mechanical subset.
 - [Cascade migration queue](cascade-migration-queue.md) — the linter's `hand_rolled_router`/`hand_rolled_resolution` errors are the queue for migrating libraries to `evennia-database-cascade`; don't migrate unless asked.
 - [Cascade spec grows multiple app labels](cascade-multi-app-label-spec.md) — `app_labels` tuple pins seed apps too; `XRPL_SEED_APPS` goes; cascade work in its own session.
@@ -59,7 +62,9 @@
 
 ## Code conventions
 - [Enums are plain Enum](enums-are-plain-enums.md) — cross into strings with `.value`; no `str, Enum` or `IntEnum` mixins. Repeated past problems, plain always won.
+- [Directions are strings, not an enum](directions-are-strings-not-an-enum.md) — weighed and declined; a direction is the word the player types, so a member would be `.value`'d at every boundary.
 
+- [Typeclasses live in typeclasses/ — a principle, not a rule](typeclass-location-principle.md) — permitted exception: a component that instantiates its own objects holds those classes itself. Never quoted back as a blocker.
 - [Components talk by signal](event-driven-components.md) — the FCM layer is event-driven by design; a component never imports another to make something happen, and request-shaped signals are fine.
 - [Kit classes, not character classes](kit-classes-naming.md) — `kit_classes` / `KitClass`, no `Base` suffix; any actor that can learn may hold one, not just characters.
 - [Properties are written by assignment](property-writes-by-assignment.md) — never in-place mutation; `at_set` validation only runs on assignment, and the saver-collection gap is accepted, not a defect to design around.
@@ -95,6 +100,7 @@
 - [Test-instance credentials are root / p](feedback_test_instance_credentials.md) — local demo/test gamedirs only; never anything deployed.
 - [Cheap tests beat confident theory](feedback_cheap_tests_over_theory.md) — verify before asserting; and when I haven't verified, ask ("does this make sense to you?") rather than declaring it broken — or fine.
 - [Reason, don't reflexively gather](feedback_reason_dont_just_gather.md) — senior-dev role: before running a check, ask what result would change the recommendation. "Changes behaviour" ≠ "risky".
+- [Green means green except tripwires](green-means-green-except-tripwires.md) — documented placeholders for unbuilt functionality aren't findings and don't block a commit; report them in a clause, not a diagnosis.
 - [One file while iterating, sweep at the end](feedback_targeted_tests_during_dev.md) — run only the test module just edited; broad sweeps cost ~4 min and belong at the end of a body of work. Full suite (~2 hours, holds the test DBs) is end-of-day only.
 - [No troubleshooting relics](feedback_no_troubleshooting_relics.md) — only the code that solved it ships; spikes, debug logging and failed approaches are removed. Revert to a clean tree between attempts.
 - [Cooperative design loop](feedback_cooperative_design_loop.md) — discuss architecture, plan, write cases for one named unit, get approval, *then* write tests. Scaffolding means structure, not content.
@@ -107,6 +113,8 @@
 - [Don't second-guess agreed scope](feedback-dont-second-guess-agreed-scope.md) — scope stated means execute; a yes/no question gets "Yes.", not an inventory.
 - [A question is not an instruction](feedback_question_is_not_instruction.md) — answer questions in prose and stop; wait for an imperative before editing code.
 - [Never invent detail](feedback_never_invent_detail.md) — no invented timespans, counts or severities to make a point land; check a factual claim before repeating it. "Passed for months" about a three-day-old library is the case that prompted it.
+- [A component's scope stops at the signal](component-scope-not-the-sender.md) — it is complete when an arriving signal is processed correctly; never caveat it with "nothing sends this yet".
+- [Other sessions' uncommitted work is not yours](other-sessions-uncommitted-work.md) — stage only the paths your task touched; never `git add -A`, and don't offer to include the rest. Scope is not a claim on the area.
 - [Never refactor a dependency unasked](feedback-never-refactor-dependencies-unasked.md) — existing code other code depends on is not touched as a side effect of new work; ask and wait. `git diff --stat` is the check.
 - [Name the deviation and its benefits](feedback-name-the-deviation-and-its-benefits.md) — rewriting something that already exists means saying so and listing what the change buys; empty list means don't change it. The objection is silent substitution, not change.
 - [Cases need a real trigger](feedback-cases-need-a-real-trigger.md) — a test case earns its place from a bug that happened or a plausible refactor into one; a pattern seen in `src_old/` is neither. Name the trigger or don't write the case.

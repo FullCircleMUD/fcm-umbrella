@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 0d698307-7faf-451e-ba74-bd5adfbc796e
-  modified: 2026-08-25T20:24:39.954Z
+  modified: 2026-09-23T16:02:32.579Z
 ---
 
 Three tiers, and pick the smallest one that answers the question:
@@ -26,3 +26,16 @@ time, so results go stale the moment editing continues.
 widen when the body of work is finished or when a change plausibly reaches other suites. Always
 `tee` multi-package runs to a file, per [[../../ops/DEVELOPMENT/TESTING.md]]. Related:
 [[feedback_cheap_tests_over_theory]], [[feedback_dont_overinvest_tangents]].
+
+**Scope follows the task, not the blast radius.** Tasked with the website means running the
+website's suite and stopping. An edit that looks global — a settings append, a middleware, an
+installed app — is not licence to run the game's suites to check it: say the edit is global and let
+Tim decide whether a wider run is worth it. Noted 2026-09-23, when a blast-radius check on a
+settings append for the website transfer cost ~25 minutes and returned 36 pre-existing tripwires to
+triage, none of them related to the work.
+
+**"A body of work" is not each step of one.** Adding a class to `typeclasses/items/` means running
+`typeclasses.items.tests` and stopping there — not all six typeclass suites, because the change
+cannot reach them. Widen only when the change actually touches a shared ancestor: an edit to
+`ObjectParent` or a moved module path reaches every surface, a new leaf class reaches none.
+Restated 2026-09-22 after a 43-second six-suite sweep for a one-module change.
