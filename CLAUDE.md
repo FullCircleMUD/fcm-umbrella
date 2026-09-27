@@ -64,6 +64,9 @@ left unpushed.
 
 Local work — editing, running, testing, analysis — needs no approval.
 
+**The exception is `design/`: never add to or change anything in it without explicit permission from
+Tim or another human.**
+
 ## Test-first — the test plan comes first, everywhere
 
 **Never write code before the test plan says what it should do.** The order is fixed, and it applies to
