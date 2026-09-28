@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 0d698307-7faf-451e-ba74-bd5adfbc796e
-  modified: 2026-09-23T16:02:32.579Z
+  modified: 2026-09-28T00:07:18.342Z
 ---
 
 Three tiers, and pick the smallest one that answers the question:
@@ -33,6 +33,11 @@ installed app — is not licence to run the game's suites to check it: say the e
 Tim decide whether a wider run is worth it. Noted 2026-09-23, when a blast-radius check on a
 settings append for the website transfer cost ~25 minutes and returned 36 pre-existing tripwires to
 triage, none of them related to the work.
+
+**Ask before the full suite, even for a genuinely shared change.** Wiring a gate into the game's
+`Command` base (2026-09-27) did reach every command — but the suites that exercise the base had
+already passed, and the full run was started without asking. Say what the change reaches and which
+suites already cover it, then let Tim choose the full run.
 
 **"A body of work" is not each step of one.** Adding a class to `typeclasses/items/` means running
 `typeclasses.items.tests` and stopping there — not all six typeclass suites, because the change

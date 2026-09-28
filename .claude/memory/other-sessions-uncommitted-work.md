@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 25438ffb-5927-4494-bbfa-cce458e38867
-  modified: 2026-09-23T20:34:51.687Z
+  modified: 2026-09-27T20:56:26.626Z
 ---
 
 Sessions run in parallel in the same repo. A dirty working tree is normal and most of it is not yours.
@@ -20,6 +20,10 @@ taken back without a force push.
 explicitly (`git add <path>`), never `git add -A` or `git add .`. Say plainly in the report which
 paths you left and that they are another session's. Do not ask whether to include them — if Tim wants
 them in, he will say so. "Sweep it all up" means your work, not everyone's.
+
+Commit the component you are working in, not the whole repo. A change you make in another component
+along the way is committed as you go, once Tim approves it, so the working tree stays clear for other
+sessions rather than accumulating your edits across the repo.
 
 Scope is what the task named, and it is not a claim on the area — the next session may be asked to
 work in the same component, or in a different one, and neither is an intrusion. Related:
