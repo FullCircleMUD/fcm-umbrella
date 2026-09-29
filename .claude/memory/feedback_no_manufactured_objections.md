@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 56ad3889-ab87-40e3-af1a-5a0a6b9f4a1f
-  modified: 2026-08-15T00:31:28.178Z
+  modified: 2026-09-25T16:21:49.630Z
 ---
 
 Never manufacture objections. Raise a concern only when it has a live consequence in *this*
@@ -32,6 +32,11 @@ player is never auto-attacked by the server on their own behalf, and `_dying` is
 death latch, not dead weight beside the mob's `is_alive`. Both were stated as bugs, both had to be
 retracted after Tim asked for a proper check. Being asked to verify and then reversing is worse than
 saying nothing — it spends his attention and then tells him the spend was wasted.
+
+**Another recurring form: a mid-sequence breakage objection.** Nothing runs between the steps of an
+agreed sequence of work — pushes don't deploy and nobody plays. "Removing X first breaks its six
+importers" is not an objection when all six are converted before anyone starts the game. Order the
+steps however is convenient; only the finished state has to work.
 
 Related: [[feedback_cheap_tests_over_theory]] (verify before asserting),
 [[feedback_lead_with_the_no]] (when there *is* a real objection, it goes first),
