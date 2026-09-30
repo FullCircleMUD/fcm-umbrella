@@ -40,6 +40,7 @@
 - [Docs short and plain](feedback_docs_short_and_plain.md) — what it is, how it works, how to use it; no hedging or archaeology. Cut drafts to a third.
 - [No tuned values in prose](feedback-no-tuned-values-in-prose.md) — say what an attribute means, never what it is set to.
 - [Code before docs](feedback-code-before-docs.md) — finish the code before the documentation pass.
+- [Config is never asserted in tests](feedback-config-never-asserted-in-tests.md) — tests pin mechanics; read or patch the config value.
 - [Component plan docs are deleted](component-plan-docs-are-deleted.md) — a finished component keeps README, test-plan, tests and `__init__` only.
 
 
@@ -108,6 +109,7 @@
 - [Consumers don't live in what they consume](feedback-consumers-dont-live-in-what-they-consume.md) — a command using messaging isn't a messaging command; ask placement as its own question.
 - [Trust the owning component](feedback-trust-the-owning-component.md) — hand `tell_room` the lines and subject and stop; never test who is blind or deaf from a consumer.
 - [A component's scope stops at the signal](component-scope-not-the-sender.md) — complete when an arriving signal is processed correctly.
+- [Delete a handover once read](feedback-delete-handover-once-read.md) — `ops/scratch` handovers go as soon as they're read back.
 - [Other sessions' uncommitted work is not yours](other-sessions-uncommitted-work.md) — stage only your paths; never `git add -A`.
 - [Never refactor a dependency unasked](feedback-never-refactor-dependencies-unasked.md) — ask and wait; `git diff --stat` is the check.
 - [Use the standard tooling](feedback-use-library-tooling.md) — check `design/parser-filter-inventory.md` first; nothing fits → raise a common helper, never hand-roll.
