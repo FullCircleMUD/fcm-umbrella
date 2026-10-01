@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 4afd8299-0aa5-4091-8c8e-e5fd1dee1126
-  modified: 2026-09-02T12:02:04.248Z
+  modified: 2026-09-29T13:04:13.337Z
 ---
 
 Write docs short and plain: what the thing is, how it works, how to use it. Nothing else. No hedging,
@@ -14,6 +14,9 @@ no options weighed and discarded, no record of what was tried first, no restatin
 **Why:** a human should not need an LLM to interpret documentation an LLM wrote. Tim has raised this
 across many sessions and it keeps reappearing — LLM verbosity is the default failure, not an occasional
 slip.
+
+**Code comments and docstrings too.** More words make a comment less understandable, not more; say it
+once, in the fewest words that stay correct. Worked example: `ops/scratch/TIM-STYLE-CAPTURE.md` §7.
 
 **How to apply:** after drafting, cut to a third. Delete every sentence that says what the thing isn't,
 what was tried, or what might change. If a paragraph can be a sentence, make it a sentence. Recorded in
