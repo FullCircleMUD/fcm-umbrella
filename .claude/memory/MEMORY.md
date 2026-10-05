@@ -20,11 +20,12 @@
 - [Work on dev, merge up to main](feedback_work_on_dev_branch.md) — `dev` is the working branch in `src/game`.
 
 ## World content
+- [Player-led economy](player-led-economy-everything-crafted.md) — nothing exists unless a player crafts it; no starter kits or NPC-sold supply.
+- [Proxy markets: BASIC and some SKILLED](proxy-markets-basic-and-some-skilled.md) — EXPERT+ items get no `tracking_token`; player-traded only.
 - [NPC placement: fcm-world vs fcm-mobs](npc_placement_world_vs_mob_spawner.md) — killable NPCs need a spawn rule in `fcm-mobs`; only unkillable ones go statically in `fcm-world`.
 - [mob_area tag controls wandering](mob_area_tag_controls_wandering.md) — mobs only enter rooms sharing their `mob_area` tag.
 - [fcm-world test-branch strategy](fcm_world_test_branch_strategy.md) — `main` is live content; test world on `test`, merged main → test only; `WORLDBUILDER_REF` points at it.
 
-- [Weapon durability by tier](weapon-durability-by-tier.md) — base case: crude 1000 up to masterwork 5000, +1000 a tier.
 
 ## Archive & recovery
 - [Archive exists for playtest continuity](archive_enables_playtest_continuity.md) — `evennia.db3` disposable; `archive.db3`, `xrpl.db3`, `subscriptions.db3` permanent from alpha. Never wipe evennia+archive while keeping xrpl.
@@ -42,7 +43,7 @@
 - **Document what IS, not what WAS** — see [CLAUDE.md](../../CLAUDE.md). No "used to be"/"migrated from"/"renamed from".
 - [No legacy references in rebuild docs](feedback-no-legacy-references-in-rebuild-docs.md) — `src/` docs never compare themselves to `src_old/`.
 - [Docs short and plain](feedback_docs_short_and_plain.md) — what it is, how it works, how to use it; no hedging or archaeology. Cut drafts to a third.
-- [No tuned values in prose](feedback-no-tuned-values-in-prose.md) — say what an attribute means, never what it is set to.
+- [No tuned values in prose](feedback-no-tuned-values-in-prose.md) — say what an attribute means, never what it is set to; never save balance values to memory.
 - [Config is never asserted in tests](feedback-config-never-asserted-in-tests.md) — tests pin mechanics; read or patch the config value.
 - [Code before docs](feedback-code-before-docs.md) — finish the code before the documentation pass.
 - [Component plan docs are deleted](component-plan-docs-are-deleted.md) — a finished component keeps README, test-plan, tests and `__init__` only.
@@ -50,12 +51,13 @@
 
 ## Code conventions
 - [Enums are plain Enum](enums-are-plain-enums.md) — cross into strings with `.value`; no `str, Enum` or `IntEnum`.
-- [Leading amount only](leading-amount-only.md) — `50 gold`, never `gold 50`; the game-wide command grammar, parsed by targeting's `parse_quantity`.
+- [Leading amount, current practice](leading-amount-only.md) — quantities in commands lead (`deposit 50 gold`); point buy takes either order. Open to change.
 - [Directions are strings, not an enum](directions-are-strings-not-an-enum.md) — a direction is the word the player types.
 - [Typeclasses live in typeclasses/ — a principle, not a rule](typeclass-location-principle.md) — a component that instantiates its own objects holds those classes.
 - [Components talk by signal](event-driven-components.md) — a component prefer not to import another to make something happen.
 - [Properties are written by assignment](property-writes-by-assignment.md) — never in-place mutation; `at_set` only runs on assignment.
 - [In-memory first](feedback-in-memory-first.md) — lazy-load from the DB once, serve from memory; writes update both.
+- [Defer anything that could block](feedback-defer-anything-that-could-block.md) — current thinking: viable queries go off the reactor via `defer_to_db_thread`; small blockers sum. Open to revision.
 - [Decimal for fractional values](decimal-for-fractional-values.md) — no floats in game code; convert library/Evennia floats at the edge.
 
 ## Do not use
@@ -65,12 +67,13 @@
 - [Mobs are spawn-script driven, not YAML entities](feedback_mobs_vs_npcs_yaml.md) — NPCs in `npc_*.yaml`; mobs get only a `mob_area` room tag.
 
 ## Libraries and the rebuild
+- [BaseActor is for static NPCs](base-actor-is-for-static-npcs.md) — unkillable, stationary; anything that moves with players or fights is `BaseCombatActor`.
 - [Vertical positioning is deprecated](vertical-positioning-deprecated.md) — no heights in the rebuild; drop anything height-related from legacy comparisons.
 - [Live test in a demo gamedir, not the unit suite](library-live-test-in-demo-gamedir.md) — real puppet/unpuppet and ticks wait for a demo environment.
 - [Editable installs until beta](libraries-installed-editable-until-beta.md) — clone and editable-install; publishing waits for production.
 - [Library-declared content lives in the game's libraries folder](game-libraries-content-folder.md) — `src/router/libraries/<library-name>/`.
 - [Build for the intended game, not today's state](feedback-build-for-the-intended-game.md) — inert until its consumer exists still goes in.
-- [Engine, not content](feedback-engine-not-content.md) — judge machinery by what it handles once declared; missing content is never the answer.
+- [Engine, not content](feedback-engine-not-content.md) — judge machinery by what it handles once declared; raise only direct blockers, never world content or who can use it.
 - [Rebuild, not retrofit](rebuild-not-retrofit.md) — libraries never go into the running game; the rebuilt game is the consumer.
 - [Never change an inherited hook's signature](never-change-inherited-hook-signatures.md) — override with the base signature verbatim.
 - ["Legacy production", not "production"](feedback-legacy-production-not-production.md) — always qualify `src_old/`.
@@ -78,6 +81,7 @@
 - [No in-room height in the rebuild](no-in-room-height-in-rebuild.md) — legacy `max_height`/`max_depth` are not ported.
 - [Weigh a variation against downstream port cost](rebuild-weigh-variation-by-downstream-port-cost.md) — port legacy straight; vary only by agreement.
 - [Follow Evennia's conventions](feedback-follow-evennia-conventions.md) — check the framework standard before naming; hooks are `at_`, never `on_`.
+- [Descriptive registration names](feedback-descriptive-registration-names.md) — `at_server_start` calls say what they register; one function per signal.
 - [effects-conditions on_ hooks pending rename](effects-conditions-on-hooks-pending-rename.md) — kept `on_` for now; rename to `at_` later.
 
 ## Instance-to-instance messaging
@@ -97,7 +101,9 @@
 - [Test-instance credentials are root / p](feedback_test_instance_credentials.md) — local test gamedirs only.
 - [Cheap tests beat confident theory](feedback_cheap_tests_over_theory.md) — verify before asserting; unverified means ask.
 - [Reason, don't reflexively gather](feedback_reason_dont_just_gather.md) — before a check, ask what result would change the recommendation.
+- [Take stated work as done](feedback-take-stated-work-as-done.md) — Tim says it's in place, it is; never verify it.
 - [Green means green except tripwires](green-means-green-except-tripwires.md) — documented placeholders aren't findings.
+- [Re-evaluate tripwires](feedback-re-evaluate-tripwires.md) — dependency built → remove it and build out; not built → onto the gap checklist.
 - [Router tests use settings_router.py](router-tests-use-settings-router.md) — `--settings settings_router.py`; `settings.py` is stock and breaks on Account.
 - [One file while iterating, sweep at the end](feedback_targeted_tests_during_dev.md) — run only the module just edited; full suite end-of-day.
 - [Mutate only red-run passes](feedback-mutate-only-red-passes.md) — not every new case; testing time stays proportionate.
@@ -110,6 +116,7 @@
 - [No hardening language](feedback_no_hardening_language.md) — the *current* plan, never settled; external constraints excepted.
 - [Think twice before a TBD](feedback-no-tbd-for-undiscussed-values.md) — only for a meaningful open issue; a resolved TBD disappears.
 - [Terse written records too](feedback_terse_written_records.md) — one line per fact in memory and notes.
+- [Memory is not a backlog](feedback-memory-is-not-a-backlog.md) — parked work goes on Tim's list, not into memory.
 - [Bottom line first](feedback_terse_confirmations.md) — one-line answer, then short dot points; stop.
 - [Don't second-guess agreed scope](feedback-dont-second-guess-agreed-scope.md) — scope stated means execute.
 - [Don't re-list agreed steps](feedback-dont-relist-agreed-steps.md) — a step report says what was done; queued work isn't a caveat.
@@ -121,6 +128,7 @@
 - [Trust the owning component](feedback-trust-the-owning-component.md) — hand `tell_room` the lines and subject and stop; never test who is blind or deaf from a consumer.
 - [A component's scope stops at the signal](component-scope-not-the-sender.md) — complete when an arriving signal is processed correctly.
 - [One commit per component](feedback-one-commit-per-component.md) — component and typeclass surface committed separately.
+- [Commit side work, hold the main body](feedback-commit-side-work-hold-main-body.md) — side changes in other components committed as they finish; the main body until stable.
 - [Delete a handover once read](feedback-delete-handover-once-read.md) — `ops/scratch` handovers go as soon as they're read back.
 - [Other sessions' uncommitted work is not yours](other-sessions-uncommitted-work.md) — stage only your paths; never `git add -A`.
 - [Ask before a structural change](feedback-ask-before-a-structural-change.md) — agreed edit needs a restructure to work → name it, ask, wait.
@@ -134,6 +142,7 @@
 - [Test the mechanism once](feedback-test-the-mechanism-once.md) — don't extend a proven-mechanism case for each new instance riding it.
 - [No manufactured objections](feedback_no_manufactured_objections.md) — only concerns that bind here; zero means say so.
 - [Answer the concept, not the literal wording](feedback_answer_the_concept_not_the_literal.md) — judge the idea before objecting.
+- [Dictation mistranscribes](feedback-dictation-mistranscribes.md) — read for the likely meaning; confirm only when it changes the build.
 - [Implementation detail is not a design issue](feedback-implementation-detail-is-not-a-design-issue.md) — buildable means say so; wiring gets one line.
 - [Lead with the no](feedback_lead_with_the_no.md) — "no" in the first sentence.
 - [Next step, not "settles it"](feedback_next_step_not_settles_it.md) — a diagnostic is the next step.
@@ -144,5 +153,5 @@
 - [Always include the imports](feedback_always_include_imports.md) — every in-game `py` snippet self-contained.
 - [Show code as links, not dumps](feedback_code_links_not_dumps.md) — file link + line number.
 - [Pushing no longer deploys](feedback_commit_includes_push.md) — deploys are manual; commit only what's approved.
-- [Commit at the agreed point](feedback-commit-at-the-agreed-point.md) — approval beside a plan means at that point, not now; never stack a commit question.
+- [Commit at the agreed point](feedback-commit-at-the-agreed-point.md) — approval beside a plan means at that point, not now; never stack a commit question; offer once, then wait for Tim.
 - [Ask in prose, not option dialogues](feedback_ask_in_prose_not_dialogues.md) — no multiple-choice dialogues.

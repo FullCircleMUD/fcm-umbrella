@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 648ae4cd-3a40-432c-b50f-69caa28028ac
-  modified: 2026-08-14T18:01:25.303Z
+  modified: 2026-10-05T17:13:53.648Z
 ---
 
 When Tim asks a question — "are these simple changes?", "would it be better to X?", "is scout
@@ -28,6 +28,10 @@ depends on", run the check, and continue straight into the edit in the same turn
 gets told the result he was promised. Announcing a check is a commitment to report back and stop.
 Run it, state what it found, wait. This applies during design discussion especially: exploring
 options aloud is not agreement, and "agreed in principle" is mine to say, not a licence to act.
+
+**Thinking aloud is not an instruction either.** "I'm wondering if it's worth narrowing X" is Tim
+reasoning, not asking for the change (2026-10-05). Investigate if useful, report, and wait until it
+has been discussed further and he says to make it.
 
 Related: [[feedback_lead_with_the_no]], [[feedback_ask_in_prose_not_dialogues]],
 [[feedback_stop_on_each_problem]].

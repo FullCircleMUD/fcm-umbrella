@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 335d0645-d79b-40b1-95bc-8c1e52c2ff46
-  modified: 2026-09-23T08:17:01.347Z
+  modified: 2026-10-01T23:18:36.909Z
 ---
 
 A docstring says what an attribute *is*. It never restates the value, or anything derived from it.
@@ -22,5 +22,9 @@ value in the declaration and the meaning in the comment. Same rule in READMEs, t
 diagrams — `LanternNFTItem  burns, refuelled`, never `180 ticks, refuelled`. Where a test needs the
 figures, a single table drives both the fixture and the assertion so there is one copy.
 
-Raised 2026-09-23 on the lantern and torch docstrings. Related:
+**Memory too.** Balance values Tim sets while working through content (durabilities, costs,
+capacities) are placeholders for playtesting, not rules. Apply them to the data; never save them
+as a memory, and never treat one as a constraint on the next item.
+
+Raised 2026-09-23 on the lantern and torch docstrings; extended to memory 2026-10-01. Related:
 [[feedback_docs_short_and_plain]], [[feedback_terse_written_records]].

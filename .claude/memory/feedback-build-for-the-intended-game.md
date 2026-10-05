@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 83a659ae-32e1-4229-8e13-0cd424cda811
-  modified: 2026-09-18T20:52:24.294Z
+  modified: 2026-10-05T15:51:35.101Z
 ---
 
 Build each piece for the game as it will be once the rebuild is done, not for what exists in
@@ -20,5 +20,6 @@ to build classes without.
 
 **How to apply:** don't flag state as questionable merely because nothing reads it yet. Ask what the
 finished system needs. Raise it only if it is wrong *for the target design*, not if it is
-unreferenced today. Relates to [[rebuild-not-retrofit]] and
+unreferenced today. Same for item design: "can we give X" is answered by whether the stat or
+payload exists — never add "but nothing reads it yet" (Tim, 2026-10-05, on stealth). Relates to [[rebuild-not-retrofit]] and
 [[rebuild-weigh-variation-by-downstream-port-cost]].
