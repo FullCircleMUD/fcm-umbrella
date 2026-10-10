@@ -1,6 +1,6 @@
 ---
 name: feedback-use-library-tooling
-description: "Check design/parser-filter-inventory.md before parsing or filtering; use the standard helper, and if none fits raise a common one — never hand-roll"
+description: "Check design/parser-filter-helper-inventory.md before writing any helper; use the standard one, and if none fits raise a common one — never hand-roll"
 metadata:
   node_type: memory
   type: feedback
@@ -14,4 +14,4 @@ When a library already has the tool, use it. Room/inventory filtering is `walk_c
 
 Player-typed names against a list of names — recipes, skills, keywords — go through `parse_match`, so every command matches the same way. Deviate only for a specific, real reason (Tim, 2026-09-29: the player experience should be as common as possible across the game).
 
-**How to apply:** before writing a parser, filter or matcher, check `design/parser-filter-inventory.md`. If nothing fits, raise a common helper with Tim rather than hand-rolling one; once built, it goes in the inventory. See [[feedback-standardisation-is-the-gain]].
+**How to apply:** before writing a parser, filter, matcher or any other helper, check `design/parser-filter-helper-inventory.md`. If nothing fits, raise a common helper with Tim rather than hand-rolling one; once built, it goes in the inventory. See [[feedback-standardisation-is-the-gain]].

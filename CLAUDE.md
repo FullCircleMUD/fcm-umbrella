@@ -82,11 +82,12 @@ the umbrella, the libraries, `src/`, and every other sub-repo:
    been shown to test anything. Break what it covers, confirm it fails, put it back. A case that
    still passes is vacuous — rewrite it or drop it, and say which.
 
-## Parsing and filtering — check the inventory first
+## Helpers — check the inventory first
 
-Before writing any parsing of player input or filtering of contents, check
-`design/parser-filter-inventory.md`. If nothing there fits, don't hand-roll one — raise a common
-helper with Tim, so every later use case shares it.
+Before writing any helper — parsing player input, filtering contents, wording what happened, or any
+other job a second piece of code would write again — check `design/parser-filter-helper-inventory.md`.
+If nothing there fits, don't hand-roll one — raise a common helper with Tim, so every later use case
+shares it.
 
 ## Working discipline — record the practice, never a decision
 

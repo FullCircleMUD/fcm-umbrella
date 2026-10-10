@@ -17,6 +17,6 @@ command meant auditing and refactoring 20–30 others. Standardisation is what r
 
 **How to apply:** when weighing a conversion, count the standard as the benefit — one implementation,
 one place to look, one fix that reaches every caller. Don't recommend leaving a working site
-hand-rolled on the grounds that "it works and a player wouldn't notice". For parsers and filters,
-the standard is recorded in `design/parser-filter-inventory.md`.
+hand-rolled on the grounds that "it works and a player wouldn't notice". For parsers, filters and
+other helpers, the standard is recorded in `design/parser-filter-helper-inventory.md`.
 Related: [[feedback-name-the-deviation-and-its-benefits]].
