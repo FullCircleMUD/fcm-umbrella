@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 827c71af-8061-4a75-801f-7c5688a11145
-  modified: 2026-08-17T23:32:56.129Z
+  modified: 2026-10-08T16:15:36.922Z
 ---
 
 FullCircleMUD is **not a play-to-earn game** and is never presented as one, in any material, public or
@@ -18,6 +18,10 @@ internal. This is a regulatory position, not a style preference.
 - **We do not sell tokens.** Gameplay is the only way to get them.
 - **We do not redeem** game gold or any game asset for anything of value outside the game — no fiat, no
   stablecoins, no XRP.
+- **We never pair an FCM token with an external asset.** No AMM pool, DEX offer or liquidity we
+  provide puts an FCM token (gold, resources, proxies) against XRP, RLUSD or any other asset from
+  outside the game. Pairing would be us building a way to extract value from the game. A third party
+  doing it is outside our control.
 - **What the XRPL is for:** market pricing via AMM pools, and personal ownership of in-game assets with
   the ability to trade them outside the game. That is the whole story.
 
@@ -51,6 +55,6 @@ published record is consistent, which is why the language rules are absolute.
 
 **How to apply:** check any title, description, tag, script, doc or on-screen text against the
 proximity rule before it ships. Every video carries an on-screen disclaimer card stating this position;
-draft wording lives in `youtube/CLAUDE.md`. The authoritative language policy is
-`ops/COMPLIANCE_LEGAL.md` §18.1.1, summarised in `design/compliance.md`. See also
+draft wording lives in `youtube/CLAUDE.md`. The compliance documentation is being reworked under Tim's lead (2026-10-08) and may be absent
+locally; don't write or restructure it — Tim documents compliance himself. See also
 [[fcm_subscription_after_pre_alpha]].

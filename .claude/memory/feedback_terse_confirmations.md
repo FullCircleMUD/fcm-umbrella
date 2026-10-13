@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 9ec5376b-e0bc-4b68-b21f-5b28b99246ed
-  modified: 2026-09-29T15:21:04.551Z
+  modified: 2026-10-05T21:38:48.244Z
 ---
 
 When the user asks a direct yes/no or confirmation question (e.g. "so X, correct?", "do you understand the intent?"), answer in 1-3 sentences. Don't re-explain the reasoning, don't add "one correction though..." caveats unless the correction is actually load-bearing, and don't pad with qualifying phrases.
@@ -36,5 +36,10 @@ it adds something his version lacks.
 **A simple "is that correct?" gets the first line and nothing else — no dot points either.** 2026-09-25: "so the only barrier is a wielded-weapon lookup, correct?" drew yes + three bullets; Tim: "a simple question gets a simple answer. If I want you to elaborate, I'll ask."
 
 **A report that ends in a problem leads with the fix, not the analysis.** 2026-09-29, enchanting DB: a five-section investigation report buried a fix that fit in three bullets (same URL, one spec line, one `CREATE SCHEMA`). Tim: "you could have just given me the three bullet points up front." When a finding has a fix, the fix is the reply; the mechanism is for when he asks.
+
+**Name a problem by its standard term first.** 2026-10-05: a circular import was explained over several
+messages (chains, tables, "load order") before Tim said "so we've got a circular import problem" — "we
+took however many paragraphs that was down to … one sentence". If a known name fits (circular import,
+race condition, N+1), the first sentence is that name plus the one link that causes it.
 
 **How to apply:** reserve longer, structured responses (with code blocks, numbered options, file:line citations) for when the user asks for a draft, an explanation of something new, or explicitly wants detail. When they're just confirming a plan already established in the conversation, confirm it plainly. If a correction is genuinely necessary, lead with the yes/no, then state the correction in one short clause — don't bury the answer under the caveat.

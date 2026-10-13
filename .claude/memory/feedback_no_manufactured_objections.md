@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 56ad3889-ab87-40e3-af1a-5a0a6b9f4a1f
-  modified: 2026-09-25T16:21:49.630Z
+  modified: 2026-10-13T18:17:14.008Z
 ---
 
 Never manufacture objections. Raise a concern only when it has a live consequence in *this*
@@ -37,6 +37,11 @@ saying nothing — it spends his attention and then tells him the spend was wast
 agreed sequence of work — pushes don't deploy and nobody plays. "Removing X first breaks its six
 importers" is not an objection when all six are converted before anyone starts the game. Order the
 steps however is convenient; only the finished state has to work.
+
+**Another recurring form: a caveat on my own unstated implementation.** Proposing a helper, then
+warning that "a crit would double the +2 in `1d4+2`", assumed an implementation nobody chose. When
+the thing is not built yet, its behaviour is whatever we design — state the behaviour we want, never
+a flaw in a version I imagined (Tim, 2026-10-13, on `roll_damage`).
 
 Related: [[feedback_cheap_tests_over_theory]] (verify before asserting),
 [[feedback_lead_with_the_no]] (when there *is* a real objection, it goes first),

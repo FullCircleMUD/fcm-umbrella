@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 6c41cb4a-335c-4edf-8beb-92321dc36d13
-  modified: 2026-08-25T18:53:22.171Z
+  modified: 2026-10-08T02:17:21.556Z
 ---
 
 **Do not raise existing-database or legacy-data impact** as a consideration for any FCM
@@ -23,7 +23,11 @@ never has been, so raising it adds friction to every decision without informing 
 
 **How to apply:** weigh only current and future correctness. Never propose a backfill for
 a newly added attribute, and never caveat a change with "objects created before this
-won't have it" — every object will be created after it. Holds **until there is a live
+won't have it" — every object will be created after it. **Before any database or schema
+work, ask Tim explicitly: "Greenfield, or does this stack on a previous deployment?"** — every time,
+because at some point it stops being greenfield. Greenfield means regenerate the migrations as a fresh
+`0001_initial`, never stack one that builds a table then rebuilds it (Tim, 2026-10-07). Playtest and
+staging are both dropped and re-migrated, so the xrpl seed is greenfield too (Tim, 2026-10-07). Holds **until there is a live
 production deployment carrying real player data**, after which existing-data impact
 becomes real again. Distinct from [[feedback_stop_on_each_problem]] (surface findings one
 at a time) — this is about which findings are worth surfacing at all.

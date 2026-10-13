@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 648ae4cd-3a40-432c-b50f-69caa28028ac
-  modified: 2026-10-05T17:13:53.648Z
+  modified: 2026-10-06T15:06:06.482Z
 ---
 
 When Tim asks a question — "are these simple changes?", "would it be better to X?", "is scout
@@ -32,6 +32,10 @@ options aloud is not agreement, and "agreed in principle" is mine to say, not a 
 **Thinking aloud is not an instruction either.** "I'm wondering if it's worth narrowing X" is Tim
 reasoning, not asking for the change (2026-10-05). Investigate if useful, report, and wait until it
 has been discussed further and he says to make it.
+
+**A remark is not an instruction.** An observation about state ("that branch is probably ahead of
+main anyway") answers nothing on its own; acting on it pushed a branch to a remote unasked
+(2026-10-06). When the reply to an either/or question is a remark, ask which option he means.
 
 Related: [[feedback_lead_with_the_no]], [[feedback_ask_in_prose_not_dialogues]],
 [[feedback_stop_on_each_problem]].

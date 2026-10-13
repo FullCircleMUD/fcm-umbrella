@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 4afd8299-0aa5-4091-8c8e-e5fd1dee1126
-  modified: 2026-09-29T13:04:13.337Z
+  modified: 2026-10-07T18:12:31.220Z
 ---
 
 Write docs short and plain: what the thing is, how it works, how to use it. Nothing else. No hedging,
@@ -17,6 +17,11 @@ slip.
 
 **Code comments and docstrings too.** More words make a comment less understandable, not more; say it
 once, in the fewest words that stay correct. Worked example: `ops/scratch/TIM-STYLE-CAPTURE.md` §7.
+
+**Style reference is the rebuilt `design/` only.** Never sample older docs (library `docs/`, the
+pre-rebuild design corpus) for style — they are the verbose style being moved away from (Tim,
+2026-10-07). A design doc is the current design and its reasons, rewritten in place when it changes;
+never a trail of earlier thinking.
 
 **How to apply:** after drafting, cut to a third. Delete every sentence that says what the thing isn't,
 what was tried, or what might change. If a paragraph can be a sentence, make it a sentence. Recorded in
