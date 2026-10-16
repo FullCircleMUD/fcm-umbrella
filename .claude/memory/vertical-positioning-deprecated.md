@@ -10,6 +10,9 @@ metadata:
 
 Vertical positioning is not implemented in the rebuild and won't be. Heights, depths, `ExitVerticalAware`, height-gated exits, `p_same_height` — all legacy-only.
 
+That covers height and depth within a room too: legacy `max_height` / `max_depth` room attributes, and
+anything keyed off them, are not ported.
+
 **Why:** Tim, 2026-09-26, after I listed height filtering as a legacy-vs-rebuild difference.
 
-**How to apply:** when comparing against `src_old/`, drop anything height-related silently; don't list it as a gap or ask about it. See [[no-bulk-carry-over-from-src-old]].
+**How to apply:** when comparing against `src_old/`, or surveying or porting a legacy room type, drop anything height-related silently; don't list it as a gap or ask about it. See [[no-bulk-carry-over-from-src-old]].
