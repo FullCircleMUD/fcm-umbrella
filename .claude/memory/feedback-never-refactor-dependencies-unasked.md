@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: d20119e7-abb1-4931-81f9-967ef2e8f37d
-  modified: 2026-09-21T02:13:55.501Z
+  modified: 2026-10-13T22:12:19.988Z
 ---
 
 Never refactor, restructure or "extract" existing working code without asking first. Not as a
@@ -20,6 +20,10 @@ trust you to work with you when you do things like this".
 
 **How to apply:** the stated scope is the file list. Anything outside it gets a question, not an
 edit. `git diff --stat` is the check — if a file is in there that was not in the ask, I overstepped.
-Duplication in code that does not exist yet beats churn in code that works. See
+Duplication in code that does not exist yet beats churn in code that works. **An ambiguous go-ahead is not a mandate to migrate callers** (2026-10-13): mid-spells, "move the
+file, just do it" meant moving `roll_contest` into combat; I read it as moving five call sites onto it
+and refactored `ContestedCombatSkill`, stun, bow, bola and sai — two components outside the spells
+work. When a go-ahead could cover a narrow or a wide reading, take the narrow one and ask about the
+rest. See
 [[feedback-name-the-deviation-and-its-benefits]] — this is the harder form of it: for a dependency
 of other code, naming the deviation is not enough, it needs agreement before the edit.

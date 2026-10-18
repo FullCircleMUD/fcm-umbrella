@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: b3bba4c6-d5c8-403d-8943-4b214af2df80
-  modified: 2026-09-18T21:39:36.017Z
+  modified: 2026-10-16T22:36:58.181Z
 ---
 
 **One issue per reply.** Surface it, stop, let Tim address it, then give the next
@@ -16,7 +16,8 @@ reviews.
 **Why:** a reply carrying ten items gets one of them discussed. The discussion
 scrolls the other nine off the screen and they are never addressed. Recovering them
 means Tim scrolling back through pages of output, which is my failure to manage, not
-his to fix. (Confirmed 2026-09-16. Originally 2026-06-19, narrower — auto-fixing
+his to fix. Tim answers the first point or two, submits, then keeps reading — so every
+extra point lands after his reply has gone. (Confirmed 2026-09-16 and 2026-10-16. Originally 2026-06-19, narrower — auto-fixing
 batch-identified problems instead of waiting.)
 
 **Silence on a point is not agreement.** When a reply did carry several items and Tim

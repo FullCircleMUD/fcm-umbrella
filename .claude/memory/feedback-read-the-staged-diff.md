@@ -5,11 +5,11 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: e22219b7-f51d-408c-97ba-54252b909d4c
-  modified: 2026-10-07T00:24:19.572Z
+  modified: 2026-10-15T13:01:02.570Z
 ---
 
 Before committing, read `git diff --cached` against HEAD. When staging only my hunks by patch, build the patch from HEAD as it is at that moment, then read the staged diff.
 
 **Why:** 2026-10-06 — another session committed `event.py` (my enum lines included) between my edit and my commit; my patch re-added them, `main` broke on a duplicate `Enum` member and was pushed. The staged diff would have shown it.
 
-**How to apply:** every commit, and always in shared files. The content, not `--stat` — the same day a `--stat` read let another session's red test into a commit. A whole-file `git add` of a file with someone else's hunks commits them too. Related: [[other-sessions-uncommitted-work]].
+**How to apply:** every commit, and always in shared files. The content, not `--stat` — the same day a `--stat` read let another session's red test into a commit. A whole-file `git add` of a file with someone else's hunks commits them too. Check the index is empty *before* staging, as its own tool call — never `&&`-chained into the commit: on 2026-10-15 a chained `git diff --cached --stat` printed another session's staged weapons files and the commit ran on regardless. Related: [[other-sessions-uncommitted-work]].

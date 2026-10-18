@@ -3,7 +3,7 @@ name: Default to cheap tests over confident inference
 description: When user experience contradicts my model, run a non-destructive verification before re-asserting the theory
 type: feedback
 originSessionId: 1089dae9-7b49-49d5-af49-a384b5e837b3
-modified: 2026-10-10T13:42:28.163Z
+modified: 2026-10-18T22:50:02.006Z
 ---
 When I have a hypothesis about what's wrong and there's a low-risk way to verify it (a dry-run flag like `--plan`, a read-only query, a `git log` check, a `gh repo view`, an inode check), DO THAT before asserting strong claims — especially before pushing back on the user's lived experience.
 

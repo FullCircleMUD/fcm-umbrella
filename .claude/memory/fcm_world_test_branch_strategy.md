@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 056f5d90-423a-4e31-9679-c99a1d4c1d36
-  modified: 2026-08-10T14:45:49.649Z
+  modified: 2026-10-16T01:50:05.317Z
 ---
 
 Agreed 2026-08-10. `fcm-world` uses a two-branch split:

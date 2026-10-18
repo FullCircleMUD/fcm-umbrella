@@ -40,7 +40,9 @@
 - [Leading amount, current practice](leading-amount-only.md) — quantities in commands lead (`deposit 50 gold`); point buy takes either order. Open to change.
 - [Directions are strings, not an enum](directions-are-strings-not-an-enum.md) — a direction is the word the player types.
 - [Typeclasses live in typeclasses/ — a principle, not a rule](typeclass-location-principle.md) — a component that instantiates its own objects holds those classes.
+- [Interface base for swappable subsystems](interface-base-for-swappable-subsystems.md) — new swappable subsystems get a NotImplementedError base first; no retrofit.
 - [Components talk by signal](event-driven-components.md) — a component prefer not to import another to make something happen.
+- [Public interface only](feedback-public-interface-only.md) — never import from inside another component; export the name from its package first.
 - [Properties are written by assignment](property-writes-by-assignment.md) — never in-place mutation; `at_set` only runs on assignment.
 - [In-memory first](feedback-in-memory-first.md) — lazy-load from the DB once, serve from memory; writes update both.
 - [Defer anything that could block](feedback-defer-anything-that-could-block.md) — current thinking: viable queries go off the reactor via `defer_to_db_thread`; small blockers sum. Open to revision.
@@ -48,6 +50,7 @@
 - [No evennia-stateful-text library — use Evennia native](evennia-stateful-text.md) — don't propose, reference or fetch it.
 ## Libraries and the rebuild
 - [Mobs share the character command set](mobs-share-the-character-command-set.md) — one system for every actor; all-character commands in `CharacterCmdSet`, class or group commands in that class's or group's set.
+- [Compose AI and memory case by case](compose-ai-and-memory-case-by-case.md) — AIActorMixin and EncounterMemoryActorMixin added per typeclass; no combined mixin.
 - [BaseActor is for static NPCs](base-actor-is-for-static-npcs.md) — unkillable, stationary; anything that moves with players or fights is `BaseCombatActor`.
 - [Vertical positioning is deprecated](vertical-positioning-deprecated.md) — no heights in the rebuild; drop anything height-related from legacy comparisons.
 - [Live test in a demo gamedir, not the unit suite](library-live-test-in-demo-gamedir.md) — real puppet/unpuppet and ticks wait for a demo environment.
@@ -65,6 +68,7 @@
 ## Instance-to-instance messaging
 - [Shards superseded by scaling](shards-superseded-by-scaling.md) — the rebuild targets `evennia-scaling`; don't design for shards. · [Shards v2 — independent instances, not shared Postgres](shards-v2-independent-instances.md) — archive+xrpl move the character, the bus coordinates.
 - [evennia-message-bus library](evennia-message-bus-library.md) — round trip proven between demo instances; no consumer yet.
+- [Mobs never despawn, except summons](mobs-never-despawn-except-summons.md) — general mobs leave only by dying; summoned creatures despawn when their duration ends.
 - [Enemies are derived from targets](enemies-derived-from-targets.md) — no sides list in rebuild combat; AoE enemy logic is per-spell, later.
 - [Groups are per-server](groups-are-per-server.md) — members always on one server; no off-server `None` guard.
 - [Shard first boot runs in isolation](scaling-shard-first-boot-in-isolation.md) — plain `evennia start` first, shut down, then `server_start`.
@@ -73,9 +77,11 @@
 - [Component scope](component-scope-edits.md) — inside the component edit freely; outside it, leave to last and discuss.
 - [Test-instance credentials are root / p](feedback_test_instance_credentials.md) — local test gamedirs only.
 - [Cheap tests beat confident theory](feedback_cheap_tests_over_theory.md) — verify before asserting; unverified means ask.
+- [Never contradict Tim flippantly](feedback-never-contradict-flippantly.md) — before saying he's wrong or it won't work, check it fully.
+- [Gaps are work, not blockers](feedback-gaps-are-work-not-blockers.md) — machinery that doesn't support the design gets made to; scope it, don't object with it.
 - [Reason, don't reflexively gather](feedback_reason_dont_just_gather.md) — before a check, ask what result would change the recommendation.
 - [Take stated work as done](feedback-take-stated-work-as-done.md) — Tim says it's in place, it is; never verify it.
-- [Green means green except tripwires](green-means-green-except-tripwires.md) — documented placeholders aren't findings.
+- [Green means green except tripwires](green-means-green-except-tripwires.md) — documented placeholders aren't findings; docs never state an expected failure count.
 - [Re-evaluate tripwires](feedback-re-evaluate-tripwires.md) — dependency built → remove it and build out; not built → onto the gap checklist.
 - [Declare test databases narrowly](feedback-declare-test-databases-narrowly.md) — start with none, add each alias the error names; never `"__all__"`.
 - [Router tests use settings_router.py](router-tests-use-settings-router.md) — `--settings settings_router.py`; `settings.py` is stock and breaks on Account.
@@ -86,7 +92,7 @@
 - [Cooperative design loop](feedback_cooperative_design_loop.md) — discuss, plan, cases for one unit, approval, *then* tests. Scaffolding means structure, not content.
 - [Extra cases fine, behaviour changes discussed](feedback-extra-cases-fine-behaviour-changes-need-discussion.md) — pinning existing behaviour needs no ask; changing it does.
 - [One issue per reply](feedback_stop_on_each_problem.md) — one decision, stop, then the next. Never close with "two more things".
-- [No legacy-data concerns, ever](feedback_no_legacy_data_concerns.md) — fresh DB every deploy; never propose a backfill. Before DB work ask "greenfield or stacking?"
+- [No legacy-data concerns, ever](feedback_no_legacy_data_concerns.md) — fresh DB every deploy; never propose a backfill. Before DB work ask "greenfield or stacking?" Greenfield: fold every schema change into `0001_initial`, never a `0002`.
 - [Fail loud until production](fail-loud-until-production.md) — raise, never swallow.
 - [No hardening language](feedback_no_hardening_language.md) — the *current* plan, never settled; external constraints excepted.
 - [Think twice before a TBD](feedback-no-tbd-for-undiscussed-values.md) — only for a meaningful open issue; a resolved TBD disappears.
@@ -98,15 +104,19 @@
 - [No topic header on direct questions](feedback-discussing-not-deciding.md) — just answer; exploratory talk is never "deciding".
 - [Never invent detail](feedback_never_invent_detail.md) — no invented timespans, counts or severities.
 - [Consumers don't live in what they consume](feedback-consumers-dont-live-in-what-they-consume.md) — a command using messaging isn't a messaging command; ask placement as its own question.
+- [Scope in the component's own terms](feedback-scope-in-the-components-own-terms.md) — while building one, never pull its consumers into the scope, even to say they're untouched.
 - [Never document consumers](feedback-never-document-consumers.md) — a component documents its interface and its dependencies, never who uses it.
 - [Trust the owning component](feedback-trust-the-owning-component.md) — hand `tell_room` the lines and subject and stop; never test who is blind or deaf from a consumer.
 - [A component's scope stops at the signal](component-scope-not-the-sender.md) — complete when an arriving signal is processed correctly.
 - [One commit per component](feedback-one-commit-per-component.md) — component and typeclass surface committed separately. · [Commit side work, hold the main body](feedback-commit-side-work-hold-main-body.md) — side changes in other components committed as they finish; the main body until stable.
 - [Delete a handover once read](feedback-delete-handover-once-read.md) — `ops/scratch` handovers go as soon as they're read back.
+- [Respect manual approval mode](feedback-respect-manual-approval-mode.md) — unless Tim says auto, every file change through Edit/Write, never a Bash/Python edit.
 - [Read the staged diff](feedback-read-the-staged-diff.md) — `git diff --cached` before every commit; patch-staging in shared files has broken main once.
 - [Never leave changes staged](never-leave-changes-staged.md) — `mv` not `git mv`; stage only in the commit command, or another session's commit takes it.
 - [Other sessions' uncommitted work is not yours](other-sessions-uncommitted-work.md) — stage only your paths; never `git add -A`.
 - [Tim places new event types](tim-places-new-event-types.md) — propose the name, he adds it to `PerceptionEventType`'s sections.
+- [Event checks: enum or classifier](event-checks-enum-or-classifier.md) — best practice: compare the enum when type is the whole question; a classifier when it checks more.
+- [Few events, told apart by payload](feedback-few-events-distinguished-by-payload.md) — one general event plus a payload field before a new type.
 - [Raise design forks before building](feedback-raise-design-forks-before-building.md) — ask before the code, never as a caveat after.
 - [Ask before a structural change](feedback-ask-before-a-structural-change.md) — agreed edit needs a restructure to work → name it, ask, wait.
 - [Never refactor a dependency unasked](feedback-never-refactor-dependencies-unasked.md) — ask and wait; `git diff --stat` is the check.
@@ -125,3 +135,4 @@
 - [Report outcomes, not resolved obstacles](feedback-report-outcomes-not-resolved-obstacles.md) — a hiccup already fixed gets one line on the changed outcome, or nothing.
 - [Always include the imports](feedback_always_include_imports.md) — every in-game `py` snippet self-contained.
 - [Commit at the agreed point](feedback-commit-at-the-agreed-point.md) — approval beside a plan means at that point, not now; never stack a commit question; offer once, then wait for Tim.
+- [Precedent is not a reason](feedback-precedent-is-not-a-reason.md) — "the codebase rarely does this" never argues against a good practice; annotations welcome.

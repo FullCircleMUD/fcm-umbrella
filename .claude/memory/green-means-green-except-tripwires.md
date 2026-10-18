@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 25438ffb-5927-4494-bbfa-cce458e38867
-  modified: 2026-09-24T12:24:35.980Z
+  modified: 2026-10-14T14:19:11.010Z
 ---
 
 A suite reporting failures is still "green" when those failures are known tripwires for functionality
@@ -23,6 +23,11 @@ every session and reporting them as though something broke.
 - Report it in one clause — "N fail, all documented tripwires" — not a paragraph of diagnosis.
 - A failure in code your change touched is still yours. This covers documented placeholders, not
   anything that merely fails.
+- **Docs never state how many failures to expect** ("expect 10 failures", "seven cases fail"). A
+  count goes stale the moment one tripwire is built. Say how a tripwire is recognised (raises
+  `NotImplementedError` from a `*_NOT_BUILT` constant, listed in the test plan's § Tripwires), that
+  anything else is a regression, and that the note is deleted when the last tripwire goes. (Tim,
+  2026-10-14.)
 
 Related: [[fail-loud-until-production]] is why the placeholders raise in the first place, and
 [[other-sessions-uncommitted-work]] is why an unfamiliar failure is often not yours at all.
