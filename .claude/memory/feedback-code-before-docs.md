@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 56c3cd45-3227-4854-bc36-a2ce121d7e28
-  modified: 2026-09-13T00:24:20.570Z
+  modified: 2026-10-19T12:39:33.469Z
 ---
 
 When a body of work has both code changes and documentation, do **all** the code first and the
@@ -20,5 +20,7 @@ work reliably — it documents what it sees.
 proposing an order of work, put doc-only items last even when one of them clears a linter *error* and
 the code items are only warnings. Applies to `docs/`, `CLAUDE.md`, `README.md` and progress entries
 alike; in-code comments explaining a decision travel with the code change that needs them.
+The body of work is the component's full scope, not each step inside it — never offer the doc pass
+between steps (2026-10-19, mob-spawner refactor).
 
 Related: [[feedback_docs_short_and_plain]], [[feedback_terse_written_records]].

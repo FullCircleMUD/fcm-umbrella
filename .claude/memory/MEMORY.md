@@ -59,10 +59,12 @@
 - [Build for the intended game, not today's state](feedback-build-for-the-intended-game.md) — inert until its consumer exists still goes in.
 - [Engine, not content](feedback-engine-not-content.md) — judge machinery by what it handles once declared; raise only direct blockers, never world content or who can use it.
 - [Rebuild, not retrofit](rebuild-not-retrofit.md) — libraries never go into the running game; the rebuilt game is the consumer.
+- [Don't design around legacy bug theories](feedback-dont-design-around-legacy-bug-theories.md) — e.g. ghost mobs; design on merits, investigate only if it shows up in the rebuild.
 - [Never change an inherited hook's signature](never-change-inherited-hook-signatures.md) — override with the base signature verbatim.
 - ["Legacy production", not "production"](feedback-legacy-production-not-production.md) — always qualify `src_old/`.
 - [Weigh a variation against downstream port cost](rebuild-weigh-variation-by-downstream-port-cost.md) — port legacy straight; vary only by agreement.
 - [Follow Evennia's conventions](feedback-follow-evennia-conventions.md) — check the framework standard before naming; hooks are `at_`, never `on_`.
+- [Library docs are the convention](feedback-library-docs-are-the-convention.md) — read the owning library's docs before designing against it; never re-document its convention in a consumer.
 - [Descriptive registration names](feedback-descriptive-registration-names.md) — `at_server_start` calls say what they register; one function per signal.
 - [effects-conditions on_ hooks pending rename](effects-conditions-on-hooks-pending-rename.md) — kept `on_` for now; rename to `at_` later.
 ## Instance-to-instance messaging
