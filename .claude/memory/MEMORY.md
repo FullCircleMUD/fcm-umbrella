@@ -51,7 +51,8 @@
 - [No evennia-stateful-text library — use Evennia native](evennia-stateful-text.md) — don't propose, reference or fetch it.
 ## Libraries and the rebuild
 - [Mobs share the character command set](mobs-share-the-character-command-set.md) — one system for every actor; class/group commands in that set.
-- [Mob stats are build decisions](feedback-mob-stats-are-build-decisions.md) — race is a label; stats, gear, conditions set directly.
+- [Mob XP is level² × 10](mob-xp-level-squared.md) — current practice on every spawn rule; balance levelling on the XP table, not mob XP.
+- [Mob stats are build decisions](feedback-mob-stats-are-build-decisions.md) — race and class levels assigned; stats, gear, conditions set directly; no chargen or progression calls for mobs.
 - [Compose AI and memory case by case](compose-ai-and-memory-case-by-case.md) — mixins added per typeclass; no combined mixin.
 - [BaseActor is for static NPCs](base-actor-is-for-static-npcs.md) — unkillable, stationary; movers and fighters are `BaseCombatActor`.
 - [Vertical positioning is deprecated](vertical-positioning-deprecated.md) — no heights; drop height from legacy comparisons.
@@ -70,6 +71,7 @@
 - [Descriptive registration names](feedback-descriptive-registration-names.md) — say what they register; one function per signal.
 - [effects-conditions on_ hooks pending rename](effects-conditions-on-hooks-pending-rename.md) — kept `on_` for now; `at_` later.
 ## Instance-to-instance messaging
+- [Always router + multiple shards](always-router-plus-multiple-shards.md) — never a single server; no single-server fallbacks.
 - [Shards superseded by scaling](shards-superseded-by-scaling.md) — target `evennia-scaling`. · [Shards v2 — independent instances](shards-v2-independent-instances.md) — archive+xrpl move the character, the bus coordinates.
 - [evennia-message-bus library](evennia-message-bus-library.md) — round trip proven between demo instances; no consumer yet.
 - [Mobs never despawn, except summons](mobs-never-despawn-except-summons.md) — mobs leave by dying; summons when their duration ends.

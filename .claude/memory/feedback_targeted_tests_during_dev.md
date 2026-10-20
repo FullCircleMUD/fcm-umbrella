@@ -5,15 +5,16 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 0d698307-7faf-451e-ba74-bd5adfbc796e
-  modified: 2026-09-28T00:07:18.342Z
+  modified: 2026-10-19T20:08:22.488Z
 ---
 
 Three tiers, and pick the smallest one that answers the question:
 
 1. **While iterating** — run only the test file just edited. Seconds.
 2. **At the end of a body of work** — the broad sweep across the related suites. Minutes.
-3. **End of day, or when Tim asks** — the full `evennia test --settings settings tests` run. Close
-   to two hours.
+3. **End of day, or when Tim asks** — the full router run (`evennia test --settings
+   settings_router.py`, no labels). **Two and a half to three hours** (Tim, 2026-10-19). A run that
+   seems slow is not a hang until it has gone past that.
 
 **Why:** a ~15-suite sweep costs about four minutes. Running one after every small change means Tim
 sits watching a progress bar repeatedly for no new information — confirmed with visible irritation
@@ -37,7 +38,8 @@ triage, none of them related to the work.
 **Ask before the full suite, even for a genuinely shared change.** Wiring a gate into the game's
 `Command` base (2026-09-27) did reach every command — but the suites that exercise the base had
 already passed, and the full run was started without asking. Say what the change reaches and which
-suites already cover it, then let Tim choose the full run.
+suites already cover it, then let Tim choose the full run. Broken again 2026-10-19 (the traversal
+refusal change): started unasked, then wrongly called hung at 31 minutes and killed.
 
 **"A body of work" is not each step of one.** Adding a class to `typeclasses/items/` means running
 `typeclasses.items.tests` and stopping there — not all six typeclass suites, because the change
