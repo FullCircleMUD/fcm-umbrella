@@ -1,7 +1,6 @@
 # Project Memory
 ## Security Rules
 - **NEVER** run `git diff` on `secret_settings.local`/`secret_settings.py` or any git-crypt encrypted file before committing — it exposes plaintext secrets. Stage and commit without viewing the diff.
-- [git-crypt setup for src/game secrets](gitcrypt_game_secrets.md) — `secret_settings.local` is git-crypt encrypted; a fresh clone is locked until `git-crypt unlock <keyfile>`.
 ## Compliance — non-negotiable
 - [FCM is not a play-to-earn game](not_play_to_earn.md) — "play" and "earn" never share a sentence or paragraph. No token sales, no redemption. Say "we make no representation that you can or will make money", never "you cannot". We never pair an FCM token with an external asset (XRP, RLUSD, anything).
 - [Free in pre-alpha, monthly subscription later](fcm_subscription_after_pre_alpha.md) — future tense; no price set.
@@ -16,8 +15,6 @@
 - [Player-led economy](player-led-economy-everything-crafted.md) — nothing exists unless a player crafts it; no starter kits or NPC-sold supply.
 - [Proxy markets: BASIC and some SKILLED](proxy-markets-basic-and-some-skilled.md) — EXPERT+ items get no `tracking_token`.
 - [NPC placement: fcm-world vs fcm-mobs](npc_placement_world_vs_mob_spawner.md) — killable NPCs need a spawn rule; only unkillable ones go in `fcm-world`.
-- [mob_area tag controls wandering](mob_area_tag_controls_wandering.md) — mobs only enter rooms sharing their `mob_area`.
-- [fcm-mobs rebuilt on `rebuild`](fcm-mobs-rebuild-branch.md) — empty scaffold, rebuilt area by area; `fcm-mobs-legacy` is the reference.
 - [fcm-world test-branch strategy](fcm_world_test_branch_strategy.md) — `main` live, test world on `test`, merged main → test only.
 - [Mobs are spawn-script driven, not YAML entities](feedback_mobs_vs_npcs_yaml.md) — NPCs in YAML; mobs get only a `mob_area` tag.
 ## Upcoming Work
@@ -25,10 +22,7 @@
 - [logging-extension loses settings-window writes in twistd children](logging-extension-settings-window-loss.md) — raise with the extension.
 - [Cosigner push auto-deploys](cosigner-push-auto-deploys.md) — never push `utilities/cosigner` without Tim's go; settings first.
 - [XRPL testing runs on mainnet](xrpl-testing-runs-on-mainnet.md) — current practice; testnet resets wipe setup.
-- [fcm-telemetry-spawn parked pending fcm-xrpl](telemetry-spawn-parked-pending-xrpl.md) — waits on the XRPL library's shape.
 - [Saturation reads the archive](saturation-reads-the-archive.md) — spells/recipes and masteries from the archive; no sweep.
-- [fcm-telemetry-spawn is unlicensed](library-unlicensed-fcm-telemetry-spawn.md) — sanctioned; 3 licence findings expected.
-- [evennia-targeting does not log](library-no-logging-evennia-targeting.md) — accepted; `log_shim_unused` expected.
 - [Fungible display: gold at zero](fungible-display-gold-at-zero.md) — deferred refactor; always show gold, `0` included.
 ## Documentation
 - [Docs short and plain](feedback_docs_short_and_plain.md) — what, how, how to use; no hedging or archaeology. Cut to a third.
@@ -69,19 +63,18 @@
 - [Follow Evennia's conventions](feedback-follow-evennia-conventions.md) — framework standard first; hooks are `at_`, never `on_`.
 - [Library docs are the convention](feedback-library-docs-are-the-convention.md) — read the owning library's docs; never re-document it.
 - [Descriptive registration names](feedback-descriptive-registration-names.md) — say what they register; one function per signal.
-- [effects-conditions on_ hooks pending rename](effects-conditions-on-hooks-pending-rename.md) — kept `on_` for now; `at_` later.
 ## Instance-to-instance messaging
 - [Always router + multiple shards](always-router-plus-multiple-shards.md) — never a single server; no single-server fallbacks.
-- [Shards superseded by scaling](shards-superseded-by-scaling.md) — target `evennia-scaling`. · [Shards v2 — independent instances](shards-v2-independent-instances.md) — archive+xrpl move the character, the bus coordinates.
-- [evennia-message-bus library](evennia-message-bus-library.md) — round trip proven between demo instances; no consumer yet.
+- [Shards superseded by scaling](shards-superseded-by-scaling.md) — target `evennia-scaling`.
 - [Mobs never despawn, except summons](mobs-never-despawn-except-summons.md) — mobs leave by dying; summons when their duration ends.
 - [Enemies are derived from targets](enemies-derived-from-targets.md) — no sides list; AoE enemy logic per-spell, later.
 - [Groups are per-server](groups-are-per-server.md) — members always on one server; no off-server `None` guard.
-- [Shard first boot runs in isolation](scaling-shard-first-boot-in-isolation.md) — plain `evennia start`, shut down, then `server_start`.
 ## Working approach
 - [Confirm before crossing repos](confirm-before-crossing-repos.md) — ask before writing in another repo.
 - [Component scope](component-scope-edits.md) — inside edit freely; outside, leave to last and discuss.
 - [Test-instance credentials are root / p](feedback_test_instance_credentials.md) — local test gamedirs only.
+- [Explaining and changing are separate](feedback-explain-and-change-are-separate.md) — no change commands inside an explanation; label every change as one.
+- [Staging accounts](staging-accounts.md) — one superuser admin account, one player test account; names change (currently Jimmy, Tim / Paragon).
 - [Cheap tests beat confident theory](feedback_cheap_tests_over_theory.md) — verify before asserting; unverified means ask.
 - [Never contradict Tim flippantly](feedback-never-contradict-flippantly.md) — check fully before saying it won't work.
 - [Gaps are work, not blockers](feedback-gaps-are-work-not-blockers.md) — scope the missing machinery; don't object with it.
@@ -90,7 +83,6 @@
 - [Green means green except tripwires](green-means-green-except-tripwires.md) — placeholders aren't findings; no expected failure counts.
 - [Re-evaluate tripwires](feedback-re-evaluate-tripwires.md) — built → remove and build out; not built → gap checklist.
 - [Declare test databases narrowly](feedback-declare-test-databases-narrowly.md) — add each alias the error names; never `"__all__"`.
-- [Router tests use settings_router.py](router-tests-use-settings-router.md) — `--settings settings_router.py`.
 - [One file while iterating, sweep at the end](feedback_targeted_tests_during_dev.md) — module just edited; full suite end-of-day.
 - [Mutate only red-run passes](feedback-mutate-only-red-passes.md) — not every new case.
 - [No troubleshooting relics](feedback_no_troubleshooting_relics.md) — only the code that solved it ships.

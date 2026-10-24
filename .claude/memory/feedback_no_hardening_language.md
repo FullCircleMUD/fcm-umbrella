@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 4afd8299-0aa5-4091-8c8e-e5fd1dee1126
-  modified: 2026-09-01T18:39:47.030Z
+  modified: 2026-10-24T15:52:07.982Z
 ---
 
 It is the framing that matters, not the vocabulary. "The current working convention", "current
@@ -18,7 +18,9 @@ spends half the conversation arguing an LLM out of a constraint that was never a
 hardening cuts off possibilities that were never closed.
 
 **How to apply:** everything stays open to review and refactor if a better way emerges or a necessity
-forces it. Applies to memory files, design docs and replies alike.
+forces it. Applies to memory files, design docs and replies alike — mid-conversation too: "the
+current approach", never "the design we've settled on". Tim (2026-10-24): if new information
+arises, "we'll unsettle it very quickly".
 
 **Two kinds of thing are not ours to soften.** A constraint imposed from outside — how a third-party
 API behaves, what a protocol permits, what a dependency will and will not do — is a fact about the

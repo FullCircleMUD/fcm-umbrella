@@ -5,10 +5,10 @@ metadata:
   node_type: memory
   type: feedback
   originSessionId: 38ea812b-f540-4a39-a308-bc27292b05c6
-  modified: 2026-10-05T14:34:22.123Z
+  modified: 2026-10-24T19:10:30.256Z
 ---
 
-The current thinking on best practice: anything that could block the reactor goes through `defer_to_db_thread` (from `evennia_database_cascade`) where that is viable, even a single cheap indexed query. Not a rule — where something else suits a case better, that is Tim's call, and the practice changes when things change.
+The current thinking on best practice: anything that could block the reactor goes through `defer_to_db_thread` (from `evennia_db_threads`) where that is viable, even a single cheap indexed query. Not a rule — where something else suits a case better, that is Tim's call, and the practice changes when things change.
 
 **Why:** big jobs get broken up separately; what then limits how far one instance can be pushed is the sum of many small blockers at once. Invisible at low player counts, matters at scale.
 
