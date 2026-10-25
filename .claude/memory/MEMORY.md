@@ -17,6 +17,7 @@
 - [NPC placement: fcm-world vs fcm-mobs](npc_placement_world_vs_mob_spawner.md) — killable NPCs need a spawn rule; only unkillable ones go in `fcm-world`.
 - [fcm-world test-branch strategy](fcm_world_test_branch_strategy.md) — `main` live, test world on `test`, merged main → test only.
 - [Mobs are spawn-script driven, not YAML entities](feedback_mobs_vs_npcs_yaml.md) — NPCs in YAML; mobs get only a `mob_area` tag.
+- [NPC prompts backed by what they do](feedback-npc-prompts-backed-by-what-they-do.md) — a persona offers only the stock, teaching and recipes the NPC really has.
 ## Upcoming Work
 - [Log levels: INFO vs WARN](feedback_log_levels_info_vs_warn.md) — INFO = working as intended; WARN/ERROR only when something may be wrong.
 - [logging-extension loses settings-window writes in twistd children](logging-extension-settings-window-loss.md) — raise with the extension.
