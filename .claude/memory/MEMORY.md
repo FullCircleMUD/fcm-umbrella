@@ -46,9 +46,9 @@
 - [No evennia-stateful-text library — use Evennia native](evennia-stateful-text.md) — don't propose, reference or fetch it.
 ## Libraries and the rebuild
 - [Mobs share the character command set](mobs-share-the-character-command-set.md) — one system for every actor; class/group commands in that set.
-- [Mob XP is level² × 10](mob-xp-level-squared.md) — current practice on every spawn rule; balance levelling on the XP table, not mob XP.
+- [Mob XP rule of thumb: level² × 10](mob-xp-level-squared.md) — a guide and starting point; the builder tweaks it up or down as they see fit.
 - [Mob stats are build decisions](feedback-mob-stats-are-build-decisions.md) — race and class levels assigned; stats, gear, conditions set directly; no chargen or progression calls for mobs.
-- [Compose AI and memory case by case](compose-ai-and-memory-case-by-case.md) — mixins added per typeclass; no combined mixin.
+- [Compose AI and memory case by case](compose-ai-and-memory-case-by-case.md) — mixins added per typeclass; the one bundle is `ConversationalNPCMixin`.
 - [BaseActor is for static NPCs](base-actor-is-for-static-npcs.md) — unkillable, stationary; movers and fighters are `BaseCombatActor`.
 - [Vertical positioning is deprecated](vertical-positioning-deprecated.md) — no heights; drop height from legacy comparisons.
 - [Live test in a demo gamedir, not the unit suite](library-live-test-in-demo-gamedir.md) — real puppet/unpuppet and ticks.
@@ -135,3 +135,5 @@
 - [Always include the imports](feedback_always_include_imports.md) — every in-game `py` snippet self-contained.
 - [Commit at the agreed point](feedback-commit-at-the-agreed-point.md) — never stack a commit question; offer once, then wait.
 - [Precedent is not a reason](feedback-precedent-is-not-a-reason.md) — rarity never argues against a good practice.
+- [Check the folder before a new class](check-the-folder-before-a-new-class.md) — `ls` where it would live before proposing it; READMEs miss classes.
+- [Test fixture typeclass names are unique](test-fixture-typeclass-names-unique.md) — name them for the suite; fixtures may be changed freely to make tests work.
